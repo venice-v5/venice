@@ -10,7 +10,7 @@ Open source MicroPython port for VEX V5 robots.
 
 ## Roadmap
 
-- [x] Proof-of-conept V5 binary with MicroPython embedded running a static program
+- [x] Proof-of-concept V5 binary with MicroPython embedded running a static program
 - [ ] Bytecode loading at 0x07800000
 - [ ] Multi-module support
 - [ ] VEX SDK C declarations
