@@ -52,12 +52,6 @@ SECTIONS {
         *(.data .data.*)
     } > USER_RAM
 
-    .bss (NOLOAD) : {
-        __bss_start = .;
-        *(.bss .bss.*)
-        __bss_end = .;
-    } > USER_RAM
-
     /*
      * ARM Stack Unwinding Sections
      *
@@ -85,12 +79,19 @@ SECTIONS {
         *(.ARM.extab*)
         __extab_end = .;
     } > USER_RAM
+	
+	/* -- End of loadable sections - anything beyond this point shouldn't go in the BIN. -- */
 
-    /*
-     * Active memory sections for the stack/heap.
-     *
-     * Because these are (NOLOAD), they will not influence the final size of the binary.
-    */
+	/* Uninitialized data */
+    .bss (NOLOAD) : {
+        __bss_start = .;
+        *(.bss .bss.*)
+        __bss_end = .;
+    } > USER_RAM
+
+	/*
+	 * Active memory locations for the stack/heap.
+	 */
     .heap (NOLOAD) : ALIGN(4) {
         __heap_start = .;
         . = ORIGIN(USER_RAM) + LENGTH(USER_RAM) - __stack_length;
