@@ -52,7 +52,7 @@ SECTIONS {
         *(.data .data.*)
     } > USER_RAM
 
-    .bss : {
+    .bss (NOLOAD) : {
         __bss_start = .;
         *(.bss .bss.*)
         __bss_end = .;
