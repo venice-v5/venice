@@ -2,6 +2,11 @@
 
 Open source MicroPython port for VEX V5 robots.
 
+## Note
+
+Builds are still a little bit weird. If you get any compilation errors after modifying the port
+files, try running `cargo clean` and recompiling.
+
 ## Roadmap
 
 - [x] V5 binary with MicroPython embedded running a static program
