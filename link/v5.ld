@@ -35,7 +35,6 @@ SECTIONS {
      */
     .code_signature : {
         KEEP(*(.code_signature))
-        /* sets relative to ORIGIN(RUNTIME_RAM) */
         . = __runtime_ram_start + __code_signature_length;
     } > RUNTIME_RAM
 
