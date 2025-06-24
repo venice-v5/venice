@@ -24,7 +24,7 @@ __eh_frame_hdr_end = SIZEOF(.eh_frame_hdr) > 0 ? . : 0;
 
 MEMORY {
     RUNTIME_RAM (RWX) : ORIGIN = __runtime_ram_start, LENGTH = __runtime_ram_length
-	BYTECODE_RAM (R) : ORIGIN = __bytecode_ram_start, LENGTH = __bytecode_ram_length
+    BYTECODE_RAM (R) : ORIGIN = __bytecode_ram_start, LENGTH = __bytecode_ram_length
 }
 
 SECTIONS {
@@ -35,16 +35,16 @@ SECTIONS {
      */
     .code_signature : {
         KEEP(*(.code_signature))
-		/* sets relative to ORIGIN(RUNTIME_RAM) */
-		. = __runtime_ram_start + __code_signature_length;
+        /* sets relative to ORIGIN(RUNTIME_RAM) */
+        . = __runtime_ram_start + __code_signature_length;
     } > RUNTIME_RAM
 
     /*
      * Executable program instructions.
      */
     .text : {
-		/* _boot routine (always runs first, must be at 0x03800020) */
-		*(.boot)
+        /* _boot routine (always runs first, must be at 0x03800020) */
+        *(.boot)
         *(.text .text.*)
     } > RUNTIME_RAM
 
@@ -86,22 +86,22 @@ SECTIONS {
         *(.ARM.extab*)
         __extab_end = .;
     } > RUNTIME_RAM
-	
-	/* -- End of loadable sections - anything beyond this point shouldn't go in the BIN. -- */
+    
+    /* -- End of loadable sections - anything beyond this point shouldn't go in the BIN. -- */
 
-	/* Uninitialized data */
+    /* Uninitialized data */
     .bss (NOLOAD) : {
         __bss_start = .;
         *(.bss .bss.*)
         __bss_end = .;
     } > RUNTIME_RAM
 
-	/*
-	 * Active memory locations for the stack/heap.
-	 */
+    /*
+     * Active memory locations for the stack/heap.
+     */
     .heap (NOLOAD) : ALIGN(4) {
         __heap_start = .;
-		. = __heap_end;
+        . = __heap_end;
     } > RUNTIME_RAM
 
     .stack (NOLOAD) : ALIGN(8) {
@@ -110,10 +110,10 @@ SECTIONS {
         __stack_top = .;
     } > RUNTIME_RAM
 
-	.bytecode (NOLOAD) : ALIGN(4) {
-		. = __bytecode_ram_start;
-		. += __bytecode_ram_length;
-	} > BYTECODE_RAM
+    .bytecode (NOLOAD) : ALIGN(4) {
+        . = __bytecode_ram_start;
+        . += __bytecode_ram_length;
+    } > BYTECODE_RAM
 
     /*
      * `.ARM.attributes` contains arch metadata for compatibility purposes, but we
