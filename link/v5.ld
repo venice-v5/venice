@@ -6,16 +6,26 @@ OUTPUT_FORMAT("elf32-littlearm")
  */
 ENTRY(_boot)
 
-MEMORY {
-    USER_RAM (RWX) : ORIGIN = 0x03800000, LENGTH = 0x04000000
-}
+__runtime_ram_start = 0x03800000;
+__runtime_ram_length = 0x04000000;
+__runtime_ram_end = __runtime_ram_start + __runtime_ram_length;
+
+__ram_end = 0x08000000;
+__bytecode_ram_start = __runtime_ram_end;
+__bytecode_ram_length = __ram_end - __bytecode_ram_start;
 
 __code_signature_length = 0x20;
 __stack_length = 0x00400000;
+__heap_end = __runtime_ram_end - __stack_length;
 
 /* see https://github.com/llvm/llvm-project/blob/main/libunwind/src/AddressSpace.hpp#L78 */
 __eh_frame_hdr_start = SIZEOF(.eh_frame_hdr) > 0 ? ADDR(.eh_frame_hdr) : 0;
 __eh_frame_hdr_end = SIZEOF(.eh_frame_hdr) > 0 ? . : 0;
+
+MEMORY {
+    RUNTIME_RAM (RWX) : ORIGIN = __runtime_ram_start, LENGTH = __runtime_ram_length
+	BYTECODE_RAM (R) : ORIGIN = __bytecode_ram_start, LENGTH = __bytecode_ram_length
+}
 
 SECTIONS {
     /*
@@ -25,32 +35,29 @@ SECTIONS {
      */
     .code_signature : {
         KEEP(*(.code_signature))
-		/* sets relative to ORIGIN(USER_RAM) */
-		. = __code_signature_length;
-    } > USER_RAM
-	
-	/* _boot routine (always runs first, must be at 0x03800020) */
-	.boot : {
-		*(.boot)
-	} > USER_RAM
+		/* sets relative to ORIGIN(RUNTIME_RAM) */
+		. = __runtime_ram_start + __code_signature_length;
+    } > RUNTIME_RAM
 
     /*
      * Executable program instructions.
      */
     .text : {
+		/* _boot routine (always runs first, must be at 0x03800020) */
+		*(.boot)
         *(.text .text.*)
-    } > USER_RAM
+    } > RUNTIME_RAM
 
     /*
-     * Global/uninitialized/static/constant data sections.
+     * Global/static/constant data sections.
      */
     .rodata : {
         *(.rodata .rodata.*)
-    } > USER_RAM
+    } > RUNTIME_RAM
 
     .data : {
         *(.data .data.*)
-    } > USER_RAM
+    } > RUNTIME_RAM
 
     /*
      * ARM Stack Unwinding Sections
@@ -60,25 +67,25 @@ SECTIONS {
      */
     .eh_frame_hdr : {
         KEEP(*(.eh_frame_hdr))
-    } > USER_RAM
+    } > RUNTIME_RAM
 
     .eh_frame : {
         __eh_frame_start = .;
        KEEP(*(.eh_frame))
         __eh_frame_end = .;
-    } > USER_RAM
+    } > RUNTIME_RAM
 
     .ARM.exidx : {
         __exidx_start = .;
         *(.ARM.exidx*)
         __exidx_end = .;
-    } > USER_RAM
+    } > RUNTIME_RAM
 
     .ARM.extab : {
         __extab_start = .;
         *(.ARM.extab*)
         __extab_end = .;
-    } > USER_RAM
+    } > RUNTIME_RAM
 	
 	/* -- End of loadable sections - anything beyond this point shouldn't go in the BIN. -- */
 
@@ -87,22 +94,26 @@ SECTIONS {
         __bss_start = .;
         *(.bss .bss.*)
         __bss_end = .;
-    } > USER_RAM
+    } > RUNTIME_RAM
 
 	/*
 	 * Active memory locations for the stack/heap.
 	 */
     .heap (NOLOAD) : ALIGN(4) {
         __heap_start = .;
-        . = ORIGIN(USER_RAM) + LENGTH(USER_RAM) - __stack_length;
-		__heap_end = .;
-    } > USER_RAM
+		. = __heap_end;
+    } > RUNTIME_RAM
 
     .stack (NOLOAD) : ALIGN(8) {
         __stack_bottom = .;
         . += __stack_length;
         __stack_top = .;
-    } > USER_RAM
+    } > RUNTIME_RAM
+
+	.bytecode (NOLOAD) : ALIGN(4) {
+		. = __bytecode_ram_start;
+		. += __bytecode_ram_length;
+	} > BYTECODE_RAM
 
     /*
      * `.ARM.attributes` contains arch metadata for compatibility purposes, but we
@@ -111,4 +122,16 @@ SECTIONS {
     /DISCARD/ : {
         *(.ARM.attributes*)
     }
+
+    /*
+     * These sections are useful for debugging but shouldn't end up in the final
+     * binary, so they are only stored in the ELF and not loaded into memory.
+     */
+
+    /* ELF metadata sections */
+    .symtab   0 : { *(.symtab) }
+    .strtab   0 : { *(.strtab) }
+    .shstrtab 0 : { *(.shstrtab) }
+    .debug    0 : { *(.debug*) }
+    .comment  0 : { *(.comment) }
 }

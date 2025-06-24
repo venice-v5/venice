@@ -1,0 +1,12 @@
+[package]
+name = "venice"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+vex-sdk = "0.26.0"
+
+[profile.release]
+lto = true
+strip = true
+opt-level = "s"
