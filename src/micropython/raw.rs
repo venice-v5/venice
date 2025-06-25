@@ -132,8 +132,7 @@ unsafe extern "C" {
 
     /// From: `py/mp_state.h`
     ///
-    /// Currently, MicroPython threads are disabled in our port, so this is always the active
-    /// [`StateCtx`].
+    /// Currently, MicroPython threads are disabled, so this is always the active [`StateCtx`].
     pub static mut mp_state_ctx: StateCtx;
 
     // ----- Initialization ----- //
