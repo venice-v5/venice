@@ -105,7 +105,7 @@ unsafe fn exit() -> ! {
     }
 }
 
-fn program(mut mpy: MicroPython) {
+fn main(mut mpy: MicroPython) {
     let entrypoint = MODULE_MAP
         .get(b"__init__".as_slice())
         .expect("__init__ module not found, try adding __init__.py to your project");
@@ -141,7 +141,7 @@ unsafe fn startup() -> ! {
             .expect("couldn't claim heap memory");
     }
 
-    program(unsafe { MicroPython::new() });
+    main(unsafe { MicroPython::new() });
 
     unsafe {
         exit();
