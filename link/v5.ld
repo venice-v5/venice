@@ -16,7 +16,8 @@ __bytecode_ram_length = __ram_end - __bytecode_ram_start;
 
 __code_signature_length = 0x20;
 __stack_length = 0x00400000;
-__heap_end = __runtime_ram_end - __stack_length;
+__heap_length = 128K;
+__python_heap_end = __runtime_ram_end - __stack_length;
 
 /* see https://github.com/llvm/llvm-project/blob/main/libunwind/src/AddressSpace.hpp#L78 */
 __eh_frame_hdr_start = SIZEOF(.eh_frame_hdr) > 0 ? ADDR(.eh_frame_hdr) : 0;
@@ -98,9 +99,15 @@ SECTIONS {
     /*
      * Active memory locations for the stack/heap.
      */
-    .heap (NOLOAD) : ALIGN(4) {
-        __heap_start = .;
-        . = __heap_end;
+	.heap (NOLOAD): ALIGN(4) {
+		__heap_start = .;
+		. += __heap_length;
+		__heap_end = .;
+	}
+
+    .python_heap (NOLOAD) : ALIGN(4) {
+        __python_heap_start = .;
+        . = __python_heap_end;
     } > RUNTIME_RAM
 
     .stack (NOLOAD) : ALIGN(8) {

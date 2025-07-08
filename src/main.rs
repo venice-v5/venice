@@ -5,14 +5,13 @@
 
 mod micropython;
 mod stubs;
-mod vcbc;
+mod vbt;
 
 use core::{arch::naked_asm, fmt::Write};
 
-use crate::{
-    micropython::MicroPython,
-    vcbc::{BYTECODE_TABLE_MAGIC, BytecodeTable},
-};
+use talc::{ErrOnOom, Span, Talc, Talck};
+
+use crate::{micropython::MicroPython, vbt::MODULE_MAP};
 
 /// Signature used by VEXos to verify the program and its properties.
 #[used]
@@ -27,6 +26,9 @@ static CODE_SIG: (vex_sdk::vcodesig, [u32; 4]) = (
     },
     [0; 4],
 );
+
+#[global_allocator]
+static ALLOCATOR: Talck<spin::Mutex<()>, ErrOnOom> = Talck::new(Talc::new(ErrOnOom));
 
 // TODO: Synchronize properly once Python multitasking is added
 struct Serial;
@@ -104,17 +106,11 @@ unsafe fn exit() -> ! {
 }
 
 fn program(mut mpy: MicroPython) {
-    let bytecode_table = BytecodeTable::get().unwrap_or_else(|magic| {
-        panic!(
-            "invalid bytecode table magic: should be 0x{BYTECODE_TABLE_MAGIC:08x}, got 0x{magic:08x}"
-        )
-    });
+    let entrypoint = MODULE_MAP
+        .get(b"__init__".as_slice())
+        .expect("__init__ module not found, try adding __init__.py to your project");
 
-    let entrypoint = bytecode_table
-        .module(0)
-        .expect("no entrypoint in bytecode table");
-
-    mpy.exec_bytecode(entrypoint);
+    mpy.exec_bytecode(*entrypoint);
 }
 
 /// # Safety
@@ -131,6 +127,18 @@ unsafe fn startup() -> ! {
 
     unsafe {
         __libc_init_array();
+    }
+
+    unsafe extern "C" {
+        static mut __heap_start: u8;
+        static mut __heap_end: u8;
+    }
+
+    unsafe {
+        ALLOCATOR
+            .lock()
+            .claim(Span::new(&raw mut __heap_start, &raw mut __heap_end))
+            .expect("couldn't claim heap memory");
     }
 
     program(unsafe { MicroPython::new() });

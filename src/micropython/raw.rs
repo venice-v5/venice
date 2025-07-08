@@ -4,14 +4,19 @@
 
 use core::ffi::{c_char, c_uint, c_void};
 
-/// From: `py/obj.h`
-pub type Obj = *mut c_void;
+use super::obj::Obj;
+
 /// From: `py/emitglue.h`
 pub type ProtoFun = *const c_void;
+
 /// From: `py/qstr.h`
 pub type QStrShort = u16;
+
 /// From: `py/mpprint.h`
 pub type PrintStrn = extern "C" fn(data: *mut c_void, str: *const c_char, len: usize);
+
+/// From: `py/misc.h`
+pub type RomErrorText = *const c_char;
 
 /// From: `py/obj.h`
 ///
@@ -185,8 +190,16 @@ unsafe extern "C" {
     /// From: `py/runtime.h`
     pub fn mp_call_function_0(fun: Obj) -> Obj;
 
-    // ----- Other ----- //
+    // ----- Exceptions ----- //
+
+    /// From: `py/runtime.h`
+    pub fn mp_raise_ValueError(msg: RomErrorText) -> !;
+
+    // ----- Object methods ----- //
 
     /// From: `py/obj.h`
     pub fn mp_obj_print_exception(print: *const Print, exc: Obj) -> !;
+
+    /// From: `py/obj.h`
+    pub fn mp_obj_str_get_data(self_in: Obj, len: *mut usize) -> *const c_char;
 }

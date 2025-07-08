@@ -24,3 +24,5 @@ typedef long mp_off_t;
 
 #define MICROPY_HW_BOARD_NAME "VEX V5 Brain"
 #define MICROPY_HW_MCU_NAME "Cortex-A9"
+
+#define mp_builtin___import__ mp_builtin___import__
