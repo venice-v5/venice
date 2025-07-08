@@ -1,3 +1,5 @@
+//! Venice Bytecode Table (VBT)
+
 use hashbrown::HashMap;
 
 unsafe extern "C" {
