@@ -68,14 +68,14 @@ unsafe extern "C" {
     ///
     /// # Safety
     ///
-    /// Must be called once at the start
+    /// Must be called once at the start of the program.
     fn __libc_init_array();
 
     /// Calls libc global destructors.
     ///
     /// # Safety
     ///
-    /// Must be called once after
+    /// Must be called once at the end of the program.
     fn __libc_fini_array();
 }
 
