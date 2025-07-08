@@ -61,6 +61,9 @@ unsafe extern "C" {
     static mut __bss_start: u32;
     static mut __bss_end: u32;
 
+    static mut __heap_start: u8;
+    static mut __heap_end: u8;
+
     /// Calls libc global constructors.
     ///
     /// # Safety
@@ -129,10 +132,7 @@ unsafe fn startup() -> ! {
         __libc_init_array();
     }
 
-    unsafe extern "C" {
-        static mut __heap_start: u8;
-        static mut __heap_end: u8;
-    }
+    unsafe extern "C" {}
 
     unsafe {
         ALLOCATOR
