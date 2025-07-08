@@ -28,7 +28,7 @@ pub struct MicroPython(());
 impl MicroPython {
     pub unsafe fn new() -> Self {
         unsafe {
-            raw::mp_stack_set_top((&raw mut __stack_top).add(0x10000) as *mut c_void);
+            raw::mp_stack_set_top((&raw mut __stack_top) as *mut c_void);
             raw::gc_init(
                 &raw mut __python_heap_start as *mut c_void,
                 &raw mut __python_heap_end as *mut c_void,
