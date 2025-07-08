@@ -8,5 +8,7 @@ Open source MicroPython port for VEX V5 robots.
 - [ ] CLI tool
 - [x] Bytecode loading at runtime through VEXos linking
 - [ ] Multi-python-module support
+  - [x] Multi-module uploading
+  - [ ] Module importing
 - [ ] Python V5 API
 - [ ] Multitasking (async/await?)
