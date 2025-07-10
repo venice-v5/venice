@@ -76,8 +76,6 @@ impl MicroPython {
             mp_call_function_0(f);
         });
     }
-
-    // pub fn import_module(&mut self, module_name: &[u8], vbt: &BytecodeTable) -> Result<(), ()> {}
 }
 
 impl Drop for MicroPython {
