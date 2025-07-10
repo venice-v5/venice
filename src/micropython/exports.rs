@@ -59,9 +59,7 @@ unsafe extern "C" fn gc_collect() {
 
 #[unsafe(no_mangle)]
 extern "C" fn nlr_jump_fail(_val: *mut c_void) -> ! {
-    panic!(
-        "Venice internal error (NLR jump fail). If you are seeing this message as a user, please file a bug report at https://github.com/venice-v5/venice"
-    );
+    panic!("NLR jump fail");
 }
 
 #[unsafe(no_mangle)]

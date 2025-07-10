@@ -3,15 +3,25 @@
 #![no_std]
 #![no_main]
 
+extern crate alloc;
+
 mod micropython;
+mod serial;
 mod stubs;
 mod vbt;
 
-use core::{arch::naked_asm, fmt::Write};
+use core::{
+    arch::naked_asm,
+    sync::atomic::{AtomicBool, Ordering},
+};
 
 use talc::{ErrOnOom, Span, Talc, Talck};
 
-use crate::{micropython::MicroPython, vbt::MODULE_MAP};
+use crate::{
+    micropython::MicroPython,
+    serial::{print, println},
+    vbt::MODULE_MAP,
+};
 
 /// Signature used by VEXos to verify the program and its properties.
 #[used]
@@ -30,30 +40,33 @@ static CODE_SIG: (vex_sdk::vcodesig, [u32; 4]) = (
 #[global_allocator]
 static ALLOCATOR: Talck<spin::Mutex<()>, ErrOnOom> = Talck::new(Talc::new(ErrOnOom));
 
-// TODO: Synchronize properly once Python multitasking is added
-struct Serial;
-
-impl Write for Serial {
-    fn write_char(&mut self, c: char) -> core::fmt::Result {
-        if unsafe { vex_sdk::vexSerialWriteChar(1, c as u8) } == -1 {
-            Err(core::fmt::Error)
-        } else {
-            Ok(())
-        }
-    }
-
-    fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        if unsafe { vex_sdk::vexSerialWriteBuffer(1, s.as_ptr(), s.len() as u32) } == -1 {
-            Err(core::fmt::Error)
-        } else {
-            Ok(())
-        }
-    }
-}
-
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
-    let _ = write!(Serial, "panicked: {}", info.message());
+    static PANICKED: AtomicBool = AtomicBool::new(false);
+
+    if PANICKED.load(Ordering::Acquire) {
+        // SAFETY: The code leading up to and including the call to `__libc_init_array` is
+        // infallible, so panicking before it is impossible.
+        unsafe {
+            exit();
+        }
+    }
+
+    PANICKED.store(true, Ordering::Release);
+
+    println!("Venice panicked!");
+    println!(
+        "If you are seeing this message as a user, please file a bug report at https://github.com/venice-v5/venice\n"
+    );
+
+    if let Some(location) = info.location() {
+        print!("[{}:{}]: ", location.file(), location.line());
+    } else {
+        print!("[no location available]: ");
+    }
+
+    println!("{}", info.message());
+
     loop {}
 }
 
@@ -131,8 +144,6 @@ unsafe fn startup() -> ! {
     unsafe {
         __libc_init_array();
     }
-
-    unsafe extern "C" {}
 
     unsafe {
         ALLOCATOR
