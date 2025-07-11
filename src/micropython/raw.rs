@@ -130,6 +130,16 @@ pub struct NlrBuf {
     pub regs: [*mut c_void; NLR_REG_COUNT],
 }
 
+// From: `py/nlr.h`
+pub type NlrJumpCallbackFun = extern "C" fn(ctx: *mut c_void);
+
+// From: `py/nlr.h`
+#[repr(C)]
+pub struct NlrJumpCallbackNode {
+    prev: *const Self,
+    fun: NlrJumpCallbackFun,
+}
+
 /// From: `py/mpprint.h`
 #[repr(C)]
 pub struct Print {
@@ -138,15 +148,21 @@ pub struct Print {
 }
 
 /// From: `py/mpstate.h`
-///
-/// This is an incomplete binding; the omitted fields are currently not needed.
 #[repr(C)]
 pub struct StateThread {
     pub stack_top: *mut c_char,
     pub gc_lock_depth: u16,
+
     pub dict_locals: *mut ObjDict,
     pub dict_globals: *mut ObjDict,
-    // more unneeded fields
+
+    pub nlr_top: *mut NlrBuf,
+    pub nlr_jump_callback_top: *mut NlrJumpCallbackNode,
+
+    // originally marked as volatile
+    pub pending_exception: Obj,
+
+    pub stop_iteration_arg: Obj,
 }
 
 /// From: `py/mpstate.h`
