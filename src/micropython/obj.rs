@@ -15,9 +15,10 @@
 pub struct Obj(u32);
 
 impl Obj {
+    pub const NULL: Self = unsafe { Self::from_raw(0) };
     pub const NONE: Self = Self::from_immediate(0);
 
-    pub unsafe fn from_raw(inner: u32) -> Self {
+    pub const unsafe fn from_raw(inner: u32) -> Self {
         Self(inner)
     }
 
@@ -29,5 +30,9 @@ impl Obj {
         // right shifting a signed integer (as opposed to an unsigned int) performs an arithmetic
         // right shift where the sign bit is preserved, e.g. 0b1000 >> 0b1100
         self.0 as i32 >> 1
+    }
+
+    pub const fn is_null(&self) -> bool {
+        self.0 == Self::NULL.0
     }
 }
