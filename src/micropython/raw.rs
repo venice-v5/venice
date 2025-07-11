@@ -10,6 +10,9 @@ use super::obj::Obj;
 pub type ProtoFun = *const c_void;
 
 /// From: `py/qstr.h`
+pub type QStr = usize;
+
+/// From: `py/qstr.h`
 pub type QStrShort = u16;
 
 /// From: `py/mpprint.h`
@@ -251,4 +254,9 @@ unsafe extern "C" {
     // ----- Map methods ----- //
 
     pub fn mp_map_lookup(map: *mut Map, index: Obj, lookup_kind: LookupKind) -> *mut MapElem;
+
+    // ----- QStr ----- //
+
+    /// From: `py/qstr.h`
+    pub fn qstr_from_strn(str: *const u8, len: usize) -> QStr;
 }
