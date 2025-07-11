@@ -7,8 +7,8 @@ use core::{
 use super::{
     obj::Obj,
     raw::{
-        gc_collect_end, gc_collect_root, gc_collect_start, mp_obj_str_get_data,
-        mp_raise_ValueError, mp_state_ctx,
+        gc_collect_end, gc_collect_root, gc_collect_start, mp_module_get_builtin,
+        mp_obj_str_get_data, mp_raise_ValueError, mp_state_ctx, qstr_from_strn,
     },
 };
 use crate::vbt::MODULE_MAP;
@@ -92,6 +92,13 @@ extern "C" fn mp_builtin___import__(arg_count: usize, args: *const Obj) -> Obj {
     }
 
     let module_name = unsafe { core::slice::from_raw_parts(module_name, module_name_len) };
+
+    let qstr = unsafe { qstr_from_strn(module_name.as_ptr(), module_name.len()) };
+    let builtin = unsafe { mp_module_get_builtin(qstr, false) };
+    if !builtin.is_null() {
+        return builtin;
+    }
+
     let _module = MODULE_MAP.get(module_name).expect("module not found");
 
     todo!("importing not finished yet")

@@ -236,6 +236,11 @@ unsafe extern "C" {
     /// From: `py/runtime.h`
     pub fn mp_call_function_0(fun: Obj) -> Obj;
 
+    // ----- Modules ----- //
+
+    /// From: `py/objmodule.h`
+    pub fn mp_module_get_builtin(module_name: QStr, extensible: bool) -> Obj;
+
     // ----- Exceptions ----- //
 
     /// From: `py/runtime.h`
