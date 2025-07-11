@@ -1,7 +1,5 @@
 //! Raw bindings to MicroPython
 
-#![warn(missing_docs)]
-
 use core::ffi::{c_char, c_uint, c_void};
 
 use super::obj::Obj;
@@ -253,6 +251,7 @@ unsafe extern "C" {
 
     // ----- Map methods ----- //
 
+    /// From: `py/obj.h`
     pub fn mp_map_lookup(map: *mut Map, index: Obj, lookup_kind: LookupKind) -> *mut MapElem;
 
     // ----- QStr ----- //
