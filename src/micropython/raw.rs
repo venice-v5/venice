@@ -72,7 +72,7 @@ pub struct ObjType {
 /// From: `py/obj.h`
 #[repr(C)]
 pub struct ObjBase {
-    r#type: *const ObjType,
+    pub r#type: *const ObjType,
 }
 
 /// From: `py/obj.h`
@@ -133,8 +133,8 @@ pub struct NlrBuf {
 /// From: `py/mpprint.h`
 #[repr(C)]
 pub struct Print {
-    data: *mut c_void,
-    print_strn: PrintStrn,
+    pub data: *mut c_void,
+    pub print_strn: PrintStrn,
 }
 
 /// From: `py/mpstate.h`
