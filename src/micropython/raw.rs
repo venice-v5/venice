@@ -19,6 +19,31 @@ pub type PrintStrn = extern "C" fn(data: *mut c_void, str: *const c_char, len: u
 pub type RomErrorText = *const c_char;
 
 /// From: `py/obj.h`
+#[repr(C)]
+pub struct MapElem {
+    pub key: Obj,
+    pub value: Obj,
+}
+
+/// From: `py/obj.h`
+#[repr(C)]
+pub struct Map {
+    // this is actually 4 bitfields
+    pub used: usize,
+    pub alloc: usize,
+    pub table: *mut MapElem,
+}
+
+/// From: `py/obj.h`
+#[repr(C)]
+pub enum LookupKind {
+    Lookup = 0,
+    AddIfNotFound = 1,
+    RemoveIfFound = 2,
+    AddIfNotFoundOrRemoveIfFound = 3,
+}
+
+/// From: `py/obj.h`
 ///
 /// This struct actually corresponds to `mp_obj_full_type_t`.
 #[repr(C)]
@@ -50,8 +75,12 @@ pub struct ObjBase {
     r#type: *const ObjType,
 }
 
-/// Temporary type alias until a proper binding is written.
-pub type ObjDict = c_void;
+/// From: `py/obj.h`
+#[repr(C)]
+pub struct ObjDict {
+    pub base: ObjBase,
+    pub map: Map,
+}
 
 /// From: `py/obj.h`
 #[repr(C)]
@@ -202,4 +231,8 @@ unsafe extern "C" {
 
     /// From: `py/obj.h`
     pub fn mp_obj_str_get_data(self_in: Obj, len: *mut usize) -> *const c_char;
+
+    // ----- Map methods ----- //
+
+    pub fn mp_map_lookup(map: *mut Map, index: Obj, lookup_kind: LookupKind) -> *mut MapElem;
 }
