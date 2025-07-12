@@ -3,6 +3,10 @@ name = "venice"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+default = []
+simulated = []
+
 [dependencies]
 hashbrown = "0.15.4"
 no_std_io = "0.6.0"

@@ -54,6 +54,8 @@ impl io::Write for Stdout {
     }
 
     fn flush(&mut self) -> io::Result<()> {
+        // vex-v5-qemu stubs `vexSerialWriteFree` and always returns -1, causing an infinite loop
+        #[cfg(not(feature = "simulated"))]
         unsafe {
             while vexSerialWriteFree(STDIO_CHANNEL) < Self::BUFFER_SIZE as i32 {
                 vex_sdk::vexTasksRun();
