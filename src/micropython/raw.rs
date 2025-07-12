@@ -21,6 +21,26 @@ pub type mp_print_strn_t = extern "C" fn(data: *mut c_void, str: *const c_char, 
 /// From: `py/misc.h`
 pub type mp_rom_error_text_t = *const c_char;
 
+/// From: `py/qstr.h`
+pub type qstr_hash_t = u8;
+
+/// From: `py/qstr.h`
+pub type qstr_len_t = u8;
+
+/// From: `py/qstr.h`
+#[repr(C)]
+pub struct qstr_pool_t {
+    pub prev: *const Self,
+    // originally bitfields
+    pub total_prev_len: usize,
+    pub alloc: usize,
+    pub len: usize,
+    pub hashes: *mut qstr_hash_t,
+    pub lengths: *mut qstr_len_t,
+    // const char* qstrs[];
+    pub qstrs: (),
+}
+
 /// From: `py/obj.h`
 #[repr(C)]
 pub struct mp_map_elem_t {
@@ -150,6 +170,23 @@ pub struct mp_print_t {
     pub print_strn: mp_print_strn_t,
 }
 
+#[repr(C)]
+pub struct mp_obj_tuple_t {
+    pub base: mp_obj_base_t,
+    pub len: usize,
+    // mp_obj_t items[];
+    pub items: (),
+}
+
+#[repr(C)]
+pub struct mp_obj_exception_t {
+    pub base: mp_obj_base_t,
+    pub traceback_alloc: u16,
+    pub traceback_len: u16,
+    pub traceback_data: *mut usize,
+    pub args: *mut mp_obj_tuple_t,
+}
+
 /// From: `py/mpstate.h`
 #[repr(C)]
 pub struct mp_state_thread_t {
@@ -172,8 +209,28 @@ pub struct mp_state_thread_t {
 ///
 /// This is an incomplete binding; the omitted fields are currently not needed.
 #[repr(C)]
+pub struct mp_state_vm_t {
+    pub last_pool: *mut qstr_pool_t,
+    pub mp_emergency_exception_obj: mp_obj_exception_t,
+    // #if MICROPY_KBD_EXCEPTION
+    // mp_obj_exception_t mp_kbd_exception;
+    // #endif
+    pub mp_loaded_modules_dict: mp_obj_dict_t,
+    pub dict_main: mp_obj_dict_t,
+    // #if MICROPY_CAN_OVERRIDE_BUILTINS
+    // mp_obj_dict_t *mp_module_builtins_override_dict;
+    // #endif
+
+    // more unneeded fields
+}
+
+/// From: `py/mpstate.h`
+///
+/// This is an incomplete binding; the omitted fields are currently not needed.
+#[repr(C)]
 pub struct mp_state_ctx_t {
     pub thread: mp_state_thread_t,
+    pub vm: mp_state_vm_t,
     // more unneeded fields
 }
 
