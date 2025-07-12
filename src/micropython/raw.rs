@@ -125,7 +125,7 @@ pub struct mp_compiled_module_t {
 
 pub const NLR_REG_COUNT: usize = 16;
 
-// From: `py/nlr.h`
+/// From: `py/nlr.h`
 #[repr(C)]
 pub struct nlr_buf_t {
     pub prev: *mut Self,
@@ -133,10 +133,10 @@ pub struct nlr_buf_t {
     pub regs: [*mut c_void; NLR_REG_COUNT],
 }
 
-// From: `py/nlr.h`
+/// From: `py/nlr.h`
 pub type nlr_jump_callback_fun_t = extern "C" fn(ctx: *mut c_void);
 
-// From: `py/nlr.h`
+/// From: `py/nlr.h`
 #[repr(C)]
 pub struct nlr_jump_callback_node_t {
     prev: *const Self,
