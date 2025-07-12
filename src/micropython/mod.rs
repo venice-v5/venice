@@ -10,9 +10,9 @@ use core::{
 use self::{
     obj::Obj,
     raw::{
-        CompiledModule, ModuleContext, NLR_REG_COUNT, NlrBuf, m_malloc, mp_call_function_0,
-        mp_deinit, mp_make_function_from_proto_fun, mp_obj_print_exception, mp_plat_print,
-        mp_raw_code_load_mem, mp_state_ctx, nlr_pop, nlr_push,
+        NLR_REG_COUNT, m_malloc, mp_call_function_0, mp_compiled_module_t, mp_deinit,
+        mp_make_function_from_proto_fun, mp_module_context_t, mp_obj_print_exception,
+        mp_plat_print, mp_raw_code_load_mem, mp_state_ctx, nlr_buf_t, nlr_pop, nlr_push,
     },
 };
 use crate::vbt::Bytecode;
@@ -39,7 +39,7 @@ impl MicroPython {
     }
 
     fn push_nlr<R>(&mut self, f: impl FnOnce() -> R) -> R {
-        let mut nlr_buf = NlrBuf {
+        let mut nlr_buf = nlr_buf_t {
             prev: null_mut(),
             ret_val: null_mut(),
             regs: [null_mut(); NLR_REG_COUNT],
@@ -61,9 +61,9 @@ impl MicroPython {
 
     pub fn exec_bytecode(&mut self, bytecode: Bytecode) {
         self.push_nlr(|| unsafe {
-            let context = m_malloc(size_of::<ModuleContext>()) as *mut ModuleContext;
+            let context = m_malloc(size_of::<mp_module_context_t>()) as *mut mp_module_context_t;
             (*context).module.globals = mp_state_ctx.thread.dict_globals;
-            let mut cm = CompiledModule {
+            let mut cm = mp_compiled_module_t {
                 context,
                 rc: null(),
             };
