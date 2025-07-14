@@ -66,10 +66,7 @@ impl io::Write for Stdout {
     }
 }
 
-#[doc(hidden)]
-pub fn print_inner(args: core::fmt::Arguments<'_>) {
-    use alloc::format;
-
+pub fn print_bytes(bytes: &[u8]) {
     use io::Write;
 
     // Panic on print if stdout is not available. While this is less than ideal, the alternative is
@@ -78,15 +75,12 @@ pub fn print_inner(args: core::fmt::Arguments<'_>) {
         .try_lock()
         .expect("Attempted to print while stdout was already locked.");
 
-    // Format the arguments into a byte buffer before printing them.
-    // This lets us calculate if the bytes will overflow the buffer before printing them.
-    let formatted_bytes = format!("{args}").into_bytes();
     let remaining_bytes_in_buffer = unsafe { vexSerialWriteFree(STDIO_CHANNEL) as usize };
 
     // Write all of our data in chunks the size of the outgoing serial buffer.
     // This ensures that writes of length greater than [`Stdout::INTERNAL_BUFFER_SIZE`] can still be
     // written by flushing several times.
-    for chunk in formatted_bytes.chunks(Stdout::BUFFER_SIZE) {
+    for chunk in bytes.chunks(Stdout::BUFFER_SIZE) {
         // If this chunk would overflow the buffer and cause a panic during `write_all`, wait for
         // the buffer to clear. Not only does this prevent a panic (if the panic handler prints it
         // could cause a recursive panic and immediately exit. **Very bad**), but it also allows
@@ -102,6 +96,16 @@ pub fn print_inner(args: core::fmt::Arguments<'_>) {
             panic!("failed printing to stdout: {e}");
         }
     }
+}
+
+#[doc(hidden)]
+pub fn print_inner(args: core::fmt::Arguments<'_>) {
+    use alloc::format;
+
+    // Format the arguments into a byte buffer before printing them.
+    // This lets us calculate if the bytes will overflow the buffer before printing them.
+    let formatted_bytes = format!("{args}").into_bytes();
+    print_bytes(&formatted_bytes);
 }
 
 macro_rules! print {

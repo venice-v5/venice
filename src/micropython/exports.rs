@@ -9,12 +9,12 @@ use super::{
     obj::Obj,
     raw::{gc_collect_end, gc_collect_root, gc_collect_start, mp_raise_ValueError, mp_state_ctx},
 };
+use crate::serial::print_bytes;
 
 #[unsafe(no_mangle)]
 extern "C" fn mp_hal_stdout_tx_strn_cooked(str: *const c_char, len: u32) {
-    unsafe {
-        vex_sdk::vexSerialWriteBuffer(1, str, len);
-    }
+    let slice = unsafe { core::slice::from_raw_parts(str, len as usize) };
+    print_bytes(slice);
 }
 
 #[unsafe(naked)]
