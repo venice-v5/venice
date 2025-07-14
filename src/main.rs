@@ -18,7 +18,7 @@ use core::{
 use talc::{ErrOnOom, Span, Talc, Talck};
 
 use crate::{
-    micropython::MicroPython,
+    micropython::{MicroPython, Obj, Qstr},
     serial::{print, println},
     vbt::MODULE_MAP,
 };
@@ -122,11 +122,14 @@ unsafe fn exit() -> ! {
 }
 
 fn main(mut mpy: MicroPython) {
+    const ENTRYPOINT_NAME: &[u8] = b"__init__".as_slice();
+
     let entrypoint = MODULE_MAP
-        .get(b"__init__".as_slice())
+        .get(ENTRYPOINT_NAME)
         .expect("__init__ module not found, try adding __init__.py to your project");
 
-    mpy.exec_bytecode(*entrypoint);
+    let qstr = Obj::from_qstr(Qstr::from_bytes(ENTRYPOINT_NAME));
+    mpy.exec_module(qstr, *entrypoint);
 }
 
 /// # Safety

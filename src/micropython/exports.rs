@@ -5,14 +5,10 @@ use core::{
 };
 
 use super::{
+    MicroPython,
     obj::Obj,
-    raw::{
-        gc_collect_end, gc_collect_root, gc_collect_start, mp_map_lookup, mp_map_lookup_kind_t,
-        mp_module_get_builtin, mp_obj_str_get_data, mp_raise_ValueError, mp_state_ctx,
-        qstr_from_strn,
-    },
+    raw::{gc_collect_end, gc_collect_root, gc_collect_start, mp_raise_ValueError, mp_state_ctx},
 };
-use crate::vbt::MODULE_MAP;
 
 #[unsafe(no_mangle)]
 extern "C" fn mp_hal_stdout_tx_strn_cooked(str: *const c_char, len: u32) {
@@ -64,13 +60,14 @@ extern "C" fn nlr_jump_fail(_val: *mut c_void) -> ! {
 }
 
 #[unsafe(no_mangle)]
-extern "C" fn mp_builtin___import__(arg_count: usize, args: *const Obj) -> Obj {
+unsafe extern "C" fn mp_builtin___import__(arg_count: usize, args: *const Obj) -> Obj {
     let args = unsafe { core::slice::from_raw_parts(args, arg_count) };
 
     let module_name_obj = args[0];
-    let (_fromtuple, level) = if arg_count >= 4 {
+    let (fromtuple, level) = if args.len() >= 4 {
         let level = args[4].as_small_int();
         if level < 0 {
+            // TODO: make safe
             unsafe { mp_raise_ValueError(null()) }
         } else {
             (args[3], level)
@@ -79,40 +76,5 @@ extern "C" fn mp_builtin___import__(arg_count: usize, args: *const Obj) -> Obj {
         (Obj::NONE, 0)
     };
 
-    let mut module_name_len = 0;
-    let module_name = unsafe { mp_obj_str_get_data(module_name_obj, &raw mut module_name_len) };
-
-    if level != 0 {
-        unimplemented!("relative imports not supported");
-    }
-
-    if module_name_len == 0 {
-        unsafe {
-            mp_raise_ValueError(null());
-        }
-    }
-
-    let module_name = unsafe { core::slice::from_raw_parts(module_name, module_name_len) };
-    let qstr = unsafe { qstr_from_strn(module_name.as_ptr(), module_name.len()) };
-
-    let loaded_module_elem = unsafe {
-        mp_map_lookup(
-            &raw mut mp_state_ctx.vm.mp_loaded_modules_dict.map,
-            module_name_obj,
-            mp_map_lookup_kind_t::MP_MAP_LOOKUP,
-        )
-    };
-
-    if !loaded_module_elem.is_null() {
-        return unsafe { &*loaded_module_elem }.value;
-    }
-
-    let builtin = unsafe { mp_module_get_builtin(qstr, false) };
-    if !builtin.is_null() {
-        return builtin;
-    }
-
-    let _module = MODULE_MAP.get(module_name).expect("module not found");
-
-    todo!("importing not finished yet")
+    MicroPython::reenter(|mp| mp.import(module_name_obj, fromtuple, level))
 }

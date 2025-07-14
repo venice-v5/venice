@@ -10,7 +10,7 @@ pub type mp_obj_t = super::obj::Obj;
 pub type ProtoFun = *const c_void;
 
 /// From: `py/qstr.h`
-pub type qstr = usize;
+pub type qstr = super::obj::Qstr;
 
 /// From: `py/qstr.h`
 pub type qstr_short_t = u16;
@@ -42,6 +42,7 @@ pub struct qstr_pool_t {
 }
 
 /// From: `py/obj.h`
+#[derive(Clone, Copy)]
 #[repr(C)]
 pub struct mp_map_elem_t {
     pub key: mp_obj_t,
@@ -58,6 +59,7 @@ pub struct mp_map_t {
 }
 
 /// From: `py/obj.h`
+#[allow(dead_code)]
 #[repr(C)]
 pub enum mp_map_lookup_kind_t {
     MP_MAP_LOOKUP = 0,
@@ -93,9 +95,19 @@ pub struct mp_obj_type_t {
 }
 
 /// From: `py/obj.h`
+#[derive(Clone, Copy)]
 #[repr(C)]
 pub struct mp_obj_base_t {
     pub r#type: *const mp_obj_type_t,
+}
+
+/// From: `py/objstr.h`
+#[repr(C)]
+pub struct mp_obj_str_t {
+    pub base: mp_obj_base_t,
+    pub hash: usize,
+    pub len: usize,
+    pub data: *const u8,
 }
 
 /// From: `py/obj.h`
@@ -245,6 +257,9 @@ unsafe extern "C" {
     /// Currently, MicroPython threads are disabled, so this is always the active [`StateCtx`].
     pub static mut mp_state_ctx: mp_state_ctx_t;
 
+    pub static mp_type_module: mp_obj_type_t;
+    pub static mp_type_str: mp_obj_type_t;
+
     // ----- Initialization ----- //
 
     /// From: `py/runtime.h`
@@ -310,9 +325,6 @@ unsafe extern "C" {
     /// From: `py/obj.h`
     pub fn mp_obj_print_exception(print: *const mp_print_t, exc: mp_obj_t) -> !;
 
-    /// From: `py/obj.h`
-    pub fn mp_obj_str_get_data(self_in: mp_obj_t, len: *mut usize) -> *const c_char;
-
     // ----- Map methods ----- //
 
     /// From: `py/obj.h`
@@ -322,8 +334,11 @@ unsafe extern "C" {
         lookup_kind: mp_map_lookup_kind_t,
     ) -> *mut mp_map_elem_t;
 
-    // ----- QStr ----- //
+    // ----- Qstr ----- //
 
     /// From: `py/qstr.h`
     pub fn qstr_from_strn(str: *const u8, len: usize) -> qstr;
+
+    /// From: `py/qstr.h`
+    pub fn qstr_data(q: qstr, len: *mut usize) -> *const u8;
 }

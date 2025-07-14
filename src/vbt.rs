@@ -122,7 +122,7 @@ impl<'a> Iterator for ModuleIter<'a> {
 
         self.i += 1;
         self.current_name_offset += module_ptr.name_len;
-        self.current_bytecode_offset += module_ptr.name_len;
+        self.current_bytecode_offset += module_ptr.bytecode_len;
 
         Some(Module {
             name,
