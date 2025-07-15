@@ -24,7 +24,6 @@ fn get_file(name: &str, env_var_name: &str) -> String {
 #[allow(dead_code)]
 fn rerun_if_changed() {
     println!("cargo::rerun-if-env-changed=VENICE_LIBM_PATH");
-    println!("cargo::rerun-if-env-changed=VENICE_LIBC_PATH");
     println!("cargo::rerun-if-env-changed=VENICE_LIBMPYV5_PATH");
 
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
@@ -56,10 +55,8 @@ fn main() {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     println!("cargo::rustc-link-search=native={manifest_dir}/link");
 
-    let libc = get_file("libc.a", "VENICE_LIBC_PATH");
     let libm = get_file("libm.a", "VENICE_LIBM_PATH");
 
-    println!("cargo::rustc-link-arg={libc}");
     println!("cargo::rustc-link-arg={libm}");
 
     let out_dir = std::env::var("OUT_DIR").unwrap();
