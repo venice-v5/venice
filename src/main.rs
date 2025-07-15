@@ -5,9 +5,9 @@
 
 extern crate alloc;
 
-mod libc;
 mod micropython;
 mod serial;
+mod stubs;
 mod vbt;
 
 use core::{
@@ -45,7 +45,11 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
     static PANICKED: AtomicBool = AtomicBool::new(false);
 
     if PANICKED.load(Ordering::Acquire) {
-        exit();
+        // SAFETY: The code leading up to and including the call to `__libc_init_array` is
+        // infallible, so panicking before it is impossible.
+        unsafe {
+            exit();
+        }
     }
 
     PANICKED.store(true, Ordering::Release);
@@ -63,7 +67,9 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
 
     println!("{}", info.message());
 
-    exit();
+    unsafe {
+        exit();
+    }
 }
 
 unsafe extern "C" {
@@ -72,6 +78,20 @@ unsafe extern "C" {
 
     static mut __heap_start: u8;
     static mut __heap_end: u8;
+
+    /// Calls libc global constructors.
+    ///
+    /// # Safety
+    ///
+    /// Must be called once at the start of the program.
+    fn __libc_init_array();
+
+    /// Calls libc global destructors.
+    ///
+    /// # Safety
+    ///
+    /// Must be called once at the end of the program.
+    fn __libc_fini_array();
 }
 
 #[unsafe(link_section = ".boot")]
@@ -86,8 +106,13 @@ unsafe extern "C" fn _boot() -> ! {
 }
 
 /// Cleanly terminate program.
-fn exit() -> ! {
+///
+/// # Safety
+///
+/// Must be called once after [`__libc_init_array`] has been called.
+unsafe fn exit() -> ! {
     unsafe {
+        __libc_fini_array();
         vex_sdk::vexSystemExitRequest();
     }
 
@@ -122,6 +147,10 @@ unsafe fn startup() -> ! {
     }
 
     unsafe {
+        __libc_init_array();
+    }
+
+    unsafe {
         ALLOCATOR
             .lock()
             .claim(Span::new(&raw mut __heap_start, &raw mut __heap_end))
@@ -129,5 +158,8 @@ unsafe fn startup() -> ! {
     }
 
     main(unsafe { MicroPython::new() });
-    exit();
+
+    unsafe {
+        exit();
+    }
 }
