@@ -60,7 +60,7 @@ extern "C" fn nlr_jump_fail(_val: *mut c_void) -> ! {
 }
 
 #[unsafe(no_mangle)]
-unsafe extern "C" fn mp_builtin___import__(arg_count: usize, args: *const Obj) -> Obj {
+unsafe extern "C" fn venice_import(arg_count: usize, args: *const Obj) -> Obj {
     let args = unsafe { core::slice::from_raw_parts(args, arg_count) };
 
     let module_name_obj = args[0];
