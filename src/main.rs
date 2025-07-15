@@ -45,8 +45,6 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
     static PANICKED: AtomicBool = AtomicBool::new(false);
 
     if PANICKED.load(Ordering::Acquire) {
-        // SAFETY: The code leading up to and including the call to `__libc_init_array` is
-        // infallible, so panicking before it is impossible.
         exit();
     }
 
