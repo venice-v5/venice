@@ -63,7 +63,7 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
 
     println!("{}", info.message());
 
-    loop {}
+    exit();
 }
 
 unsafe extern "C" {
