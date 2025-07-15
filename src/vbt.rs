@@ -8,7 +8,7 @@ unsafe extern "C" {
 
 pub const BYTECODE_TABLE_MAGIC: u32 = 0x675c3ed9;
 
-fn build_module_map() -> HashMap<&'static [u8], Bytecode<'static>> {
+pub fn build_module_map() -> HashMap<&'static [u8], Bytecode<'static>> {
     let mut hashmap = HashMap::new();
     let bytecode_table = BytecodeTable::get().unwrap_or_else(|magic| {
             panic!(
@@ -21,10 +21,6 @@ fn build_module_map() -> HashMap<&'static [u8], Bytecode<'static>> {
     }
 
     hashmap
-}
-
-lazy_static::lazy_static! {
-    pub static ref MODULE_MAP: HashMap<&'static [u8], Bytecode<'static>> = build_module_map();
 }
 
 #[repr(C)]

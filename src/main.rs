@@ -20,7 +20,6 @@ use talc::{ErrOnOom, Span, Talc, Talck};
 use crate::{
     micropython::{MicroPython, Obj, Qstr},
     serial::{print, println},
-    vbt::MODULE_MAP,
 };
 
 /// Signature used by VEXos to verify the program and its properties.
@@ -126,7 +125,9 @@ unsafe fn exit() -> ! {
 fn main(mut mpy: MicroPython) {
     const ENTRYPOINT_NAME: &[u8] = b"__init__".as_slice();
 
-    let entrypoint = MODULE_MAP
+    let entrypoint = mpy
+        .global_data()
+        .module_map
         .get(ENTRYPOINT_NAME)
         .expect("__init__ module not found, try adding __init__.py to your project");
 

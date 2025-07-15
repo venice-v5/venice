@@ -1,9 +1,12 @@
 use core::{
+    cell::UnsafeCell,
     ffi::c_void,
     mem::ManuallyDrop,
     ptr::{null, null_mut},
     sync::atomic::{AtomicBool, Ordering},
 };
+
+use hashbrown::HashMap;
 
 use super::{
     obj::{Obj, Qstr},
@@ -14,7 +17,7 @@ use super::{
         mp_raw_code_load_mem, mp_stack_set_top, mp_state_ctx, nlr_buf_t, nlr_pop, nlr_push,
     },
 };
-use crate::vbt::{Bytecode, MODULE_MAP};
+use crate::vbt::{Bytecode, build_module_map};
 
 unsafe extern "C" {
     static mut __stack_top: u8;
@@ -23,6 +26,26 @@ unsafe extern "C" {
 }
 
 static REENTRANCE_ALLOWED: AtomicBool = AtomicBool::new(false);
+
+static GLOBAL_DATA: GdContainer = GdContainer::new();
+
+pub struct GdContainer {
+    inner: UnsafeCell<Option<GlobalData>>,
+}
+
+unsafe impl Sync for GdContainer {}
+
+impl GdContainer {
+    pub const fn new() -> Self {
+        Self {
+            inner: UnsafeCell::new(None),
+        }
+    }
+}
+
+pub struct GlobalData {
+    pub module_map: HashMap<&'static [u8], Bytecode<'static>>,
+}
 
 pub struct MicroPython(());
 
@@ -35,8 +58,16 @@ impl MicroPython {
                 &raw mut __python_heap_end as *mut c_void,
             );
             mp_init();
+
+            *GLOBAL_DATA.inner.get() = Some(GlobalData {
+                module_map: build_module_map(),
+            });
         }
         Self(())
+    }
+
+    pub fn global_data(&self) -> &GlobalData {
+        unsafe { (*GLOBAL_DATA.inner.get()).as_ref().unwrap_unchecked() }
     }
 
     fn push_nlr<R>(&mut self, f: impl FnOnce(&mut Self) -> R) -> R {
@@ -153,7 +184,11 @@ impl MicroPython {
             return builtin;
         }
 
-        let bytecode = MODULE_MAP.get(module_name).expect("module not found");
+        let bytecode = self
+            .global_data()
+            .module_map
+            .get(module_name)
+            .expect("module not found");
         self.exec_module(module_name_obj, *bytecode)
     }
 }
