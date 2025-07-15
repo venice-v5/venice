@@ -6,8 +6,8 @@ Open source MicroPython port for VEX V5 robots.
 
 - [x] V5 binary with MicroPython embedded running a static program
 - [x] Bytecode loading at runtime through VEXos linking
-- [ ] Multi-python-module support
+- [x] Multi-python-module support
   - [x] Multi-module uploading
-  - [ ] Module importing
+  - [x] Module importing
 - [ ] Python V5 API
-- [ ] Multitasking (async/await?)
+- [ ] `async`/`await` Multitasking
