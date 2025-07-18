@@ -1,6 +1,6 @@
 use core::{
     arch::naked_asm,
-    ffi::{c_char, c_void},
+    ffi::{CStr, c_char, c_int, c_void},
     ptr::null,
 };
 
@@ -9,7 +9,10 @@ use super::{
     obj::Obj,
     raw::{gc_collect_end, gc_collect_root, gc_collect_start, mp_raise_ValueError, mp_state_ctx},
 };
-use crate::serial::print_bytes;
+use crate::{
+    micropython::{raw::vstr, readline::Readline},
+    serial::print_bytes,
+};
 
 #[unsafe(no_mangle)]
 extern "C" fn mp_hal_stdout_tx_strn_cooked(str: *const c_char, len: u32) {
@@ -77,4 +80,26 @@ unsafe extern "C" fn venice_import(arg_count: usize, args: *const Obj) -> Obj {
     };
 
     MicroPython::reenter(|mp| mp.import(module_name_obj, fromtuple, level))
+}
+
+#[unsafe(no_mangle)]
+unsafe extern "C" fn readline(line: *mut vstr, prompt: *const c_char) -> c_int {
+    let mut readline = Readline::new();
+    let prompt = unsafe { CStr::from_ptr(prompt) };
+    readline.read(line, prompt.to_bytes());
+    0
+}
+
+#[allow(non_upper_case_globals)]
+mod statics {
+    use crate::micropython::Obj;
+
+    #[unsafe(no_mangle)]
+    static mp_sys_stdin_obj: Obj = Obj::NONE;
+
+    #[unsafe(no_mangle)]
+    static mp_sys_stdout_obj: Obj = Obj::NONE;
+
+    #[unsafe(no_mangle)]
+    static mp_sys_stderr_obj: Obj = Obj::NONE;
 }

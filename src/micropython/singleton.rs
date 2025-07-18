@@ -70,7 +70,7 @@ impl MicroPython {
         unsafe { (*GLOBAL_DATA.inner.get()).as_ref().unwrap_unchecked() }
     }
 
-    fn push_nlr<R>(&mut self, f: impl FnOnce(&mut Self) -> R) -> R {
+    fn push_nlr<R>(&mut self, f: impl FnOnce(&mut Self) -> R) -> Option<R> {
         let mut nlr_buf = nlr_buf_t {
             prev: null_mut(),
             ret_val: null_mut(),
@@ -81,12 +81,13 @@ impl MicroPython {
             if nlr_push(&raw mut nlr_buf) == 0 {
                 let ret = f(self);
                 nlr_pop();
-                ret
+                Some(ret)
             } else {
                 mp_obj_print_exception(
                     &raw const mp_plat_print,
                     Obj::from_raw(nlr_buf.ret_val as u32),
                 );
+                None
             }
         }
     }

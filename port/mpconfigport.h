@@ -1,6 +1,6 @@
 #include <stdint.h>
 
-#define MICROPY_CONFIG_ROM_LEVEL (MICROPY_CONFIG_ROM_LEVEL_BASIC_FEATURES)
+#define MICROPY_CONFIG_ROM_LEVEL (MICROPY_CONFIG_ROM_LEVEL_EXTRA_FEATURES)
 
 #define MICROPY_ENABLE_COMPILER (0)
 #define MICROPY_ENABLE_GC (1)
@@ -12,6 +12,9 @@
 #define MICROPY_ERROR_REPORTING MICROPY_ERROR_REPORTING_DETAILED
 #define MICROPY_WARNINGS (1)
 
+// Literally the devil
+#define MICROPY_STACK_CHECK (0)
+
 #define MICROPY_LONGINT_IMPL MICROPY_LONGINT_IMPL_MPZ
 #define MICROPY_FLOAT_IMPL MICROPY_FLOAT_IMPL_DOUBLE
 
@@ -21,6 +24,8 @@ typedef long mp_off_t;
 
 // We need to provide a declaration/definition of alloca()
 #include <alloca.h>
+
+#define MP_SSIZE_MAX 0xffffffff
 
 #define MICROPY_HW_BOARD_NAME "VEX V5 Brain"
 #define MICROPY_HW_MCU_NAME "Cortex-A9"

@@ -22,10 +22,18 @@ pub type mp_print_strn_t = extern "C" fn(data: *mut c_void, str: *const c_char, 
 pub type mp_rom_error_text_t = *const c_char;
 
 /// From: `py/qstr.h`
-pub type qstr_hash_t = u8;
+pub type qstr_hash_t = u16;
 
 /// From: `py/qstr.h`
 pub type qstr_len_t = u8;
+
+#[repr(C)]
+pub struct vstr {
+    alloc: usize,
+    len: usize,
+    buf: *mut c_char,
+    fixed_buf: bool,
+}
 
 /// From: `py/qstr.h`
 #[repr(C)]
@@ -224,15 +232,10 @@ pub struct mp_state_thread_t {
 pub struct mp_state_vm_t {
     pub last_pool: *mut qstr_pool_t,
     pub mp_emergency_exception_obj: mp_obj_exception_t,
-    // #if MICROPY_KBD_EXCEPTION
-    // mp_obj_exception_t mp_kbd_exception;
-    // #endif
+    pub mp_kbd_exception: mp_obj_exception_t,
     pub mp_loaded_modules_dict: mp_obj_dict_t,
     pub dict_main: mp_obj_dict_t,
-    // #if MICROPY_CAN_OVERRIDE_BUILTINS
-    // mp_obj_dict_t *mp_module_builtins_override_dict;
-    // #endif
-
+    pub mp_module_builtins_override_dict: *mut mp_obj_dict_t,
     // more unneeded fields
 }
 
@@ -323,7 +326,7 @@ unsafe extern "C" {
     // ----- mp_obj_tect methods ----- //
 
     /// From: `py/obj.h`
-    pub fn mp_obj_print_exception(print: *const mp_print_t, exc: mp_obj_t) -> !;
+    pub fn mp_obj_print_exception(print: *const mp_print_t, exc: mp_obj_t);
 
     // ----- Map methods ----- //
 
@@ -341,4 +344,9 @@ unsafe extern "C" {
 
     /// From: `py/qstr.h`
     pub fn qstr_data(q: qstr, len: *mut usize) -> *const u8;
+
+    // ----- Vstr ----- //
+
+    /// From: `py/misc.h
+    pub fn vstr_add_byte(vstr: *mut vstr, v: u8);
 }

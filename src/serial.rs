@@ -15,6 +15,12 @@ impl Stdout {
     const BUFFER_SIZE: usize = 2048;
 }
 
+impl Stdin {
+    pub fn read_char(&mut self) -> i32 {
+        unsafe { vexSerialReadChar(STDIO_CHANNEL) }
+    }
+}
+
 impl io::Read for Stdin {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let mut iterator = buf.iter_mut();
