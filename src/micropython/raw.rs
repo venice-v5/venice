@@ -10,7 +10,7 @@ pub type mp_obj_t = super::obj::Obj;
 pub type ProtoFun = *const c_void;
 
 /// From: `py/qstr.h`
-pub type qstr = super::obj::Qstr;
+pub type qstr = super::qstr::Qstr;
 
 /// From: `py/qstr.h`
 pub type qstr_short_t = u16;

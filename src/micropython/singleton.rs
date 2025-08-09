@@ -9,7 +9,8 @@ use core::{
 use hashbrown::HashMap;
 
 use super::{
-    obj::{Obj, Qstr},
+    obj::Obj,
+    qstr::Qstr,
     raw::{
         NLR_REG_COUNT, gc_init, mp_call_function_0, mp_compiled_module_t, mp_deinit, mp_init,
         mp_make_function_from_proto_fun, mp_map_lookup, mp_map_lookup_kind_t, mp_module_context_t,

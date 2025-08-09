@@ -1,7 +1,6 @@
-use super::raw::m_malloc;
+use super::{qstr::Qstr, raw::m_malloc};
 use crate::micropython::raw::{
     mp_module_context_t, mp_obj_base_t, mp_obj_str_t, mp_obj_type_t, mp_type_module, mp_type_str,
-    qstr_data, qstr_from_strn,
 };
 
 /// MicroPython object
@@ -19,10 +18,6 @@ use crate::micropython::raw::{
 #[derive(Clone, Copy)]
 #[repr(transparent)]
 pub struct Obj(u32);
-
-#[derive(Clone, Copy)]
-#[repr(transparent)]
-pub struct Qstr(usize);
 
 /// # Safety
 ///
@@ -56,7 +51,7 @@ impl Obj {
     }
 
     pub fn from_qstr(qstr: Qstr) -> Self {
-        Self((qstr.0 as u32) << 3 & 0b010)
+        Self((qstr.index() as u32) << 3 & 0b010)
     }
 
     pub const fn as_small_int(self) -> i32 {
@@ -71,7 +66,7 @@ impl Obj {
 
     pub const fn as_qstr(&self) -> Option<Qstr> {
         if self.0 & 0b111 == 0b10 {
-            Some(Qstr((self.0 >> 3) as usize))
+            Some(unsafe { Qstr::from_index((self.0 >> 3) as usize) })
         } else {
             None
         }
@@ -100,20 +95,6 @@ impl Obj {
         }
 
         Some(ptr as *mut T)
-    }
-}
-
-impl Qstr {
-    pub fn from_bytes(bytes: &[u8]) -> Self {
-        unsafe { qstr_from_strn(bytes.as_ptr(), bytes.len()) }
-    }
-
-    pub fn bytes(self) -> &'static [u8] {
-        let mut len = 0;
-        unsafe {
-            let ptr = qstr_data(self, &raw mut len);
-            core::slice::from_raw_parts(ptr, len)
-        }
     }
 }
 
