@@ -81,7 +81,7 @@ fn main() {
 
     writeln!(
         generated_qstrs_rs,
-        "#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]\npub enum GeneratedQstr {{"
+        "#[allow(non_camel_case_types)]\n#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]\npub enum GeneratedQstr {{"
     )
     .unwrap();
 
