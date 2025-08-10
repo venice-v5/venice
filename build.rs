@@ -11,27 +11,23 @@ use format_bytes::write_bytes;
 use regex::bytes::Regex;
 
 fn rust_qstrs_inner(re: &Regex, entries: ReadDir, vec: &mut Vec<Vec<u8>>) {
-    for entry in entries {
-        if let Ok(entry) = entry {
-            let path = entry.path();
-            if path.extension() == Some(OsStr::new("rs")) {
-                let src = std::fs::read(path).unwrap();
-                for mat in re.captures_iter(&src) {
-                    vec.push(mat[0].to_vec());
-                }
-            } else {
-                if let Ok(file_type) = entry.file_type()
-                    && file_type.is_dir()
-                {
-                    rust_qstrs_inner(re, std::fs::read_dir(path).unwrap(), vec);
-                }
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.extension() == Some(OsStr::new("rs")) {
+            let src = std::fs::read(path).unwrap();
+            for mat in re.captures_iter(&src) {
+                vec.push(mat[0].to_vec());
             }
+        } else if let Ok(file_type) = entry.file_type()
+            && file_type.is_dir()
+        {
+            rust_qstrs_inner(re, std::fs::read_dir(path).unwrap(), vec);
         }
     }
 }
 
 fn rust_qstrs(manifest_dir: &Path) -> Vec<Vec<u8>> {
-    let re = Regex::new(r"qstr!\(([a-zA-Z_][a-zA-Z0-9_]*)\)").unwrap();
+    let re = Regex::new(r"qstr!\(([a-zA-Z0-9_]*)\)").unwrap();
     let mut vec = Vec::new();
 
     let src_dir = manifest_dir.join("src");
