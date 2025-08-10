@@ -8,7 +8,7 @@ extern crate alloc;
 mod micropython;
 mod serial;
 mod stubs;
-mod vbt;
+mod vpt;
 
 use core::{
     arch::naked_asm,

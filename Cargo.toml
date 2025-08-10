@@ -17,6 +17,10 @@ spin = "0.10.0"
 talc = "4.4.3"
 vex-sdk = "0.26.0"
 
+[dependencies.venice-program-table]
+git = "https://github.com/venice-v5/venice-program-table.git"
+rev = "2fa8d392bb45a7b69e93f5a7e668ad4bca18007d"
+
 [dependencies.lazy_static]
 version = "1.5.0"
 features = ["spin_no_std"]

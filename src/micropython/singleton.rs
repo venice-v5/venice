@@ -18,7 +18,7 @@ use super::{
         mp_raw_code_load_mem, mp_stack_set_top, mp_state_ctx, nlr_buf_t, nlr_pop, nlr_push,
     },
 };
-use crate::vbt::{Bytecode, build_module_map};
+use crate::vpt::{Bytecode, build_module_map};
 
 unsafe extern "C" {
     static mut __stack_top: u8;
@@ -45,7 +45,7 @@ impl GdContainer {
 }
 
 pub struct GlobalData {
-    pub module_map: HashMap<&'static [u8], Bytecode<'static>>,
+    pub module_map: HashMap<&'static [u8], Bytecode>,
 }
 
 pub struct MicroPython(());

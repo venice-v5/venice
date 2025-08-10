@@ -24,6 +24,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 
 [[package]]
+name = "bytemuck"
+version = "1.23.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3995eaeebcdf32f91f980d360f78732ddc061097ab4e39991ae7a6ace9194677"
+
+[[package]]
 name = "cty"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -163,7 +169,16 @@ dependencies = [
  "regex",
  "spin 0.10.0",
  "talc",
+ "venice-program-table",
  "vex-sdk",
+]
+
+[[package]]
+name = "venice-program-table"
+version = "0.1.0"
+source = "git+https://github.com/venice-v5/venice-program-table.git?rev=2fa8d392bb45a7b69e93f5a7e668ad4bca18007d#2fa8d392bb45a7b69e93f5a7e668ad4bca18007d"
+dependencies = [
+ "bytemuck",
 ]
 
 [[package]]
