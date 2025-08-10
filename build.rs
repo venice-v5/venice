@@ -99,6 +99,7 @@ fn main() {
     writeln!(
         generated_qstrs_rs,
         r"
+        #[allow(non_camel_case_types, dead_code)]
         #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
         pub enum GeneratedQstr {{"
     )
