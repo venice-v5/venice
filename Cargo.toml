@@ -31,4 +31,5 @@ strip = true
 opt-level = "s"
 
 [build-dependencies]
+format-bytes = "0.3.0"
 regex = "1.11.1"
