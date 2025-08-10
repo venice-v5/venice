@@ -23,12 +23,9 @@ __python_heap_end = __runtime_ram_end - __stack_length;
 __eh_frame_hdr_start = SIZEOF(.eh_frame_hdr) > 0 ? ADDR(.eh_frame_hdr) : 0;
 __eh_frame_hdr_end = SIZEOF(.eh_frame_hdr) > 0 ? . : 0;
 
-MEMORY {
-	RUNTIME_RAM (RWX) : ORIGIN = __runtime_ram_start, LENGTH = __runtime_ram_length
-	BYTECODE_RAM (R) : ORIGIN = __bytecode_ram_start, LENGTH = __bytecode_ram_length
-}
-
 SECTIONS {
+	. = __runtime_ram_start;
+
 	/*
 	 * VEXos expects program binaries to have a 32-byte header called a "code signature",
 	 * at their start, which tells the OS that we are a valid program and configures some
@@ -36,28 +33,31 @@ SECTIONS {
 	 */
 	.code_signature : {
 		KEEP(*(.code_signature))
-		. = __runtime_ram_start + __code_signature_length;
-	} > RUNTIME_RAM
+	}
+
+	/* _boot routine (always runs first, must be at 0x03800020) */
+    .boot : {
+    	. = 0x03800020;
+        *(.boot)
+    }
 
 	/*
 	 * Executable program instructions.
 	 */
 	.text : {
-		/* _boot routine (always runs first, must be at 0x03800020) */
-		*(.boot)
 		*(.text .text.*)
-	} > RUNTIME_RAM
+	}
 
 	/*
 	 * Global/static/constant data sections.
 	 */
 	.rodata : {
 		*(.rodata .rodata.*)
-	} > RUNTIME_RAM
+	}
 
 	.data : {
 		*(.data .data.*)
-	} > RUNTIME_RAM
+	}
 
 	/*
 	 * ARM Stack Unwinding Sections
@@ -67,25 +67,25 @@ SECTIONS {
 	 */
 	.eh_frame_hdr : {
 		KEEP(*(.eh_frame_hdr))
-	} > RUNTIME_RAM
+	}
 
 	.eh_frame : {
 		__eh_frame_start = .;
 	   KEEP(*(.eh_frame))
 		__eh_frame_end = .;
-	} > RUNTIME_RAM
+	}
 
 	.ARM.exidx : {
 		__exidx_start = .;
 		*(.ARM.exidx*)
 		__exidx_end = .;
-	} > RUNTIME_RAM
+	}
 
 	.ARM.extab : {
 		__extab_start = .;
 		*(.ARM.extab*)
 		__extab_end = .;
-	} > RUNTIME_RAM
+	}
 
 	/* -- End of loadable sections - anything beyond this point shouldn't go in the BIN. -- */
 
@@ -94,7 +94,7 @@ SECTIONS {
 		__bss_start = .;
 		*(.bss .bss.*)
 		__bss_end = .;
-	} > RUNTIME_RAM
+	}
 
 	/*
 	 * Active memory locations for the stack/heap.
@@ -108,18 +108,18 @@ SECTIONS {
 	.python_heap (NOLOAD) : ALIGN(4) {
 		__python_heap_start = .;
 		. = __python_heap_end;
-	} > RUNTIME_RAM
+	}
 
 	.stack (NOLOAD) : ALIGN(8) {
 		__stack_bottom = .;
 		. += __stack_length;
 		__stack_top = .;
-	} > RUNTIME_RAM
+	}
 
-	.bytecode (NOLOAD) : ALIGN(4) {
+	.bytecode (NOLOAD) : ALIGN(8) {
 		. = __bytecode_ram_start;
 		. += __bytecode_ram_length;
-	} > BYTECODE_RAM
+	}
 
 	/*
 	 * `.ARM.attributes` contains arch metadata for compatibility purposes, but we
