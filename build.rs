@@ -16,7 +16,7 @@ fn rust_qstrs_inner(re: &Regex, entries: ReadDir, vec: &mut Vec<Vec<u8>>) {
         if path.extension() == Some(OsStr::new("rs")) {
             let src = std::fs::read(path).unwrap();
             for mat in re.captures_iter(&src) {
-                vec.push(mat[0].to_vec());
+                vec.push(mat[1].to_vec());
             }
         } else if let Ok(file_type) = entry.file_type()
             && file_type.is_dir()
@@ -60,6 +60,16 @@ fn main() {
     let out_dir = std::env::var("OUT_DIR").unwrap();
     let out_dir_path = Path::new(&out_dir);
 
+    let mut open_ops = OpenOptions::new();
+    open_ops.create(true).write(true).truncate(true);
+
+    let rust_qstrs = rust_qstrs(Path::new(manifest_dir));
+    let mut rust_qstrdefs_h = open_ops.open(out_dir_path.join("rust_qstrdefs.h")).unwrap();
+
+    for qstr in rust_qstrs.iter() {
+        write_bytes!(&mut rust_qstrdefs_h, b"Q({})\n", qstr).unwrap();
+    }
+
     let libmpyv5 = std::env::var("VENICE_LIBMPYV5_PATH").unwrap_or_else(|_| {
         let output = Command::new("make")
             .arg(format!("BUILD={out_dir}"))
@@ -76,16 +86,6 @@ fn main() {
         format!("{out_dir}/libmpyv5.a")
     });
 
-    let mut open_ops = OpenOptions::new();
-    open_ops.create(true).write(true).truncate(true);
-
-    let rust_qstrs = rust_qstrs(Path::new(manifest_dir));
-    let mut rust_qstrdefs_h = open_ops.open(out_dir_path.join("rust_qstrdefs.h")).unwrap();
-
-    for qstr in rust_qstrs.iter() {
-        write_bytes!(&mut rust_qstrdefs_h, b"Q({})", qstr).unwrap();
-    }
-
     let generated_qstrs = generated_qstrs(out_dir_path);
     let mut generated_qstrs_rs = open_ops
         .open(out_dir_path.join("generated_qstrs.rs"))
@@ -97,12 +97,14 @@ fn main() {
         r"
         #[allow(non_camel_case_types, dead_code)]
         #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-        pub enum GeneratedQstr {{"
+        pub enum GeneratedQstr {{
+            MP_QSTRnull,
+            MP_QSTR_,"
     )
     .unwrap();
 
     for generated_qstr in generated_qstrs.iter() {
-        write_bytes!(&mut generated_qstrs_rs, b"Qstr{},\n", generated_qstr).unwrap();
+        write_bytes!(&mut generated_qstrs_rs, b"MP_QSTR_{},\n", generated_qstr).unwrap();
     }
 
     writeln!(generated_qstrs_rs, "}}").unwrap();

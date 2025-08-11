@@ -15,7 +15,7 @@ impl GeneratedQstr {
 macro_rules! qstr {
     ($str:ident) => {
         ::paste::paste! {
-            $crate::micropython::GeneratedQstr::[<Qstr $str>].as_qstr()
+            $crate::micropython::GeneratedQstr::[<MP_QSTR_ $str>].as_qstr()
         }
     };
 }
