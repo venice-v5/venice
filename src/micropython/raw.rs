@@ -7,7 +7,7 @@ use core::ffi::{c_char, c_uint, c_void};
 pub type mp_obj_t = super::obj::Obj;
 
 /// From: `py/emitglue.h`
-pub type ProtoFun = *const c_void;
+pub type mp_proto_fun_t = *const c_void;
 
 /// From: `py/qstr.h`
 pub type qstr = super::qstr::Qstr;
@@ -179,8 +179,8 @@ pub type nlr_jump_callback_fun_t = extern "C" fn(ctx: *mut c_void);
 /// From: `py/nlr.h`
 #[repr(C)]
 pub struct nlr_jump_callback_node_t {
-    prev: *const Self,
-    fun: nlr_jump_callback_fun_t,
+    pub prev: *const Self,
+    pub fun: nlr_jump_callback_fun_t,
 }
 
 /// From: `py/mpprint.h`
@@ -305,7 +305,7 @@ unsafe extern "C" {
 
     /// From: `py/emitglue.h`
     pub fn mp_make_function_from_proto_fun(
-        proto_fun: ProtoFun,
+        proto_fun: mp_proto_fun_t,
         context: *const mp_module_context_t,
         def_args: *const mp_obj_t,
     ) -> mp_obj_t;
