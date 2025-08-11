@@ -5,8 +5,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+micropython-rs.path = "./micropython-rs"
 cty = "0.2.2"
-hashbrown = "0.15.4"
+hashbrown.workspace = true
 no_std_io = "0.6.0"
 paste = "1.0.15"
 spin = "0.10.0"
@@ -29,3 +30,10 @@ opt-level = "s"
 [build-dependencies]
 format-bytes = "0.3.0"
 regex = "1.11.1"
+
+[workspace]
+resolver = "3"
+members = ["micropython-rs"]
+
+[workspace.dependencies]
+hashbrown = "0.15.4"

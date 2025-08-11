@@ -5,7 +5,7 @@
 
 extern crate alloc;
 
-mod micropython;
+mod exports;
 mod serial;
 mod stubs;
 mod vpt;
@@ -15,11 +15,12 @@ use core::{
     sync::atomic::{AtomicBool, Ordering},
 };
 
+use micropython_rs::{obj::Obj, qstr::Qstr, singleton::MicroPython};
 use talc::{ErrOnOom, Span, Talc, Talck};
 
 use crate::{
-    micropython::{MicroPython, Obj, Qstr, qstr},
     serial::{print, println},
+    vpt::build_module_map,
 };
 
 /// Signature used by VEXos to verify the program and its properties.
@@ -98,9 +99,9 @@ fn exit() -> ! {
 }
 
 fn main(mut mpy: MicroPython) {
-    const ENTRYPOINT_NAME: Qstr = qstr!(__init__);
+    let entrypoint_name = Qstr::from_bytes(b"__init__");
 
-    let entrypoint = match mpy.global_data().module_map.get(ENTRYPOINT_NAME.bytes()) {
+    let entrypoint = match mpy.global_data().module_map.get(entrypoint_name.bytes()) {
         Some(bc) => bc,
         None => {
             println!("__init__ module not found, try adding __init__.py to your project");
@@ -108,8 +109,8 @@ fn main(mut mpy: MicroPython) {
         }
     };
 
-    let qstr = Obj::from_qstr(ENTRYPOINT_NAME);
-    mpy.exec_module(qstr, *entrypoint);
+    let qstr_obj = Obj::from_qstr(entrypoint_name);
+    mpy.exec_module(qstr_obj, *entrypoint);
 }
 
 /// # Safety
@@ -131,6 +132,6 @@ unsafe fn startup() -> ! {
             .expect("couldn't claim heap memory");
     }
 
-    main(unsafe { MicroPython::new() });
+    main(unsafe { MicroPython::new(build_module_map()) });
     exit();
 }

@@ -6,15 +6,6 @@ unsafe extern "C" {
     static __bytecode_ram_start: u8;
 }
 
-#[derive(Clone, Copy)]
-pub struct Bytecode(&'static [u8]);
-
-impl Bytecode {
-    pub fn bytes(&self) -> &'static [u8] {
-        self.0
-    }
-}
-
 // TODO: pick another ID
 pub const VENDOR_ID: u32 = 0x11235813;
 
@@ -24,10 +15,10 @@ lazy_static! {
     };
 }
 
-pub fn build_module_map() -> HashMap<&'static [u8], Bytecode> {
+pub fn build_module_map() -> HashMap<&'static [u8], &'static [u8]> {
     let mut hashmap = HashMap::new();
     for program in VPT.program_iter() {
-        hashmap.insert(program.name(), Bytecode(program.payload()));
+        hashmap.insert(program.name(), program.payload());
     }
 
     hashmap
