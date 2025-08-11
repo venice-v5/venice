@@ -72,6 +72,9 @@ unsafe extern "C" {
 
     static mut __heap_start: u8;
     static mut __heap_end: u8;
+
+    static mut __python_heap_start: u8;
+    static mut __python_heap_end: u8;
 }
 
 #[unsafe(link_section = ".boot")]
@@ -132,6 +135,8 @@ unsafe fn startup() -> ! {
             .expect("couldn't claim heap memory");
     }
 
+    let mut mp = MicroPython::new(build_module_map()).unwrap();
+    unsafe { mp.init_gc(&raw mut __python_heap_start, &raw mut __python_heap_end) };
     main(MicroPython::new(build_module_map()).unwrap());
     exit();
 }

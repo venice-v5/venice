@@ -1,5 +1,6 @@
 #![no_std]
 
+mod gc;
 mod global_data;
 mod raw;
 mod reentrance;
@@ -44,7 +45,10 @@ impl MicroPython {
         let mut this = Self(());
 
         unsafe {
-            this.set_global_data(GlobalData { module_map });
+            this.set_global_data(GlobalData {
+                module_map,
+                gc_init: false,
+            });
         }
 
         Some(this)

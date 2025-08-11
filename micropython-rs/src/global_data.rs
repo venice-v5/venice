@@ -18,12 +18,18 @@ unsafe impl Sync for GdContainer {}
 
 pub struct GlobalData {
     pub module_map: HashMap<&'static [u8], &'static [u8]>,
+    pub gc_init: bool,
 }
 
 impl MicroPython {
     pub fn global_data(&self) -> &GlobalData {
         // SAFETY: There will only ever be one `MicroPython` in existence
         unsafe { &*GLOBAL_DATA.inner.get() }.as_ref().unwrap()
+    }
+
+    pub(crate) fn global_data_mut(&mut self) -> &mut GlobalData {
+        // SAFETY: There will only ever be one `MicroPython` in existence
+        unsafe { &mut *GLOBAL_DATA.inner.get() }.as_mut().unwrap()
     }
 
     pub(crate) unsafe fn set_global_data(&mut self, gd: GlobalData) {

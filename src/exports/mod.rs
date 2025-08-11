@@ -1,9 +1,6 @@
-use core::{
-    arch::naked_asm,
-    ffi::{c_char, c_int, c_void},
-};
+use core::ffi::{c_char, c_int, c_void};
 
-use micropython_rs::obj::Obj;
+use micropython_rs::{MicroPython, obj::Obj};
 
 use crate::serial::print_bytes;
 
@@ -13,42 +10,9 @@ extern "C" fn mp_hal_stdout_tx_strn_cooked(str: *const c_char, len: u32) {
     print_bytes(slice);
 }
 
-#[unsafe(naked)]
-extern "C" fn _collect_gc_regs(regs: &mut [u32; 10]) -> u32 {
-    #[allow(unused_unsafe)]
-    unsafe {
-        naked_asm!(
-            // store registers into regs (r0)
-            "str r4, [r0], #4",
-            "str r5, [r0], #4",
-            "str r6, [r0], #4",
-            "str r7, [r0], #4",
-            "str r8, [r0], #4",
-            "str r9, [r0], #4",
-            "str r10, [r0], #4",
-            "str r11, [r0], #4",
-            "str r12, [r0], #4",
-            "str r13, [r0], #4",
-            // return stack pointer
-            "mov r0, sp",
-            "bx lr",
-        );
-    }
-}
-
 #[unsafe(no_mangle)]
 unsafe extern "C" fn gc_collect() {
-    todo!()
-    // MicroPython::reenter(|mp| unsafe {
-    //     gc_collect_start();
-    //     let mut regs = [0; 10];
-    //     let sp = collect_gc_regs(&mut regs);
-    //     gc_collect_root(
-    //         sp as *mut *mut c_void,
-    //         ((mp.state_ctx().thread.stack_top as u32 - sp) / size_of::<usize>() as u32) as usize,
-    //     );
-    //     gc_collect_end();
-    // })
+    MicroPython::reenter(MicroPython::collect_garbage);
 }
 
 #[unsafe(no_mangle)]
