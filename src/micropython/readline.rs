@@ -11,7 +11,6 @@ impl Readline {
     }
 
     pub fn read(&mut self, vstr: *mut vstr, _prompt: &[u8]) {
-        crate::serial::println!("readline starting");
         let mut stdin = STDIN
             .try_lock()
             .expect("attempt to read while stdin was locked");
