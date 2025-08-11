@@ -12,6 +12,7 @@ pub mod singleton;
 use core::sync::atomic::{AtomicBool, Ordering};
 
 use hashbrown::HashMap;
+use venice_program_table::Vpt;
 
 use crate::{
     global_data::GlobalData,
@@ -28,7 +29,7 @@ unsafe extern "C" {
 }
 
 impl MicroPython {
-    pub fn new(module_map: HashMap<&'static [u8], &'static [u8]>) -> Option<Self> {
+    pub fn new() -> Option<Self> {
         if let Err(_) =
             MICROPYTHON_CREATED.compare_exchange(false, true, Ordering::Relaxed, Ordering::Relaxed)
         {
@@ -46,12 +47,20 @@ impl MicroPython {
 
         unsafe {
             this.set_global_data(GlobalData {
-                module_map,
+                module_map: HashMap::new(),
                 gc_init: false,
             });
         }
 
         Some(this)
+    }
+
+    pub fn add_vpt(&mut self, vpt: Vpt<'static>) {
+        for program in vpt.program_iter() {
+            self.global_data_mut()
+                .module_map
+                .insert(program.name(), program.payload());
+        }
     }
 }
 

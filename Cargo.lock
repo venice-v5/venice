@@ -64,7 +64,7 @@ checksum = "203aadebefcc73d12038296c228eabf830f99cba991b0032adf20e9fa6ce7e4f"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -108,6 +108,7 @@ name = "micropython-rs"
 version = "0.1.0"
 dependencies = [
  "hashbrown",
+ "venice-program-table",
 ]
 
 [[package]]
@@ -205,12 +206,43 @@ dependencies = [
 ]
 
 [[package]]
+name = "syn"
+version = "2.0.104"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "17b6f705963418cdb9927482fa304bc562ece2fdd4f616084c50b7023b435a40"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "unicode-ident",
+]
+
+[[package]]
 name = "talc"
 version = "4.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a3ae828aa394de34c7de08f522d1b86bd1c182c668d27da69caadda00590f26d"
 dependencies = [
  "lock_api",
+]
+
+[[package]]
+name = "thiserror"
+version = "2.0.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "567b8a2dae586314f7be2a752ec7474332959c6460e02bde30d702a66d488708"
+dependencies = [
+ "thiserror-impl",
+]
+
+[[package]]
+name = "thiserror-impl"
+version = "2.0.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f7cf42b4507d8ea322120659672cf1b9dbb93f8f2d4ecfd6e51350ff5b17a1d"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.104",
 ]
 
 [[package]]
@@ -240,9 +272,10 @@ dependencies = [
 [[package]]
 name = "venice-program-table"
 version = "0.1.0"
-source = "git+https://github.com/venice-v5/venice-program-table.git?rev=2fa8d392bb45a7b69e93f5a7e668ad4bca18007d#2fa8d392bb45a7b69e93f5a7e668ad4bca18007d"
+source = "git+https://github.com/venice-v5/venice-program-table.git?rev=e5a1762be2eeaf94841bb972af4e447bbf5f4eea#e5a1762be2eeaf94841bb972af4e447bbf5f4eea"
 dependencies = [
  "bytemuck",
+ "thiserror",
 ]
 
 [[package]]

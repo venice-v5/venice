@@ -8,7 +8,6 @@ extern crate alloc;
 mod exports;
 mod serial;
 mod stubs;
-mod vpt;
 
 use core::{
     arch::naked_asm,
@@ -17,11 +16,9 @@ use core::{
 
 use micropython_rs::{MicroPython, obj::Obj, qstr::Qstr};
 use talc::{ErrOnOom, Span, Talc, Talck};
+use venice_program_table::Vpt;
 
-use crate::{
-    serial::{print, println},
-    vpt::build_module_map,
-};
+use crate::serial::{print, println};
 
 /// Signature used by VEXos to verify the program and its properties.
 #[used]
@@ -39,6 +36,9 @@ static CODE_SIG: (vex_sdk::vcodesig, [u32; 4]) = (
 
 #[global_allocator]
 static ALLOCATOR: Talck<spin::Mutex<()>, ErrOnOom> = Talck::new(Talc::new(ErrOnOom));
+
+// TODO: pick another ID
+pub const VENDOR_ID: u32 = 0x11235813;
 
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
@@ -75,6 +75,8 @@ unsafe extern "C" {
 
     static mut __python_heap_start: u8;
     static mut __python_heap_end: u8;
+
+    static __bytecode_ram_start: u8;
 }
 
 #[unsafe(link_section = ".boot")]
@@ -135,8 +137,14 @@ unsafe fn startup() -> ! {
             .expect("couldn't claim heap memory");
     }
 
-    let mut mp = MicroPython::new(build_module_map()).unwrap();
+    let mut mp = MicroPython::new().unwrap();
+
     unsafe { mp.init_gc(&raw mut __python_heap_start, &raw mut __python_heap_end) };
-    main(MicroPython::new(build_module_map()).unwrap());
+    mp.add_vpt(
+        unsafe { Vpt::from_ptr(&raw const __bytecode_ram_start, VENDOR_ID) }
+            .expect("invalid VPT was uploaded"),
+    );
+
+    main(mp);
     exit();
 }

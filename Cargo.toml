@@ -6,6 +6,7 @@ edition = "2024"
 
 [dependencies]
 micropython-rs.path = "./micropython-rs"
+venice-program-table.workspace = true
 cty = "0.2.2"
 hashbrown.workspace = true
 no_std_io = "0.6.0"
@@ -13,10 +14,6 @@ paste = "1.0.15"
 spin = "0.10.0"
 talc = "4.4.3"
 vex-sdk = "0.26.0"
-
-[dependencies.venice-program-table]
-git = "https://github.com/venice-v5/venice-program-table.git"
-rev = "2fa8d392bb45a7b69e93f5a7e668ad4bca18007d"
 
 [dependencies.lazy_static]
 version = "1.5.0"
@@ -37,3 +34,8 @@ members = ["micropython-rs"]
 
 [workspace.dependencies]
 hashbrown = "0.15.4"
+
+[workspace.dependencies.venice-program-table]
+# path = "../venice-program-table"
+git = "https://github.com/venice-v5/venice-program-table.git"
+rev = "e5a1762be2eeaf94841bb972af4e447bbf5f4eea"
