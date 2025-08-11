@@ -1,13 +1,13 @@
 #![no_std]
 
 mod gc;
-mod global_data;
+mod module;
 mod raw;
 mod reentrance;
+mod state;
 
 pub mod obj;
 pub mod qstr;
-pub mod singleton;
 
 use core::sync::atomic::{AtomicBool, Ordering};
 
@@ -15,8 +15,8 @@ use hashbrown::HashMap;
 use venice_program_table::Vpt;
 
 use crate::{
-    global_data::GlobalData,
     raw::{mp_deinit, mp_init, mp_stack_ctrl_init},
+    state::GlobalData,
 };
 
 pub static MICROPYTHON_CREATED: AtomicBool = AtomicBool::new(false);

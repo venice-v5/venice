@@ -2,7 +2,10 @@ use core::cell::UnsafeCell;
 
 use hashbrown::HashMap;
 
-use crate::MicroPython;
+use crate::{
+    MicroPython,
+    raw::{mp_state_ctx, mp_state_ctx_t},
+};
 
 // A mutex would not work here. We want the `&GlobalData` returned by `MicroPython` to be tied to
 // it and have its lifetime.
@@ -34,5 +37,13 @@ impl MicroPython {
 
     pub(crate) unsafe fn set_global_data(&mut self, gd: GlobalData) {
         unsafe { &mut *GLOBAL_DATA.inner.get() }.replace(gd);
+    }
+
+    pub fn state_ctx(&self) -> &mp_state_ctx_t {
+        unsafe { &*mp_state_ctx.get() }
+    }
+
+    pub fn state_ctx_mut(&mut self) -> &mut mp_state_ctx_t {
+        unsafe { &mut *mp_state_ctx.get() }
     }
 }

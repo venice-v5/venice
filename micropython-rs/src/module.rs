@@ -8,19 +8,11 @@ use crate::{
         NLR_REG_COUNT, mp_call_function_0, mp_compiled_module_t, mp_make_function_from_proto_fun,
         mp_map_lookup, mp_map_lookup_kind_t, mp_module_context_t, mp_module_get_builtin,
         mp_obj_print_exception, mp_plat_print, mp_raise_ValueError, mp_raw_code_load_mem,
-        mp_state_ctx, mp_state_ctx_t, nlr_buf_t, nlr_pop, nlr_push,
+        nlr_buf_t, nlr_pop, nlr_push,
     },
 };
 
 impl MicroPython {
-    pub fn state_ctx(&self) -> &mp_state_ctx_t {
-        unsafe { &*mp_state_ctx.get() }
-    }
-
-    pub fn state_ctx_mut(&mut self) -> &mut mp_state_ctx_t {
-        unsafe { &mut *mp_state_ctx.get() }
-    }
-
     fn push_nlr<R>(&mut self, f: impl FnOnce(&mut Self) -> R) -> Option<R> {
         let mut nlr_buf = nlr_buf_t {
             prev: null_mut(),
