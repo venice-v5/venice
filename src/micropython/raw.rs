@@ -2,7 +2,10 @@
 
 #![allow(non_camel_case_types)]
 
-use core::ffi::{c_char, c_uint, c_void};
+use core::{
+    cell::UnsafeCell,
+    ffi::{c_char, c_uint, c_void},
+};
 
 pub type mp_obj_t = super::obj::Obj;
 
@@ -16,7 +19,7 @@ pub type qstr = super::qstr::Qstr;
 pub type qstr_short_t = u16;
 
 /// From: `py/mpprint.h`
-pub type mp_print_strn_t = extern "C" fn(data: *mut c_void, str: *const c_char, len: usize);
+pub type mp_print_strn_t = unsafe extern "C" fn(data: *mut c_void, str: *const c_char, len: usize);
 
 /// From: `py/misc.h`
 pub type mp_rom_error_text_t = *const c_char;
@@ -258,7 +261,7 @@ unsafe extern "C" {
     /// From: `py/mp_state.h`
     ///
     /// Currently, MicroPython threads are disabled, so this is always the active [`StateCtx`].
-    pub static mut mp_state_ctx: mp_state_ctx_t;
+    pub static mp_state_ctx: UnsafeCell<mp_state_ctx_t>;
 
     pub static mp_type_module: mp_obj_type_t;
     pub static mp_type_str: mp_obj_type_t;

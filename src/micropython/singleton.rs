@@ -18,7 +18,10 @@ use super::{
         mp_raw_code_load_mem, mp_stack_set_top, mp_state_ctx, nlr_buf_t, nlr_pop, nlr_push,
     },
 };
-use crate::vpt::{Bytecode, build_module_map};
+use crate::{
+    micropython::raw::mp_state_ctx_t,
+    vpt::{Bytecode, build_module_map},
+};
 
 unsafe extern "C" {
     static mut __stack_top: u8;
@@ -87,6 +90,14 @@ impl MicroPython {
         unsafe { (*GLOBAL_DATA.inner.get()).as_ref().unwrap_unchecked() }
     }
 
+    pub fn state_ctx(&self) -> &mp_state_ctx_t {
+        unsafe { &*mp_state_ctx.get() }
+    }
+
+    pub fn state_ctx_mut(&mut self) -> &mut mp_state_ctx_t {
+        unsafe { &mut *mp_state_ctx.get() }
+    }
+
     fn push_nlr<R>(&mut self, f: impl FnOnce(&mut Self) -> R) -> Option<R> {
         let mut nlr_buf = nlr_buf_t {
             prev: null_mut(),
@@ -132,7 +143,7 @@ impl MicroPython {
     pub fn exec_module(&mut self, name: Obj, bytecode: Bytecode) -> Obj {
         let elem = unsafe {
             mp_map_lookup(
-                &raw mut mp_state_ctx.vm.mp_loaded_modules_dict.map,
+                &raw mut self.state_ctx_mut().vm.mp_loaded_modules_dict.map,
                 name,
                 mp_map_lookup_kind_t::MP_MAP_LOOKUP_ADD_IF_NOT_FOUND,
             )
@@ -146,7 +157,7 @@ impl MicroPython {
         let context_ptr = context_obj.as_obj::<mp_module_context_t>().unwrap();
 
         unsafe {
-            (*context_ptr).module.globals = mp_state_ctx.thread.dict_globals;
+            (*context_ptr).module.globals = self.state_ctx().thread.dict_globals;
             (*elem).value = context_obj;
         }
 
@@ -187,7 +198,7 @@ impl MicroPython {
 
         let loaded_module_elem = unsafe {
             mp_map_lookup(
-                &raw mut mp_state_ctx.vm.mp_loaded_modules_dict.map,
+                &raw mut self.state_ctx_mut().vm.mp_loaded_modules_dict.map,
                 module_name_obj,
                 mp_map_lookup_kind_t::MP_MAP_LOOKUP,
             )

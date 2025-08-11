@@ -7,7 +7,7 @@ use core::{
 use super::{
     MicroPython,
     obj::Obj,
-    raw::{gc_collect_end, gc_collect_root, gc_collect_start, mp_raise_ValueError, mp_state_ctx},
+    raw::{gc_collect_end, gc_collect_root, gc_collect_start, mp_raise_ValueError},
 };
 use crate::{
     micropython::{raw::vstr, readline::Readline},
@@ -45,16 +45,16 @@ extern "C" fn collect_gc_regs(regs: &mut [u32; 10]) -> u32 {
 
 #[unsafe(no_mangle)]
 unsafe extern "C" fn gc_collect() {
-    unsafe {
+    MicroPython::reenter(|mp| unsafe {
         gc_collect_start();
         let mut regs = [0; 10];
         let sp = collect_gc_regs(&mut regs);
         gc_collect_root(
             sp as *mut *mut c_void,
-            ((mp_state_ctx.thread.stack_top as u32 - sp) / size_of::<usize>() as u32) as usize,
+            ((mp.state_ctx().thread.stack_top as u32 - sp) / size_of::<usize>() as u32) as usize,
         );
         gc_collect_end();
-    }
+    })
 }
 
 #[unsafe(no_mangle)]
