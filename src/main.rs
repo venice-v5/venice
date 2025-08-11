@@ -15,7 +15,7 @@ use core::{
     sync::atomic::{AtomicBool, Ordering},
 };
 
-use micropython_rs::{obj::Obj, qstr::Qstr, singleton::MicroPython};
+use micropython_rs::{MicroPython, obj::Obj, qstr::Qstr};
 use talc::{ErrOnOom, Span, Talc, Talck};
 
 use crate::{
@@ -132,6 +132,6 @@ unsafe fn startup() -> ! {
             .expect("couldn't claim heap memory");
     }
 
-    main(unsafe { MicroPython::new(build_module_map()) });
+    main(MicroPython::new(build_module_map()).unwrap());
     exit();
 }

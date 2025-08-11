@@ -275,7 +275,7 @@ unsafe extern "C" {
     pub fn mp_deinit();
 
     /// From: `py/stackctrl.h`
-    pub fn mp_stack_set_top(top: *mut c_void);
+    pub fn mp_stack_ctrl_init();
 
     /// From: `py/gc.h`
     pub fn gc_init(start: *mut c_void, end: *mut c_void);

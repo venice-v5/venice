@@ -1,90 +1,18 @@
-use core::{
-    cell::UnsafeCell,
-    ffi::c_void,
-    mem::ManuallyDrop,
-    ptr::{null, null_mut},
-    sync::atomic::{AtomicBool, Ordering},
-};
+use core::ptr::{null, null_mut};
 
-use hashbrown::HashMap;
-
-use super::{
+use crate::{
+    MicroPython,
     obj::Obj,
     qstr::Qstr,
     raw::{
-        NLR_REG_COUNT, gc_init, mp_call_function_0, mp_compiled_module_t, mp_deinit, mp_init,
-        mp_make_function_from_proto_fun, mp_map_lookup, mp_map_lookup_kind_t, mp_module_context_t,
-        mp_module_get_builtin, mp_obj_print_exception, mp_plat_print, mp_raise_ValueError,
-        mp_raw_code_load_mem, mp_stack_set_top, mp_state_ctx, nlr_buf_t, nlr_pop, nlr_push,
+        NLR_REG_COUNT, mp_call_function_0, mp_compiled_module_t, mp_make_function_from_proto_fun,
+        mp_map_lookup, mp_map_lookup_kind_t, mp_module_context_t, mp_module_get_builtin,
+        mp_obj_print_exception, mp_plat_print, mp_raise_ValueError, mp_raw_code_load_mem,
+        mp_state_ctx, mp_state_ctx_t, nlr_buf_t, nlr_pop, nlr_push,
     },
 };
-use crate::raw::mp_state_ctx_t;
-
-unsafe extern "C" {
-    static mut __stack_top: u8;
-    static mut __python_heap_start: u8;
-    static mut __python_heap_end: u8;
-
-    /// Calls libc global constructors.
-    ///
-    /// # Safety
-    ///
-    /// Must be called once at the start of the program.
-    fn __libc_init_array();
-
-    /// Calls libc global destructors.
-    ///
-    /// # Safety
-    ///
-    /// Must be called once at the end of the program.
-    fn __libc_fini_array();
-}
-
-static REENTRANCE_ALLOWED: AtomicBool = AtomicBool::new(false);
-
-static GLOBAL_DATA: GdContainer = GdContainer::new();
-
-pub struct GdContainer {
-    inner: UnsafeCell<Option<GlobalData>>,
-}
-
-unsafe impl Sync for GdContainer {}
-
-impl GdContainer {
-    pub const fn new() -> Self {
-        Self {
-            inner: UnsafeCell::new(None),
-        }
-    }
-}
-
-pub struct GlobalData {
-    pub module_map: HashMap<&'static [u8], &'static [u8]>,
-}
-
-pub struct MicroPython(());
 
 impl MicroPython {
-    pub unsafe fn new(module_map: HashMap<&'static [u8], &'static [u8]>) -> Self {
-        unsafe {
-            __libc_init_array();
-
-            mp_stack_set_top((&raw mut __stack_top) as *mut c_void);
-            gc_init(
-                &raw mut __python_heap_start as *mut c_void,
-                &raw mut __python_heap_end as *mut c_void,
-            );
-            mp_init();
-
-            *GLOBAL_DATA.inner.get() = Some(GlobalData { module_map });
-        }
-        Self(())
-    }
-
-    pub fn global_data(&self) -> &GlobalData {
-        unsafe { (*GLOBAL_DATA.inner.get()).as_ref().unwrap_unchecked() }
-    }
-
     pub fn state_ctx(&self) -> &mp_state_ctx_t {
         unsafe { &*mp_state_ctx.get() }
     }
@@ -112,26 +40,6 @@ impl MicroPython {
                 );
                 None
             }
-        }
-    }
-
-    unsafe fn allow_reentrance<R>(&mut self, f: impl FnOnce(&mut Self) -> R) -> R {
-        let old = REENTRANCE_ALLOWED.swap(true, Ordering::Acquire);
-        let ret = f(self);
-        REENTRANCE_ALLOWED.store(old, Ordering::Release);
-        ret
-    }
-
-    pub fn reenter<R>(f: impl FnOnce(&mut Self) -> R) -> R {
-        match REENTRANCE_ALLOWED.compare_exchange(true, false, Ordering::Release, Ordering::Acquire)
-        {
-            Ok(_) => {
-                let mut this = ManuallyDrop::new(Self(()));
-                let ret = f(&mut this);
-                REENTRANCE_ALLOWED.store(true, Ordering::Release);
-                ret
-            }
-            Err(_) => panic!("reetrance attempted while prohibited"),
         }
     }
 
@@ -164,7 +72,7 @@ impl MicroPython {
         self.push_nlr(|this| unsafe {
             mp_raw_code_load_mem(bytecode.as_ptr(), bytecode.len(), &raw mut cm);
             let f = mp_make_function_from_proto_fun(cm.rc.cast(), context_ptr, null());
-            this.allow_reentrance(|_| mp_call_function_0(f));
+            this.allow_reentrance(|| mp_call_function_0(f));
         });
 
         context_obj
@@ -210,14 +118,5 @@ impl MicroPython {
             .get(module_name)
             .expect("module not found");
         self.exec_module(module_name_obj, *bytecode)
-    }
-}
-
-impl Drop for MicroPython {
-    fn drop(&mut self) {
-        unsafe {
-            mp_deinit();
-            __libc_fini_array();
-        }
     }
 }
