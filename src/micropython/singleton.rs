@@ -24,6 +24,20 @@ unsafe extern "C" {
     static mut __stack_top: u8;
     static mut __python_heap_start: u8;
     static mut __python_heap_end: u8;
+
+    /// Calls libc global constructors.
+    ///
+    /// # Safety
+    ///
+    /// Must be called once at the start of the program.
+    fn __libc_init_array();
+
+    /// Calls libc global destructors.
+    ///
+    /// # Safety
+    ///
+    /// Must be called once at the end of the program.
+    fn __libc_fini_array();
 }
 
 static REENTRANCE_ALLOWED: AtomicBool = AtomicBool::new(false);
@@ -53,6 +67,8 @@ pub struct MicroPython(());
 impl MicroPython {
     pub unsafe fn new() -> Self {
         unsafe {
+            __libc_init_array();
+
             mp_stack_set_top((&raw mut __stack_top) as *mut c_void);
             gc_init(
                 &raw mut __python_heap_start as *mut c_void,
@@ -199,6 +215,7 @@ impl Drop for MicroPython {
     fn drop(&mut self) {
         unsafe {
             mp_deinit();
+            __libc_fini_array();
         }
     }
 }

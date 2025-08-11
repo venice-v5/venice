@@ -108,7 +108,7 @@ unsafe extern "C" fn _fstat(_fd: c_int, _pstat: *mut stat) -> c_int {
 
 #[unsafe(no_mangle)]
 unsafe extern "C" fn _exit(_status: c_int) -> ! {
-    unsafe { exit() }
+    exit()
 }
 
 #[unsafe(no_mangle)]
