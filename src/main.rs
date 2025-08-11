@@ -100,11 +100,13 @@ fn exit() -> ! {
 fn main(mut mpy: MicroPython) {
     const ENTRYPOINT_NAME: Qstr = qstr!(__init__);
 
-    let entrypoint = mpy
-        .global_data()
-        .module_map
-        .get(ENTRYPOINT_NAME.bytes())
-        .expect("__init__ module not found, try adding __init__.py to your project");
+    let entrypoint = match mpy.global_data().module_map.get(ENTRYPOINT_NAME.bytes()) {
+        Some(bc) => bc,
+        None => {
+            println!("__init__ module not found, try adding __init__.py to your project");
+            exit();
+        }
+    };
 
     let qstr = Obj::from_qstr(ENTRYPOINT_NAME);
     mpy.exec_module(qstr, *entrypoint);
