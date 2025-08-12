@@ -1,3 +1,8 @@
+unsafe extern "C" {
+    /// From: `py/misc.h
+    fn vstr_add_byte(vstr: *mut Vstr, v: u8);
+}
+
 #[repr(C)]
 pub struct Vstr {
     alloc: usize,
@@ -9,7 +14,7 @@ pub struct Vstr {
 impl Vstr {
     pub fn add_byte(&mut self, byte: u8) {
         unsafe {
-            crate::raw::vstr_add_byte(self as *mut Self, byte);
+            vstr_add_byte(self as *mut Self, byte);
         }
     }
 }

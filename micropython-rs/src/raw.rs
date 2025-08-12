@@ -29,8 +29,6 @@ pub type qstr_hash_t = u16;
 /// From: `py/qstr.h`
 pub type qstr_len_t = u8;
 
-pub type vstr = crate::vstr::Vstr;
-
 /// From: `py/qstr.h`
 #[repr(C)]
 pub struct qstr_pool_t {
@@ -254,9 +252,4 @@ unsafe extern "C" {
 
     /// From: `py/qstr.h`
     pub fn qstr_data(q: qstr, len: *mut usize) -> *const u8;
-
-    // ----- Vstr ----- //
-
-    /// From: `py/misc.h
-    pub fn vstr_add_byte(vstr: *mut vstr, v: u8);
 }
