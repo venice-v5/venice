@@ -16,7 +16,7 @@ impl Stdout {
 }
 
 impl Stdin {
-    pub fn _read_char(&mut self) -> i32 {
+    pub fn read_char(&mut self) -> i32 {
         unsafe { vexSerialReadChar(STDIO_CHANNEL) }
     }
 }

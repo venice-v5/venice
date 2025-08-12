@@ -1,4 +1,6 @@
-use core::ffi::{c_char, c_int, c_void};
+mod readline;
+
+use core::ffi::{c_char, c_void};
 
 use micropython_rs::{MicroPython, obj::Obj};
 
@@ -39,17 +41,6 @@ unsafe extern "C" fn venice_import(_arg_count: usize, _args: *const Obj) -> Obj 
     // };
 
     // MicroPython::reenter(|mp| mp.import(module_name_obj, fromtuple, level))
-}
-
-#[allow(non_camel_case_types)]
-type vstr = ();
-#[unsafe(no_mangle)]
-unsafe extern "C" fn readline(_line: *mut vstr, _prompt: *const c_char) -> c_int {
-    todo!()
-    // let mut readline = Readline::new();
-    // let prompt = unsafe { CStr::from_ptr(prompt) };
-    // readline.read(line, prompt.to_bytes());
-    // 0
 }
 
 #[allow(non_upper_case_globals)]
