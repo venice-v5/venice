@@ -1,6 +1,7 @@
 use crate::{
+    gc::m_malloc,
     qstr::Qstr,
-    raw::{m_malloc, mp_obj_base_t, mp_obj_str_t, mp_obj_type_t, mp_type_str},
+    raw::{mp_obj_base_t, mp_obj_str_t, mp_obj_type_t, mp_type_str},
 };
 
 /// MicroPython object

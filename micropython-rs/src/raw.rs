@@ -7,48 +7,17 @@ use core::{
     ffi::{c_char, c_void},
 };
 
-use crate::nlr::NlrBuf;
-
-pub type mp_obj_t = super::obj::Obj;
-
-/// From: `py/emitglue.h`
-pub type mp_proto_fun_t = *const c_void;
-
-/// From: `py/qstr.h`
-pub type qstr = super::qstr::Qstr;
-
-/// From: `py/qstr.h`
-pub type qstr_short_t = u16;
+use crate::{nlr::NlrBuf, obj::Obj, qstr::QstrPool};
 
 /// From: `py/misc.h`
 pub type mp_rom_error_text_t = *const c_char;
-
-/// From: `py/qstr.h`
-pub type qstr_hash_t = u16;
-
-/// From: `py/qstr.h`
-pub type qstr_len_t = u8;
-
-/// From: `py/qstr.h`
-#[repr(C)]
-pub struct qstr_pool_t {
-    pub prev: *const Self,
-    // originally bitfields
-    pub total_prev_len: usize,
-    pub alloc: usize,
-    pub len: usize,
-    pub hashes: *mut qstr_hash_t,
-    pub lengths: *mut qstr_len_t,
-    // const char* qstrs[];
-    pub qstrs: (),
-}
 
 /// From: `py/obj.h`
 #[derive(Clone, Copy)]
 #[repr(C)]
 pub struct mp_map_elem_t {
-    pub key: mp_obj_t,
-    pub value: mp_obj_t,
+    pub key: Obj,
+    pub value: Obj,
 }
 
 /// From: `py/obj.h`
@@ -159,9 +128,9 @@ pub struct mp_state_thread_t {
     pub nlr_jump_callback_top: *mut nlr_jump_callback_node_t,
 
     // originally marked as volatile
-    pub pending_exception: mp_obj_t,
+    pub pending_exception: Obj,
 
-    pub stop_iteration_arg: mp_obj_t,
+    pub stop_iteration_arg: Obj,
 }
 
 /// From: `py/mpstate.h`
@@ -169,7 +138,7 @@ pub struct mp_state_thread_t {
 /// This is an incomplete binding; the omitted fields are currently not needed.
 #[repr(C)]
 pub struct mp_state_vm_t {
-    pub last_pool: *mut qstr_pool_t,
+    pub last_pool: *mut QstrPool,
     pub mp_emergency_exception_obj: mp_obj_exception_t,
     pub mp_kbd_exception: mp_obj_exception_t,
     pub mp_loaded_modules_dict: mp_obj_dict_t,
@@ -198,28 +167,6 @@ unsafe extern "C" {
 
     pub static mp_type_str: mp_obj_type_t;
 
-    // ----- Garbage collection ----- //
-
-    /// From: `py/gc.h`
-    pub fn gc_init(start: *mut c_void, end: *mut c_void);
-
-    /// From: `py/gc.h`
-    pub fn gc_collect_start();
-
-    /// From: `py/gc.h`
-    pub fn gc_collect_root(ptrs: *mut *mut c_void, len: usize);
-
-    /// From: `py/gc.h`
-    pub fn gc_collect_end();
-
-    /// From: `py/malloc.h`
-    pub fn m_malloc(size: usize) -> *mut c_void;
-
-    // ----- Modules ----- //
-
-    /// From: `py/objmodule.h`
-    pub fn mp_module_get_builtin(module_name: qstr, extensible: bool) -> mp_obj_t;
-
     // ----- Exceptions ----- //
 
     /// From: `py/runtime.h`
@@ -230,15 +177,7 @@ unsafe extern "C" {
     /// From: `py/obj.h`
     pub fn mp_map_lookup(
         map: *mut mp_map_t,
-        index: mp_obj_t,
+        index: Obj,
         lookup_kind: mp_map_lookup_kind_t,
     ) -> *mut mp_map_elem_t;
-
-    // ----- Qstr ----- //
-
-    /// From: `py/qstr.h`
-    pub fn qstr_from_strn(str: *const u8, len: usize) -> qstr;
-
-    /// From: `py/qstr.h`
-    pub fn qstr_data(q: qstr, len: *mut usize) -> *const u8;
 }

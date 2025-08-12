@@ -1,9 +1,23 @@
 use core::{arch::naked_asm, ffi::c_void};
 
-use crate::{
-    MicroPython,
-    raw::{gc_collect_end, gc_collect_root, gc_collect_start, gc_init},
-};
+use crate::MicroPython;
+
+unsafe extern "C" {
+    /// From: `py/gc.h`
+    fn gc_init(start: *mut c_void, end: *mut c_void);
+
+    /// From: `py/gc.h`
+    fn gc_collect_start();
+
+    /// From: `py/gc.h`
+    fn gc_collect_root(ptrs: *mut *mut c_void, len: usize);
+
+    /// From: `py/gc.h`
+    fn gc_collect_end();
+
+    /// From: `py/malloc.h`
+    pub(crate) fn m_malloc(size: usize) -> *mut c_void;
+}
 
 #[unsafe(naked)]
 extern "C" fn collect_gc_regs(regs: &mut [u32; 10]) -> u32 {

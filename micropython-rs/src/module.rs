@@ -6,10 +6,10 @@ use core::{
 use crate::{
     MicroPython,
     obj::{Obj, ObjType},
-    qstr::Qstr,
+    qstr::{Qstr, QstrShort},
     raw::{
-        mp_map_lookup, mp_map_lookup_kind_t, mp_module_get_builtin, mp_obj_base_t, mp_obj_dict_t,
-        mp_obj_type_t, mp_proto_fun_t, mp_raise_ValueError, qstr_short_t,
+        mp_map_lookup, mp_map_lookup_kind_t, mp_obj_base_t, mp_obj_dict_t, mp_obj_type_t,
+        mp_raise_ValueError,
     },
 };
 
@@ -21,14 +21,20 @@ unsafe extern "C" {
 
     /// From: `py/emitglue.h`
     fn mp_make_function_from_proto_fun(
-        proto_fun: mp_proto_fun_t,
+        proto_fun: ProtoFun,
         context: *const ModuleContext,
         def_args: *const Obj,
     ) -> Obj;
 
     /// From: `py/runtime.h`
     fn mp_call_function_0(fun: Obj) -> Obj;
+
+    /// From: `py/objmodule.h`
+    fn mp_module_get_builtin(module_name: Qstr, extensible: bool) -> Obj;
 }
+
+/// From: `py/emitglue.h`
+pub type ProtoFun = *const c_void;
 
 /// From: `py/obj.h`
 #[repr(C)]
@@ -40,7 +46,7 @@ pub struct Module {
 /// From: `py/bc.h`
 #[repr(C)]
 pub struct ModuleConstants {
-    qstr_table: *mut qstr_short_t,
+    qstr_table: *mut QstrShort,
     obj_table: *mut Obj,
 }
 
