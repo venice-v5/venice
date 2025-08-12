@@ -2,7 +2,7 @@ use core::{arch::naked_asm, ffi::c_void};
 
 use crate::{
     MicroPython,
-    raw::{gc_collect_root, gc_collect_start, gc_init},
+    raw::{gc_collect_end, gc_collect_root, gc_collect_start, gc_init},
 };
 
 #[unsafe(naked)]
@@ -52,6 +52,7 @@ impl MicroPython {
                 ((self.state_ctx().thread.stack_top as u32 - sp) / size_of::<usize>() as u32)
                     as usize,
             );
+            gc_collect_end();
         }
     }
 }
