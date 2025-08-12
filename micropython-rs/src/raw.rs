@@ -4,8 +4,10 @@
 
 use core::{
     cell::UnsafeCell,
-    ffi::{c_char, c_uint, c_void},
+    ffi::{c_char, c_void},
 };
+
+use crate::nlr::NlrBuf;
 
 pub type mp_obj_t = super::obj::Obj;
 
@@ -17,9 +19,6 @@ pub type qstr = super::qstr::Qstr;
 
 /// From: `py/qstr.h`
 pub type qstr_short_t = u16;
-
-/// From: `py/mpprint.h`
-pub type mp_print_strn_t = unsafe extern "C" fn(data: *mut c_void, str: *const c_char, len: usize);
 
 /// From: `py/misc.h`
 pub type mp_rom_error_text_t = *const c_char;
@@ -122,16 +121,6 @@ pub struct mp_obj_dict_t {
     pub map: mp_map_t,
 }
 
-pub const NLR_REG_COUNT: usize = 16;
-
-/// From: `py/nlr.h`
-#[repr(C)]
-pub struct nlr_buf_t {
-    pub prev: *mut Self,
-    pub ret_val: *mut c_void,
-    pub regs: [*mut c_void; NLR_REG_COUNT],
-}
-
 /// From: `py/nlr.h`
 pub type nlr_jump_callback_fun_t = extern "C" fn(ctx: *mut c_void);
 
@@ -140,13 +129,6 @@ pub type nlr_jump_callback_fun_t = extern "C" fn(ctx: *mut c_void);
 pub struct nlr_jump_callback_node_t {
     pub prev: *const Self,
     pub fun: nlr_jump_callback_fun_t,
-}
-
-/// From: `py/mpprint.h`
-#[repr(C)]
-pub struct mp_print_t {
-    pub data: *mut c_void,
-    pub print_strn: mp_print_strn_t,
 }
 
 #[repr(C)]
@@ -175,7 +157,7 @@ pub struct mp_state_thread_t {
     pub dict_locals: *mut mp_obj_dict_t,
     pub dict_globals: *mut mp_obj_dict_t,
 
-    pub nlr_top: *mut nlr_buf_t,
+    pub nlr_top: *mut NlrBuf,
     pub nlr_jump_callback_top: *mut nlr_jump_callback_node_t,
 
     // originally marked as volatile
@@ -210,9 +192,6 @@ pub struct mp_state_ctx_t {
 
 unsafe extern "C" {
     // ----- Statics ----- //
-
-    /// From: `py/mpprint.h`
-    pub static mp_plat_print: mp_print_t;
 
     /// From: `py/mp_state.h`
     ///
@@ -249,13 +228,6 @@ unsafe extern "C" {
     /// From: `py/malloc.h`
     pub fn m_malloc(size: usize) -> *mut c_void;
 
-    // ----- NLR ----- //
-
-    /// From: `py/nlr.h`
-    pub fn nlr_push(nlr: *mut nlr_buf_t) -> c_uint;
-    /// From: `py/nlr.h`
-    pub fn nlr_pop();
-
     // ----- Modules ----- //
 
     /// From: `py/objmodule.h`
@@ -265,11 +237,6 @@ unsafe extern "C" {
 
     /// From: `py/runtime.h`
     pub fn mp_raise_ValueError(msg: mp_rom_error_text_t) -> !;
-
-    // ----- mp_obj_tect methods ----- //
-
-    /// From: `py/obj.h`
-    pub fn mp_obj_print_exception(print: *const mp_print_t, exc: mp_obj_t);
 
     // ----- Map methods ----- //
 

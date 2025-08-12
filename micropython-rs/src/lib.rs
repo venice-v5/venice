@@ -2,9 +2,12 @@
 
 mod gc;
 mod module;
+mod nlr;
 mod raw;
 mod reentrance;
 mod state;
+
+pub(crate) mod print;
 
 pub mod obj;
 pub mod qstr;
