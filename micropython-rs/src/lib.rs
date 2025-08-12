@@ -10,6 +10,7 @@ mod state;
 
 pub(crate) mod print;
 
+pub mod map;
 pub mod obj;
 pub mod qstr;
 pub mod vstr;

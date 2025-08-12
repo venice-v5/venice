@@ -5,12 +5,10 @@ use core::{
 
 use crate::{
     MicroPython,
+    map::Dict,
     obj::{Obj, ObjType},
     qstr::{Qstr, QstrShort},
-    raw::{
-        mp_map_lookup, mp_map_lookup_kind_t, mp_obj_base_t, mp_obj_dict_t, mp_obj_type_t,
-        mp_raise_ValueError,
-    },
+    raw::{mp_obj_base_t, mp_obj_type_t, mp_raise_ValueError},
 };
 
 unsafe extern "C" {
@@ -40,7 +38,7 @@ pub type ProtoFun = *const c_void;
 #[repr(C)]
 pub struct Module {
     base: mp_obj_base_t,
-    globals: *mut mp_obj_dict_t,
+    globals: *mut Dict,
 }
 
 /// From: `py/bc.h`
@@ -80,16 +78,9 @@ pub struct CompiledModule {
 
 impl MicroPython {
     pub fn exec_module(&mut self, name: Obj, bytecode: &[u8]) -> Obj {
-        let elem = unsafe {
-            mp_map_lookup(
-                &raw mut self.state_ctx_mut().vm.mp_loaded_modules_dict.map,
-                name,
-                mp_map_lookup_kind_t::MP_MAP_LOOKUP_ADD_IF_NOT_FOUND,
-            )
-        };
-        let elem_value = unsafe { *elem }.value;
-        if !elem_value.is_null() {
-            return elem_value;
+        let loaded_module = self.state_ctx().vm.mp_loaded_modules_dict.map.get(name);
+        if let Some(module) = loaded_module {
+            return module;
         }
 
         let context = ModuleContext {
@@ -139,16 +130,14 @@ impl MicroPython {
 
         let qstr = Qstr::from_bytes(module_name);
 
-        let loaded_module_elem = unsafe {
-            mp_map_lookup(
-                &raw mut self.state_ctx_mut().vm.mp_loaded_modules_dict.map,
-                module_name_obj,
-                mp_map_lookup_kind_t::MP_MAP_LOOKUP,
-            )
-        };
-
-        if !loaded_module_elem.is_null() {
-            return unsafe { *loaded_module_elem }.value;
+        let loaded_module = self
+            .state_ctx()
+            .vm
+            .mp_loaded_modules_dict
+            .map
+            .get(module_name_obj);
+        if let Some(module) = loaded_module {
+            return module;
         }
 
         let builtin = unsafe { mp_module_get_builtin(qstr, false) };

@@ -7,37 +7,10 @@ use core::{
     ffi::{c_char, c_void},
 };
 
-use crate::{nlr::NlrBuf, obj::Obj, qstr::QstrPool};
+use crate::{map::Dict, nlr::NlrBuf, obj::Obj, qstr::QstrPool};
 
 /// From: `py/misc.h`
 pub type mp_rom_error_text_t = *const c_char;
-
-/// From: `py/obj.h`
-#[derive(Clone, Copy)]
-#[repr(C)]
-pub struct mp_map_elem_t {
-    pub key: Obj,
-    pub value: Obj,
-}
-
-/// From: `py/obj.h`
-#[repr(C)]
-pub struct mp_map_t {
-    // this is actually 4 bitfields
-    pub used: usize,
-    pub alloc: usize,
-    pub table: *mut mp_map_elem_t,
-}
-
-/// From: `py/obj.h`
-#[allow(dead_code)]
-#[repr(C)]
-pub enum mp_map_lookup_kind_t {
-    MP_MAP_LOOKUP = 0,
-    MP_MAP_LOOKUP_ADD_IF_NOT_FOUND = 1,
-    MP_MAP_LOOKUP_REMOVE_IF_FOUND = 2,
-    MP_MAP_LOOKUP_ADD_IF_NOT_FOUND_OR_REMOVE_IF_FOUND = 3,
-}
 
 /// From: `py/obj.h`
 ///
@@ -81,13 +54,6 @@ pub struct mp_obj_str_t {
     pub data: *const u8,
 }
 
-/// From: `py/obj.h`
-#[repr(C)]
-pub struct mp_obj_dict_t {
-    pub base: mp_obj_base_t,
-    pub map: mp_map_t,
-}
-
 /// From: `py/nlr.h`
 pub type nlr_jump_callback_fun_t = extern "C" fn(ctx: *mut c_void);
 
@@ -121,8 +87,8 @@ pub struct mp_state_thread_t {
     pub stack_top: *mut c_char,
     pub gc_lock_depth: u16,
 
-    pub dict_locals: *mut mp_obj_dict_t,
-    pub dict_globals: *mut mp_obj_dict_t,
+    pub dict_locals: *mut Dict,
+    pub dict_globals: *mut Dict,
 
     pub nlr_top: *mut NlrBuf,
     pub nlr_jump_callback_top: *mut nlr_jump_callback_node_t,
@@ -141,9 +107,9 @@ pub struct mp_state_vm_t {
     pub last_pool: *mut QstrPool,
     pub mp_emergency_exception_obj: mp_obj_exception_t,
     pub mp_kbd_exception: mp_obj_exception_t,
-    pub mp_loaded_modules_dict: mp_obj_dict_t,
-    pub dict_main: mp_obj_dict_t,
-    pub mp_module_builtins_override_dict: *mut mp_obj_dict_t,
+    pub mp_loaded_modules_dict: Dict,
+    pub dict_main: Dict,
+    pub mp_module_builtins_override_dict: *mut Dict,
     // more unneeded fields
 }
 
@@ -171,13 +137,4 @@ unsafe extern "C" {
 
     /// From: `py/runtime.h`
     pub fn mp_raise_ValueError(msg: mp_rom_error_text_t) -> !;
-
-    // ----- Map methods ----- //
-
-    /// From: `py/obj.h`
-    pub fn mp_map_lookup(
-        map: *mut mp_map_t,
-        index: Obj,
-        lookup_kind: mp_map_lookup_kind_t,
-    ) -> *mut mp_map_elem_t;
 }
