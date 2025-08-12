@@ -8,6 +8,7 @@ mod state;
 
 pub mod obj;
 pub mod qstr;
+pub mod vstr;
 
 use core::sync::atomic::{AtomicBool, Ordering};
 

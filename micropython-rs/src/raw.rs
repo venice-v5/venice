@@ -30,13 +30,7 @@ pub type qstr_hash_t = u16;
 /// From: `py/qstr.h`
 pub type qstr_len_t = u8;
 
-#[repr(C)]
-pub struct vstr {
-    alloc: usize,
-    len: usize,
-    buf: *mut c_char,
-    fixed_buf: bool,
-}
+pub type vstr = crate::vstr::Vstr;
 
 /// From: `py/qstr.h`
 #[repr(C)]
