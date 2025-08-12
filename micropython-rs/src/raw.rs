@@ -198,21 +198,10 @@ unsafe extern "C" {
 
     pub static mp_type_str: mp_obj_type_t;
 
-    // ----- Initialization ----- //
-
-    /// From: `py/runtime.h`
-    pub fn mp_init();
-
-    /// From: `py/runtime.h`
-    pub fn mp_deinit();
-
-    /// From: `py/stackctrl.h`
-    pub fn mp_stack_ctrl_init();
+    // ----- Garbage collection ----- //
 
     /// From: `py/gc.h`
     pub fn gc_init(start: *mut c_void, end: *mut c_void);
-
-    // ----- Garbage collection ----- //
 
     /// From: `py/gc.h`
     pub fn gc_collect_start();
