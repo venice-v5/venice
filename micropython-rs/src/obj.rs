@@ -1,9 +1,6 @@
 use crate::{
     qstr::Qstr,
-    raw::{
-        m_malloc, mp_module_context_t, mp_obj_base_t, mp_obj_str_t, mp_obj_type_t, mp_type_module,
-        mp_type_str,
-    },
+    raw::{m_malloc, mp_obj_base_t, mp_obj_str_t, mp_obj_type_t, mp_type_str},
 };
 
 /// MicroPython object
@@ -24,25 +21,24 @@ pub struct Obj(u32);
 
 /// # Safety
 ///
-/// Object representation must begin with [`mp_obj_base_t`]
+/// Object representation must begin with an [`mp_obj_base_t`], always initialized to `TYPE_OBJ`
 pub unsafe trait ObjType: Sized {
     const TYPE_OBJ: *const mp_obj_type_t;
-
-    fn new() -> *mut Self {
-        unsafe {
-            let this = m_malloc(size_of::<Self>()) as *mut mp_obj_base_t;
-            (*this).r#type = Self::TYPE_OBJ;
-            this as *mut Self
-        }
-    }
 }
 
 impl Obj {
     pub const NULL: Self = unsafe { Self::from_raw(0) };
     pub const NONE: Self = Self::from_immediate(0);
 
-    pub fn new<T: ObjType>() -> Self {
-        Self(T::new() as u32)
+    pub fn new<T: ObjType>(o: T) -> Option<Self> {
+        unsafe {
+            let mem = m_malloc(size_of::<Self>());
+            if mem.is_null() {
+                return None;
+            }
+            (mem as *mut T).write(o);
+            Some(Self(mem as u32))
+        }
     }
 
     pub const unsafe fn from_raw(inner: u32) -> Self {
@@ -99,10 +95,6 @@ impl Obj {
 
         Some(ptr as *mut T)
     }
-}
-
-unsafe impl ObjType for mp_module_context_t {
-    const TYPE_OBJ: *const mp_obj_type_t = &raw const mp_type_module;
 }
 
 unsafe impl ObjType for mp_obj_str_t {

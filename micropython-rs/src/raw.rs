@@ -122,44 +122,6 @@ pub struct mp_obj_dict_t {
     pub map: mp_map_t,
 }
 
-/// From: `py/obj.h`
-#[repr(C)]
-pub struct mp_obj_module_t {
-    pub base: mp_obj_base_t,
-    pub globals: *mut mp_obj_dict_t,
-}
-
-/// From: `py/bc.h`
-#[repr(C)]
-pub struct mp_module_constants_t {
-    pub qstr_table: *mut qstr_short_t,
-    pub obj_table: *mut mp_obj_t,
-}
-
-/// From: `py/bc.h`
-#[repr(C)]
-pub struct mp_module_context_t {
-    pub module: mp_obj_module_t,
-    pub constants: mp_module_constants_t,
-}
-
-/// From: `py/emitglue.h`
-#[repr(C)]
-pub struct mp_raw_code_t {
-    pub proto_fun_indicator: [u8; 2],
-    pub kind: u8,
-    pub is_generator: bool,
-    pub fun_data: *const c_void,
-    pub children: *mut *mut mp_raw_code_t,
-}
-
-/// From: `py/bc.h`
-#[repr(C)]
-pub struct mp_compiled_module_t {
-    pub context: *mut mp_module_context_t,
-    pub rc: *const mp_raw_code_t,
-}
-
 pub const NLR_REG_COUNT: usize = 16;
 
 /// From: `py/nlr.h`
@@ -257,7 +219,6 @@ unsafe extern "C" {
     /// Currently, MicroPython threads are disabled, so this is always the active [`StateCtx`].
     pub static mp_state_ctx: UnsafeCell<mp_state_ctx_t>;
 
-    pub static mp_type_module: mp_obj_type_t;
     pub static mp_type_str: mp_obj_type_t;
 
     // ----- Initialization ----- //
@@ -294,21 +255,6 @@ unsafe extern "C" {
     pub fn nlr_push(nlr: *mut nlr_buf_t) -> c_uint;
     /// From: `py/nlr.h`
     pub fn nlr_pop();
-
-    // ----- Bytecode loading ----- //
-
-    /// From: `py/persistentcode.h`
-    pub fn mp_raw_code_load_mem(buf: *const u8, len: usize, ctx: *mut mp_compiled_module_t);
-
-    /// From: `py/emitglue.h`
-    pub fn mp_make_function_from_proto_fun(
-        proto_fun: mp_proto_fun_t,
-        context: *const mp_module_context_t,
-        def_args: *const mp_obj_t,
-    ) -> mp_obj_t;
-
-    /// From: `py/runtime.h`
-    pub fn mp_call_function_0(fun: mp_obj_t) -> mp_obj_t;
 
     // ----- Modules ----- //
 
