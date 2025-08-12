@@ -21,7 +21,6 @@ unsafe impl Sync for GdContainer {}
 
 pub struct GlobalData {
     pub module_map: HashMap<&'static [u8], &'static [u8]>,
-    pub gc_init: bool,
 }
 
 impl MicroPython {

@@ -1,8 +1,11 @@
-use core::sync::atomic::{AtomicBool, Ordering};
+use core::{
+    ffi::c_void,
+    sync::atomic::{AtomicBool, Ordering},
+};
 
 use hashbrown::HashMap;
 
-use crate::{MicroPython, state::GlobalData};
+use crate::{MicroPython, gc::gc_init, state::GlobalData};
 
 pub static MICROPYTHON_CREATED: AtomicBool = AtomicBool::new(false);
 
@@ -21,7 +24,7 @@ unsafe extern "C" {
 }
 
 impl MicroPython {
-    pub fn new() -> Option<Self> {
+    pub unsafe fn new(heap_start: *mut u8, heap_end: *mut u8) -> Option<Self> {
         if let Err(_) =
             MICROPYTHON_CREATED.compare_exchange(false, true, Ordering::Relaxed, Ordering::Relaxed)
         {
@@ -32,6 +35,7 @@ impl MicroPython {
             __libc_init_array();
 
             mp_stack_ctrl_init();
+            gc_init(heap_start as *mut c_void, heap_end as *mut c_void);
             mp_init();
         }
 
@@ -40,7 +44,6 @@ impl MicroPython {
         unsafe {
             this.set_global_data(GlobalData {
                 module_map: HashMap::new(),
-                gc_init: false,
             });
         }
 

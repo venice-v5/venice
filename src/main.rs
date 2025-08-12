@@ -137,9 +137,10 @@ unsafe fn startup() -> ! {
             .expect("couldn't claim heap memory");
     }
 
-    let mut mp = MicroPython::new().unwrap();
+    let mut mp =
+        unsafe { MicroPython::new(&raw mut __python_heap_start, &raw mut __python_heap_end) }
+            .unwrap();
 
-    unsafe { mp.init_gc(&raw mut __python_heap_start, &raw mut __python_heap_end) };
     mp.add_vpt(
         unsafe { Vpt::from_ptr(&raw const __bytecode_ram_start, VENDOR_ID) }
             .expect("invalid VPT was uploaded"),

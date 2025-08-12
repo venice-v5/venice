@@ -4,7 +4,7 @@ use crate::MicroPython;
 
 unsafe extern "C" {
     /// From: `py/gc.h`
-    fn gc_init(start: *mut c_void, end: *mut c_void);
+    pub fn gc_init(start: *mut c_void, end: *mut c_void);
 
     /// From: `py/gc.h`
     fn gc_collect_start();
@@ -16,7 +16,7 @@ unsafe extern "C" {
     fn gc_collect_end();
 
     /// From: `py/malloc.h`
-    pub(crate) fn m_malloc(size: usize) -> *mut c_void;
+    pub fn m_malloc(size: usize) -> *mut c_void;
 }
 
 #[unsafe(naked)]
@@ -43,18 +43,6 @@ extern "C" fn collect_gc_regs(regs: &mut [u32; 10]) -> u32 {
 }
 
 impl MicroPython {
-    pub unsafe fn init_gc(&mut self, start: *mut u8, end: *mut u8) {
-        if self.global_data().gc_init {
-            return;
-        }
-
-        unsafe {
-            gc_init(start as *mut c_void, end as *mut c_void);
-        }
-
-        self.global_data_mut().gc_init = true;
-    }
-
     pub fn collect_garbage(&mut self) {
         let mut regs = [0; 10];
         let sp = collect_gc_regs(&mut regs);
