@@ -14,7 +14,8 @@ extern "C" fn mp_hal_stdout_tx_strn_cooked(str: *const c_char, len: u32) {
 
 #[unsafe(no_mangle)]
 unsafe extern "C" fn gc_collect() {
-    MicroPython::reenter(|ptr| unsafe { ptr.expect("reentry_failed").as_mut().collect_garbage() });
+    MicroPython::reenter(|mut ptr| unsafe { ptr.as_mut().collect_garbage() })
+        .expect("reentry failed");
 }
 
 #[unsafe(no_mangle)]
