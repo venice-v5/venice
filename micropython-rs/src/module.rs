@@ -8,7 +8,7 @@ use crate::{
     map::Dict,
     obj::{Obj, ObjType},
     qstr::{Qstr, QstrShort},
-    raw::{mp_obj_base_t, mp_obj_type_t, mp_raise_ValueError},
+    raw::{mp_obj_base_t, mp_obj_type_t},
 };
 
 unsafe extern "C" {
@@ -115,41 +115,5 @@ impl MicroPython {
 
     pub fn builtin_module(&self, name: Qstr, extensible: bool) -> Obj {
         unsafe { mp_module_get_builtin(name, extensible) }
-    }
-
-    pub fn import(&mut self, module_name_obj: Obj, _fromtuple: Obj, level: i32) -> Obj {
-        let module_name = module_name_obj
-            .get_str()
-            .expect("module name not a qstr or a str");
-
-        if level != 0 {
-            unimplemented!("relative imports not supported");
-        }
-
-        if module_name.is_empty() {
-            unsafe {
-                mp_raise_ValueError(null());
-            }
-        }
-
-        let qstr = Qstr::from_bytes(module_name);
-
-        let loaded_module = self
-            .state_ctx()
-            .vm
-            .mp_loaded_modules_dict
-            .map
-            .get(module_name_obj);
-        if let Some(module) = loaded_module {
-            return module;
-        }
-
-        let builtin = self.builtin_module(qstr, false);
-        if !builtin.is_null() {
-            return builtin;
-        }
-
-        let bytecode = self.module_map.get(module_name).expect("module not found");
-        self.exec_module(module_name_obj, *bytecode)
     }
 }

@@ -6,9 +6,6 @@ use core::ffi::{c_char, c_void};
 
 use crate::{map::Dict, nlr::NlrBuf, obj::Obj, qstr::QstrPool};
 
-/// From: `py/misc.h`
-pub type mp_rom_error_text_t = *const c_char;
-
 /// From: `py/obj.h`
 ///
 /// This struct actually corresponds to `mp_obj_full_type_t`.
@@ -124,9 +121,4 @@ unsafe extern "C" {
     // ----- Statics ----- //
 
     pub static mp_type_str: mp_obj_type_t;
-
-    // ----- Exceptions ----- //
-
-    /// From: `py/runtime.h`
-    pub fn mp_raise_ValueError(msg: mp_rom_error_text_t) -> !;
 }

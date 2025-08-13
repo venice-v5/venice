@@ -1,8 +1,9 @@
+mod import;
 mod readline;
 
 use core::ffi::{c_char, c_void};
 
-use micropython_rs::{MicroPython, obj::Obj};
+use micropython_rs::MicroPython;
 
 use crate::serial::print_bytes;
 
@@ -21,27 +22,6 @@ unsafe extern "C" fn gc_collect() {
 #[unsafe(no_mangle)]
 extern "C" fn nlr_jump_fail(_val: *mut c_void) -> ! {
     panic!("NLR jump fail");
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn venice_import(_arg_count: usize, _args: *const Obj) -> Obj {
-    todo!()
-    // let args = unsafe { core::slice::from_raw_parts(args, arg_count) };
-
-    // let module_name_obj = args[0];
-    // let (fromtuple, level) = if args.len() >= 4 {
-    //     let level = args[4].as_small_int();
-    //     if level < 0 {
-    //         // TODO: make safe
-    //         unsafe { mp_raise_ValueError(null()) }
-    //     } else {
-    //         (args[3], level)
-    //     }
-    // } else {
-    //     (Obj::NONE, 0)
-    // };
-
-    // MicroPython::reenter(|mp| mp.import(module_name_obj, fromtuple, level))
 }
 
 #[allow(non_upper_case_globals)]
