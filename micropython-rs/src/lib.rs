@@ -5,7 +5,7 @@ mod init;
 mod module;
 mod nlr;
 mod raw;
-mod reentrance;
+mod reentrancy;
 mod state;
 
 pub(crate) mod print;

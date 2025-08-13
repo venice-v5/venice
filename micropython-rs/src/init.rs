@@ -5,7 +5,7 @@ use core::{
 
 use hashbrown::HashMap;
 
-use crate::{MicroPython, gc::gc_init, reentrance::REENTRY_PTR};
+use crate::{MicroPython, gc::gc_init, reentrancy::REENTRY_PTR};
 
 pub static MICROPYTHON_CREATED: AtomicBool = AtomicBool::new(false);
 
