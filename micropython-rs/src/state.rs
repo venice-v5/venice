@@ -26,8 +26,4 @@ impl MicroPython {
     pub fn state_ctx(&self) -> &mp_state_ctx_t {
         unsafe { &*mp_state_ctx.get() }
     }
-
-    pub fn state_ctx_mut(&mut self) -> &mut mp_state_ctx_t {
-        unsafe { &mut *mp_state_ctx.get() }
-    }
 }
