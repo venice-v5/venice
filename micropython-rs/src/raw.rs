@@ -2,10 +2,7 @@
 
 #![allow(non_camel_case_types)]
 
-use core::{
-    cell::UnsafeCell,
-    ffi::{c_char, c_void},
-};
+use core::ffi::{c_char, c_void};
 
 use crate::{map::Dict, nlr::NlrBuf, obj::Obj, qstr::QstrPool};
 
@@ -125,11 +122,6 @@ pub struct mp_state_ctx_t {
 
 unsafe extern "C" {
     // ----- Statics ----- //
-
-    /// From: `py/mp_state.h`
-    ///
-    /// Currently, MicroPython threads are disabled, so this is always the active [`StateCtx`].
-    pub static mp_state_ctx: UnsafeCell<mp_state_ctx_t>;
 
     pub static mp_type_str: mp_obj_type_t;
 
