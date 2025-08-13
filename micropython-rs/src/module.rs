@@ -113,6 +113,10 @@ impl MicroPython {
         context_obj
     }
 
+    pub fn builtin_module(&self, name: Qstr, extensible: bool) -> Obj {
+        unsafe { mp_module_get_builtin(name, extensible) }
+    }
+
     pub fn import(&mut self, module_name_obj: Obj, _fromtuple: Obj, level: i32) -> Obj {
         let module_name = module_name_obj
             .get_str()
@@ -140,7 +144,7 @@ impl MicroPython {
             return module;
         }
 
-        let builtin = unsafe { mp_module_get_builtin(qstr, false) };
+        let builtin = self.builtin_module(qstr, false);
         if !builtin.is_null() {
             return builtin;
         }
