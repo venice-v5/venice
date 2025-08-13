@@ -47,11 +47,11 @@ impl Obj {
     }
 
     pub const fn from_immediate(imm: u32) -> Self {
-        Self(imm << 3 & 0b110)
+        Self(imm << 3 | 0b110)
     }
 
     pub fn from_qstr(qstr: Qstr) -> Self {
-        Self((qstr.index() as u32) << 3 & 0b010)
+        Self((qstr.index() as u32) << 3 | 0b010)
     }
 
     pub const fn as_small_int(self) -> i32 {
