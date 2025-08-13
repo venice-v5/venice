@@ -39,15 +39,6 @@ pub struct mp_obj_base_t {
     pub r#type: *const mp_obj_type_t,
 }
 
-/// From: `py/objstr.h`
-#[repr(C)]
-pub struct mp_obj_str_t {
-    pub base: mp_obj_base_t,
-    pub hash: usize,
-    pub len: usize,
-    pub data: *const u8,
-}
-
 /// From: `py/nlr.h`
 pub type nlr_jump_callback_fun_t = extern "C" fn(ctx: *mut c_void);
 
@@ -115,10 +106,4 @@ pub struct mp_state_ctx_t {
     pub thread: mp_state_thread_t,
     pub vm: mp_state_vm_t,
     // more unneeded fields
-}
-
-unsafe extern "C" {
-    // ----- Statics ----- //
-
-    pub static mp_type_str: mp_obj_type_t;
 }

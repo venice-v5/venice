@@ -1,7 +1,8 @@
 use crate::{
     gc::m_malloc,
     qstr::Qstr,
-    raw::{mp_obj_base_t, mp_obj_str_t, mp_obj_type_t, mp_type_str},
+    raw::{mp_obj_base_t, mp_obj_type_t},
+    str::Str,
 };
 
 /// MicroPython object
@@ -77,14 +78,14 @@ impl Obj {
             return Some(qstr.bytes());
         }
 
-        if let Some(str) = Self::as_obj::<mp_obj_str_t>(self) {
-            return Some(unsafe { core::slice::from_raw_parts((*str).data, (*str).len) });
+        if let Some(str) = Self::as_obj::<Str>(self) {
+            return Some(str.data());
         }
 
         None
     }
 
-    pub fn as_obj<T: ObjType>(&self) -> Option<*mut T> {
+    pub fn as_obj_raw<T: ObjType>(&self) -> Option<*mut T> {
         if self.0 & 0b11 != 0 {
             return None;
         }
@@ -96,8 +97,8 @@ impl Obj {
 
         Some(ptr as *mut T)
     }
-}
 
-unsafe impl ObjType for mp_obj_str_t {
-    const TYPE_OBJ: *const mp_obj_type_t = &raw const mp_type_str;
+    pub fn as_obj<T: ObjType>(&self) -> Option<&T> {
+        self.as_obj_raw().map(|ptr| unsafe { &*ptr })
+    }
 }

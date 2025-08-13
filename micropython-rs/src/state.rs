@@ -3,7 +3,7 @@ use core::cell::UnsafeCell;
 use hashbrown::HashMap;
 use venice_program_table::Vpt;
 
-use crate::{MicroPython, raw::mp_state_ctx_t};
+use crate::{MicroPython, map::Dict, raw::mp_state_ctx_t};
 
 unsafe extern "C" {
     /// From: `py/mp_state.h`
@@ -25,5 +25,11 @@ impl MicroPython {
 
     pub fn state_ctx(&self) -> &mp_state_ctx_t {
         unsafe { &*mp_state_ctx.get() }
+    }
+
+    pub fn globals_dict(&self) -> &Dict {
+        // SAFETY: As long as `state_ctx` is not modified by the program, safety is ensured by
+        // MicroPython.
+        unsafe { &*self.state_ctx().thread.dict_globals }
     }
 }

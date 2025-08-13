@@ -1,4 +1,29 @@
+use alloc::vec::Vec;
+
 use micropython_rs::{MicroPython, obj::Obj, qstr::Qstr};
+
+pub fn absolute_name(mp: &MicroPython, mut level: i32, module_name: &[u8]) -> Vec<u8> {
+    let qstr_obj = Obj::from_qstr(Qstr::from_bytes(b"__name__"));
+    let current_module_name_obj = mp.globals_dict().map.get(qstr_obj).unwrap();
+    let current_module_name = current_module_name_obj.get_str().unwrap();
+
+    let mut p = current_module_name.len();
+    while level > 0 && p != 0 {
+        p -= 1;
+        if module_name[p] == b'.' {
+            level -= 1;
+        }
+    }
+
+    let chopped_module_name = &current_module_name[p..];
+    // add a byte for the dot
+    let mut absolute_name = Vec::with_capacity(chopped_module_name.len() + module_name.len() + 1);
+    absolute_name.extend_from_slice(chopped_module_name);
+    absolute_name.push(b'.');
+    absolute_name.extend_from_slice(module_name);
+
+    absolute_name
+}
 
 pub fn import(mp: &mut MicroPython, module_name_obj: Obj, _fromtuple: Obj, level: i32) -> Obj {
     let module_name = module_name_obj

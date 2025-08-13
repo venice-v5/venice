@@ -97,7 +97,7 @@ impl MicroPython {
         };
 
         let context_obj = Obj::new::<ModuleContext>(context).unwrap();
-        let context_ptr = context_obj.as_obj().unwrap();
+        let context_ptr = context_obj.as_obj_raw().unwrap();
 
         let mut cm = CompiledModule {
             context: context_ptr,
