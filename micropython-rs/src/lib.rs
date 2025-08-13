@@ -15,16 +15,8 @@ pub mod obj;
 pub mod qstr;
 pub mod vstr;
 
-use venice_program_table::Vpt;
+use hashbrown::HashMap;
 
-pub struct MicroPython(());
-
-impl MicroPython {
-    pub fn add_vpt(&mut self, vpt: Vpt<'static>) {
-        for program in vpt.program_iter() {
-            self.global_data_mut()
-                .module_map
-                .insert(program.name(), program.payload());
-        }
-    }
+pub struct MicroPython {
+    module_map: HashMap<&'static [u8], &'static [u8]>,
 }

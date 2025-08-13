@@ -1,30 +1,27 @@
 use core::{
-    mem::ManuallyDrop,
-    sync::atomic::{AtomicBool, Ordering},
+    ptr::NonNull,
+    sync::atomic::{AtomicPtr, Ordering},
 };
 
 use crate::MicroPython;
 
-pub static REENTRANCE_ALLOWED: AtomicBool = AtomicBool::new(false);
+pub static REENTRY_PTR: AtomicPtr<MicroPython> = AtomicPtr::new(core::ptr::null_mut());
 
 impl MicroPython {
-    pub fn allow_reentrance<R>(&mut self, f: impl FnOnce() -> R) -> R {
-        let old = REENTRANCE_ALLOWED.swap(true, Ordering::Relaxed);
+    pub(crate) fn allow_reentry<F, R>(&mut self, f: F) -> R
+    where
+        F: FnOnce() -> R,
+    {
+        let restore_ptr = REENTRY_PTR.swap(self as *mut Self, Ordering::Relaxed);
         let ret = f();
-        REENTRANCE_ALLOWED.store(old, Ordering::Relaxed);
+        REENTRY_PTR.store(restore_ptr, Ordering::Relaxed);
         ret
     }
 
-    pub fn reenter<R>(f: impl FnOnce(&mut Self) -> R) -> R {
-        match REENTRANCE_ALLOWED.compare_exchange(true, false, Ordering::Release, Ordering::Acquire)
-        {
-            Ok(_) => {
-                let mut this = ManuallyDrop::new(Self(()));
-                let ret = f(&mut this);
-                REENTRANCE_ALLOWED.store(true, Ordering::Release);
-                ret
-            }
-            Err(_) => panic!("reetrance attempted while prohibited"),
-        }
+    pub fn reenter<R>(f: impl FnOnce(Option<NonNull<Self>>) -> R) -> R {
+        let ptr = REENTRY_PTR.swap(core::ptr::null_mut(), Ordering::Relaxed);
+        let ret = f(NonNull::new(ptr));
+        REENTRY_PTR.store(ptr, Ordering::Relaxed);
+        ret
     }
 }

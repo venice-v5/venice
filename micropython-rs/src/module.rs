@@ -107,7 +107,7 @@ impl MicroPython {
         self.push_nlr(|this| unsafe {
             mp_raw_code_load_mem(bytecode.as_ptr(), bytecode.len(), &raw mut cm);
             let f = mp_make_function_from_proto_fun(cm.rc.cast(), context_ptr, null());
-            this.allow_reentrance(|| mp_call_function_0(f));
+            this.allow_reentry(|| mp_call_function_0(f));
         });
 
         context_obj
@@ -145,11 +145,7 @@ impl MicroPython {
             return builtin;
         }
 
-        let bytecode = self
-            .global_data()
-            .module_map
-            .get(module_name)
-            .expect("module not found");
+        let bytecode = self.module_map.get(module_name).expect("module not found");
         self.exec_module(module_name_obj, *bytecode)
     }
 }

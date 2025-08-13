@@ -5,7 +5,7 @@ use core::{
 
 use hashbrown::HashMap;
 
-use crate::{MicroPython, gc::gc_init, state::GlobalData};
+use crate::{MicroPython, gc::gc_init, reentrance::REENTRY_PTR};
 
 pub static MICROPYTHON_CREATED: AtomicBool = AtomicBool::new(false);
 
@@ -39,15 +39,9 @@ impl MicroPython {
             mp_init();
         }
 
-        let mut this = Self(());
-
-        unsafe {
-            this.set_global_data(GlobalData {
-                module_map: HashMap::new(),
-            });
-        }
-
-        Some(this)
+        Some(Self {
+            module_map: HashMap::new(),
+        })
     }
 }
 
@@ -56,6 +50,7 @@ impl Drop for MicroPython {
         unsafe {
             mp_deinit();
             __libc_fini_array();
+            REENTRY_PTR.store(core::ptr::null_mut(), Ordering::Relaxed);
         }
     }
 }

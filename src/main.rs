@@ -106,7 +106,7 @@ fn exit() -> ! {
 fn main(mut mpy: MicroPython) {
     let entrypoint_name = Qstr::from_bytes(b"__init__");
 
-    let entrypoint = match mpy.global_data().module_map.get(entrypoint_name.bytes()) {
+    let entrypoint = match mpy.module_map().get(entrypoint_name.bytes()) {
         Some(bc) => bc,
         None => {
             println!("__init__ module not found, try adding __init__.py to your project");
