@@ -1,4 +1,7 @@
-use crate::{obj::Obj, raw::mp_obj_base_t};
+use crate::{
+    obj::{Obj, ObjType},
+    raw::{mp_obj_base_t, mp_obj_type_t},
+};
 
 unsafe extern "C" {
     /// From: `py/obj.h`
@@ -73,4 +76,13 @@ impl Map {
             }
         }
     }
+}
+
+unsafe extern "C" {
+    /// From: `py/obj.h
+    static mp_type_dict: mp_obj_type_t;
+}
+
+unsafe impl ObjType for Dict {
+    const TYPE_OBJ: *const mp_obj_type_t = &raw const mp_type_dict;
 }

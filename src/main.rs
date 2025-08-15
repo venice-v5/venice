@@ -14,7 +14,7 @@ use core::{
     sync::atomic::{AtomicBool, Ordering},
 };
 
-use micropython_rs::{MicroPython, obj::Obj, qstr::Qstr};
+use micropython_rs::{MicroPython, qstr::Qstr};
 use talc::{ErrOnOom, Span, Talc, Talck};
 use venice_program_table::Vpt;
 
@@ -114,8 +114,7 @@ fn main(mut mpy: MicroPython) {
         }
     };
 
-    let qstr_obj = Obj::from_qstr(entrypoint_name);
-    mpy.exec_module(qstr_obj, *entrypoint);
+    mpy.exec_module(entrypoint_name, *entrypoint);
 }
 
 /// # Safety

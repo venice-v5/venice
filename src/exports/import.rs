@@ -1,10 +1,10 @@
-use alloc::vec::Vec;
+use alloc::{borrow::Cow, vec::Vec};
 
 use micropython_rs::{MicroPython, obj::Obj, qstr::Qstr};
 
 pub fn absolute_name(mp: &MicroPython, mut level: i32, module_name: &[u8]) -> Vec<u8> {
     let qstr_obj = Obj::from_qstr(Qstr::from_bytes(b"__name__"));
-    let current_module_name_obj = mp.globals_dict().map.get(qstr_obj).unwrap();
+    let current_module_name_obj = mp.globals().map.get(qstr_obj).unwrap();
     let current_module_name = current_module_name_obj.get_str().unwrap();
 
     let mut p = current_module_name.len();
@@ -16,7 +16,7 @@ pub fn absolute_name(mp: &MicroPython, mut level: i32, module_name: &[u8]) -> Ve
     }
 
     let chopped_module_name = &current_module_name[p..];
-    // add a byte for the dot
+    // allocate and add a byte for the dot
     let mut absolute_name = Vec::with_capacity(chopped_module_name.len() + module_name.len() + 1);
     absolute_name.extend_from_slice(chopped_module_name);
     absolute_name.push(b'.');
@@ -25,13 +25,44 @@ pub fn absolute_name(mp: &MicroPython, mut level: i32, module_name: &[u8]) -> Ve
     absolute_name
 }
 
-pub fn import(mp: &mut MicroPython, module_name_obj: Obj, _fromtuple: Obj, level: i32) -> Obj {
-    let module_name = module_name_obj
-        .get_str()
-        .expect("module name not a qstr or a str");
+pub fn process_import_at_level(
+    mp: &mut MicroPython,
+    full_name: Qstr,
+    level_name: Qstr,
+    outer_module_obj: Obj,
+) -> Obj {
+    if let Some(loaded) = mp
+        .state_ctx()
+        .vm
+        .mp_loaded_modules_dict
+        .map
+        .get(Obj::from_qstr(full_name))
+    {
+        return loaded;
+    }
+
+    if outer_module_obj.is_null() {
+        let builtin = mp.builtin_module(level_name, false);
+        if !builtin.is_null() {
+            return builtin;
+        }
+    }
+
+    if let Some(bc) = mp.module_map().get(full_name.bytes()) {
+        mp.exec_module(full_name, bc)
+    } else {
+        panic!(
+            "module {} not found",
+            str::from_utf8(full_name.bytes()).unwrap_or("<invalid utf8 module name>")
+        )
+    }
+}
+
+pub fn import(mp: &mut MicroPython, module_name_qstr: Qstr, _fromtuple: Obj, level: i32) -> Obj {
+    let mut module_name = Cow::Borrowed(module_name_qstr.bytes());
 
     if level != 0 {
-        unimplemented!("relative imports not supported");
+        module_name = Cow::Owned(absolute_name(mp, level, &module_name));
     }
 
     if module_name.is_empty() {
@@ -39,25 +70,26 @@ pub fn import(mp: &mut MicroPython, module_name_obj: Obj, _fromtuple: Obj, level
         panic!("module name cannot be empty");
     }
 
-    let qstr = Qstr::from_bytes(module_name);
+    let mut outer_module_obj = Obj::NULL;
+    let mut last_name = 0;
 
-    let loaded_module = mp
-        .state_ctx()
-        .vm
-        .mp_loaded_modules_dict
-        .map
-        .get(module_name_obj);
-    if let Some(module) = loaded_module {
-        return module;
+    for (mut i, &c) in module_name.iter().enumerate() {
+        if c == b'.' || i == module_name.len() - 1 {
+            if c != b'.' {
+                i += 1;
+            }
+
+            let full_name = Qstr::from_bytes(&module_name[..i]);
+            let level_name = Qstr::from_bytes(&module_name[last_name..i]);
+
+            let module_obj = process_import_at_level(mp, full_name, level_name, outer_module_obj);
+            outer_module_obj = module_obj;
+
+            last_name = i + 1;
+        }
     }
 
-    let builtin = mp.builtin_module(qstr, false);
-    if !builtin.is_null() {
-        return builtin;
-    }
-
-    let bytecode = mp.module_map().get(module_name).expect("module not found");
-    mp.exec_module(module_name_obj, *bytecode)
+    outer_module_obj
 }
 
 #[unsafe(no_mangle)]
@@ -77,6 +109,13 @@ unsafe extern "C" fn venice_import(arg_count: usize, args: *const Obj) -> Obj {
         (Obj::NONE, 0)
     };
 
-    MicroPython::reenter(|mut mp| import(unsafe { mp.as_mut() }, module_name_obj, fromtuple, level))
-        .expect("reentry failed")
+    MicroPython::reenter(|mut mp| {
+        import(
+            unsafe { mp.as_mut() },
+            Qstr::from_bytes(module_name_obj.get_str().unwrap()),
+            fromtuple,
+            level,
+        )
+    })
+    .expect("reentry failed")
 }

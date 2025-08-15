@@ -1,7 +1,4 @@
-use core::{
-    ffi::c_void,
-    ptr::{null, null_mut},
-};
+use core::{ffi::c_void, ptr::null};
 
 use crate::{
     MicroPython,
@@ -29,6 +26,9 @@ unsafe extern "C" {
 
     /// From: `py/objmodule.h`
     fn mp_module_get_builtin(module_name: Qstr, extensible: bool) -> Obj;
+
+    /// From: `py/obj.h`
+    fn mp_obj_new_module(module_name: Qstr) -> Obj;
 }
 
 /// From: `py/emitglue.h`
@@ -76,27 +76,15 @@ pub struct CompiledModule {
     rc: *const RawCode,
 }
 
+impl ModuleContext {
+    pub fn new(name: Qstr) -> Obj {
+        unsafe { mp_obj_new_module(name) }
+    }
+}
+
 impl MicroPython {
-    pub fn exec_module(&mut self, name: Obj, bytecode: &[u8]) -> Obj {
-        let loaded_module = self.state_ctx().vm.mp_loaded_modules_dict.map.get(name);
-        if let Some(module) = loaded_module {
-            return module;
-        }
-
-        let context = ModuleContext {
-            module: Module {
-                base: mp_obj_base_t {
-                    r#type: &raw const mp_type_module,
-                },
-                globals: self.state_ctx().thread.dict_globals,
-            },
-            constants: ModuleConstants {
-                qstr_table: null_mut(),
-                obj_table: null_mut(),
-            },
-        };
-
-        let context_obj = Obj::new::<ModuleContext>(context).unwrap();
+    pub fn exec_module(&mut self, name: Qstr, bc: &[u8]) -> Obj {
+        let context_obj = ModuleContext::new(name);
         let context_ptr = context_obj.as_obj_raw().unwrap();
 
         let mut cm = CompiledModule {
@@ -104,11 +92,31 @@ impl MicroPython {
             rc: null(),
         };
 
+        let (old_globals, old_locals) = (
+            self.globals() as *const Dict as *mut Dict,
+            self.locals() as *const Dict as *mut Dict,
+        );
+        let new_globals = context_obj
+            .as_obj::<ModuleContext>()
+            .unwrap()
+            .module
+            .globals;
+
+        unsafe {
+            self.set_globals(new_globals);
+            self.set_locals(new_globals);
+        }
+
         self.push_nlr(|this| unsafe {
-            mp_raw_code_load_mem(bytecode.as_ptr(), bytecode.len(), &raw mut cm);
+            mp_raw_code_load_mem(bc.as_ptr(), bc.len(), &raw mut cm);
             let f = mp_make_function_from_proto_fun(cm.rc.cast(), context_ptr, null());
             this.allow_reentry(|| mp_call_function_0(f));
         });
+
+        unsafe {
+            self.set_globals(old_globals);
+            self.set_locals(old_locals);
+        }
 
         context_obj
     }

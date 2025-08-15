@@ -1,5 +1,7 @@
 use crate::{
+    MicroPython,
     gc::m_malloc,
+    print::{Print, PrintKind, mp_plat_print},
     qstr::Qstr,
     raw::{mp_obj_base_t, mp_obj_type_t},
     str::Str,
@@ -100,5 +102,17 @@ impl Obj {
 
     pub fn as_obj<T: ObjType>(&self) -> Option<&T> {
         self.as_obj_raw().map(|ptr| unsafe { &*ptr })
+    }
+}
+
+unsafe extern "C" {
+    fn mp_obj_print_helper(print: *const Print, o_in: Obj, kind: PrintKind);
+}
+
+impl MicroPython {
+    pub fn print(&mut self, obj: Obj, kind: PrintKind) {
+        unsafe {
+            mp_obj_print_helper(&raw const mp_plat_print, obj, kind);
+        }
     }
 }
