@@ -9,6 +9,7 @@ mod exports;
 mod serial;
 mod stubs;
 
+use alloc::string::String;
 use core::{
     arch::naked_asm,
     sync::atomic::{AtomicBool, Ordering},
@@ -38,7 +39,7 @@ static CODE_SIG: (vex_sdk::vcodesig, [u32; 4]) = (
 static ALLOCATOR: Talck<spin::Mutex<()>, ErrOnOom> = Talck::new(Talc::new(ErrOnOom));
 
 // TODO: pick another ID
-pub const VENDOR_ID: u32 = 0x11235813;
+const VENDOR_ID: u32 = 0x11235813;
 
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
@@ -104,17 +105,31 @@ fn exit() -> ! {
 }
 
 fn main(mut mpy: MicroPython) {
-    let entrypoint_name = Qstr::from_bytes(b"__init__");
+    const VENICE_PACKAGE_NAME_PROGRAM: &[u8] = b"__venice__package_name__";
 
-    let entrypoint = match mpy.module_map().get(entrypoint_name.bytes()) {
-        Some(bc) => bc,
-        None => {
-            println!("__init__ module not found, try adding __init__.py to your project");
-            exit();
-        }
-    };
+    let entrypoint_name = mpy
+        .module_map()
+        .get(VENICE_PACKAGE_NAME_PROGRAM)
+        .unwrap_or_else(|| {
+            panic!(
+                "malformed VPT: '{}' not present",
+                str::from_utf8(VENICE_PACKAGE_NAME_PROGRAM).unwrap()
+            )
+        });
 
-    mpy.push_nlr(|mpy| mpy.exec_module(entrypoint_name, entrypoint));
+    let entrypoint_qstr = Qstr::from_bytes(entrypoint_name);
+
+    let entrypoint = mpy
+        .module_map()
+        .get(entrypoint_qstr.bytes())
+        .unwrap_or_else(|| {
+            panic!(
+                "malformed VPT: package '{}' not present",
+                String::from_utf8_lossy(entrypoint_name)
+            )
+        });
+
+    mpy.push_nlr(|mpy| mpy.exec_module(entrypoint_qstr, entrypoint));
 }
 
 /// # Safety
