@@ -65,38 +65,32 @@ impl MicroPython {
         }
     }
 
-    pub fn push_nlr_callback<F, R, C, T>(
-        &mut self,
-        f: F,
-        callback: C,
-        data: T,
-        run_after_pop: bool,
-    ) -> R
+    pub fn push_nlr_callback<F, R, C>(&mut self, f: F, callback: C, run_after_pop: bool) -> R
     where
         F: FnOnce(&mut Self) -> R,
-        C: FnOnce(T),
+        C: FnOnce(&mut Self),
     {
-        extern "C" fn callback_bootstrap<C, T>(ctx_ptr: *mut c_void)
+        extern "C" fn callback_bootstrap<C>(ctx_ptr: *mut c_void)
         where
-            C: FnOnce(T),
+            C: FnOnce(&mut MicroPython),
         {
-            let ctx_ptr = ctx_ptr as *const NlrJumpCallbackNode<(C, T)>;
+            let ctx_ptr = ctx_ptr as *const NlrJumpCallbackNode<(*mut MicroPython, C)>;
             unsafe {
                 let ctx = core::ptr::read(ctx_ptr);
-                (ctx.data.0)(ctx.data.1)
+                (ctx.data.1)(&mut *ctx.data.0)
             }
         }
 
         let mut node = NlrJumpCallbackNode {
             prev: core::ptr::null(),
-            fun: callback_bootstrap::<C, T>,
-            data: (callback, data),
+            fun: callback_bootstrap::<C>,
+            data: (self as *mut Self, callback),
         };
 
         unsafe {
             nlr_push_jump_callback(
                 &raw mut node as *mut NlrJumpCallbackNode<()>,
-                callback_bootstrap::<C, T>,
+                callback_bootstrap::<C>,
             )
         };
         let ret = f(self);
