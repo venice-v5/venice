@@ -114,7 +114,7 @@ fn main(mut mpy: MicroPython) {
         }
     };
 
-    mpy.exec_module(entrypoint_name, *entrypoint);
+    mpy.push_nlr(|mpy| mpy.exec_module(entrypoint_name, entrypoint));
 }
 
 /// # Safety

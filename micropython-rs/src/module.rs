@@ -105,18 +105,19 @@ impl MicroPython {
         unsafe {
             self.set_globals(new_globals);
             self.set_locals(new_globals);
-        }
-
-        self.push_nlr(|this| unsafe {
             mp_raw_code_load_mem(bc.as_ptr(), bc.len(), &raw mut cm);
-            let f = mp_make_function_from_proto_fun(cm.rc.cast(), context_ptr, null());
-            this.allow_reentry(|| mp_call_function_0(f));
-        });
-
-        unsafe {
-            self.set_globals(old_globals);
-            self.set_locals(old_locals);
         }
+
+        let f = unsafe { mp_make_function_from_proto_fun(cm.rc.cast(), context_ptr, null()) };
+
+        self.push_nlr_callback(
+            |this| this.allow_reentry(|| unsafe { mp_call_function_0(f) }),
+            |this| unsafe {
+                this.set_globals(old_globals);
+                this.set_locals(old_locals);
+            },
+            true,
+        );
 
         context_obj
     }
