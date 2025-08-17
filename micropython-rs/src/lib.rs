@@ -9,6 +9,7 @@ mod state;
 
 pub(crate) mod print;
 
+pub mod fun;
 pub mod map;
 pub mod module;
 pub mod obj;
