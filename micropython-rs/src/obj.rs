@@ -62,6 +62,16 @@ pub unsafe trait ObjType: Sized {
     const TYPE_OBJ: *const ObjFullType;
 }
 
+unsafe impl Sync for ObjBase {}
+
+impl ObjBase {
+    pub const fn new(r#type: &'static ObjFullType) -> Self {
+        Self {
+            r#type: r#type as *const ObjFullType,
+        }
+    }
+}
+
 impl Obj {
     pub const NULL: Self = unsafe { Self::from_raw(0) };
     pub const NONE: Self = Self::from_immediate(0);
@@ -85,7 +95,7 @@ impl Obj {
         Self(imm << 3 | 0b110)
     }
 
-    pub fn from_qstr(qstr: Qstr) -> Self {
+    pub const fn from_qstr(qstr: Qstr) -> Self {
         Self((qstr.index() as u32) << 3 | 0b010)
     }
 

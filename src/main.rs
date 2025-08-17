@@ -8,6 +8,7 @@ extern crate alloc;
 mod exports;
 mod serial;
 mod stubs;
+mod vasyncio;
 
 use alloc::string::String;
 use core::{
