@@ -7,10 +7,13 @@ CROSS_COMPILE = arm-none-eabi-
 CFLAGS += -mcpu=cortex-a9 -mfpu=neon-fp16 -mfloat-abi=hard -mthumb -Os -g
 CFLAGS += -I. -I$(MICROPYTHON) -I$(BUILD)
 
+SRC_C = modvasyncio.c
+SRC_QSTR += modvasyncio.c
+
 QSTR_DEFS += $(BUILD)/rust_qstrdefs.h
 
 LIB = $(BUILD)/libmpyv5.a
-OBJ += $(PY_CORE_O)
+OBJ += $(PY_CORE_O) $(addprefix $(BUILD)/, $(SRC_C:.c=.o))
 
 all: $(LIB)
 
