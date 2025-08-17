@@ -19,5 +19,5 @@ pub mod vstr;
 use hashbrown::HashMap;
 
 pub struct MicroPython {
-    module_map: HashMap<&'static [u8], &'static [u8]>,
+    module_map: HashMap<&'static [u8], module::VptModule<'static>>,
 }

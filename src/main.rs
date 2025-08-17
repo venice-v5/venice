@@ -115,7 +115,8 @@ fn main(mut mpy: MicroPython) {
                 "malformed VPT: '{}' not present",
                 str::from_utf8(VENICE_PACKAGE_NAME_PROGRAM).unwrap()
             )
-        });
+        })
+        .payload();
 
     let entrypoint_qstr = Qstr::from_bytes(entrypoint_name);
 
@@ -127,7 +128,8 @@ fn main(mut mpy: MicroPython) {
                 "malformed VPT: package '{}' not present",
                 String::from_utf8_lossy(entrypoint_name)
             )
-        });
+        })
+        .payload();
 
     mpy.push_nlr(|mpy| mpy.exec_module(entrypoint_qstr, entrypoint));
 }

@@ -1,5 +1,9 @@
 use core::{ffi::c_void, ptr::null};
 
+use bitflags::bitflags;
+use hashbrown::HashMap;
+use venice_program_table::Vpt;
+
 use crate::{
     MicroPython,
     map::Dict,
@@ -82,7 +86,45 @@ impl ModuleContext {
     }
 }
 
+bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub struct VptModuleFlags: u8 {
+        const IS_MODULE = 0b01;
+        const IS_PACKAGE = 0b10;
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VptModule<'a> {
+    data: &'a [u8],
+}
+
+impl<'a> VptModule<'a> {
+    pub const fn flags(&self) -> VptModuleFlags {
+        VptModuleFlags::from_bits(self.data[0]).expect("malformed VPT: unknown module flags set")
+    }
+
+    pub fn payload(&self) -> &'a [u8] {
+        &self.data[1..]
+    }
+}
+
 impl MicroPython {
+    pub fn module_map(&self) -> &HashMap<&'static [u8], VptModule<'static>> {
+        &self.module_map
+    }
+
+    pub fn add_vpt(&mut self, vpt: Vpt<'static>) {
+        for program in vpt.program_iter() {
+            self.module_map.insert(
+                program.name(),
+                VptModule {
+                    data: program.payload(),
+                },
+            );
+        }
+    }
+
     pub fn exec_module(&mut self, name: Qstr, bc: &[u8]) -> Obj {
         let context_obj = ModuleContext::new(name);
         let context_ptr = context_obj.as_obj_raw().unwrap();

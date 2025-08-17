@@ -1,26 +1,40 @@
 use alloc::{borrow::Cow, vec::Vec};
 
-use micropython_rs::{MicroPython, obj::Obj, qstr::Qstr};
+use micropython_rs::{MicroPython, module::VptModuleFlags, obj::Obj, qstr::Qstr};
+
+use crate::println;
 
 pub fn absolute_name(mp: &MicroPython, mut level: i32, module_name: &[u8]) -> Vec<u8> {
     let qstr_obj = Obj::from_qstr(Qstr::from_bytes(b"__name__"));
     let current_module_name_obj = mp.globals().map.get(qstr_obj).unwrap();
     let current_module_name = current_module_name_obj.get_str().unwrap();
 
+    let is_package = mp
+        .module_map()
+        .get(current_module_name)
+        .unwrap()
+        .flags()
+        .contains(VptModuleFlags::IS_PACKAGE);
+    if is_package {
+        level -= 1;
+    }
+
     let mut p = current_module_name.len();
     while level > 0 && p != 0 {
         p -= 1;
-        if module_name[p] == b'.' {
+        if current_module_name[p] == b'.' {
             level -= 1;
         }
     }
 
-    let chopped_module_name = &current_module_name[p..];
+    let chopped_module_name = &current_module_name[..p];
     // allocate and add a byte for the dot
     let mut absolute_name = Vec::with_capacity(chopped_module_name.len() + module_name.len() + 1);
     absolute_name.extend_from_slice(chopped_module_name);
     absolute_name.push(b'.');
     absolute_name.extend_from_slice(module_name);
+
+    println!("absolute name: {}", str::from_utf8(&absolute_name).unwrap());
 
     absolute_name
 }
@@ -48,8 +62,8 @@ pub fn process_import_at_level(
         }
     }
 
-    if let Some(bc) = mp.module_map().get(full_name.bytes()) {
-        mp.exec_module(full_name, bc)
+    if let Some(module) = mp.module_map().get(full_name.bytes()) {
+        mp.exec_module(full_name, module.payload())
     } else {
         panic!(
             "module {} not found",

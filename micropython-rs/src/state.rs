@@ -1,21 +1,8 @@
 use core::cell::UnsafeCell;
 
-use hashbrown::HashMap;
-use venice_program_table::Vpt;
-
 use crate::{MicroPython, map::Dict, raw::mp_state_ctx_t};
 
 impl MicroPython {
-    pub fn module_map(&self) -> &HashMap<&'static [u8], &'static [u8]> {
-        &self.module_map
-    }
-
-    pub fn add_vpt(&mut self, vpt: Vpt<'static>) {
-        for program in vpt.program_iter() {
-            self.module_map.insert(program.name(), program.payload());
-        }
-    }
-
     pub(crate) fn state_ctx_raw(&self) -> *mut mp_state_ctx_t {
         unsafe extern "C" {
             /// From: `py/mp_state.h`
