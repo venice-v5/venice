@@ -2,9 +2,12 @@ use alloc::{borrow::Cow, vec::Vec};
 
 use micropython_rs::{MicroPython, module::VptModuleFlags, obj::Obj, qstr::Qstr};
 
+use crate::qstrgen::qstr;
+
 pub fn absolute_name(mp: &MicroPython, mut level: i32, module_name: &[u8]) -> Vec<u8> {
-    let qstr_obj = Obj::from_qstr(Qstr::from_bytes(b"__name__"));
-    let current_module_name_obj = mp.globals().map.get(qstr_obj).unwrap();
+    const NAME_OBJ: Obj = Obj::from_qstr(qstr!(__name__));
+
+    let current_module_name_obj = mp.globals().map.get(NAME_OBJ).unwrap();
     let current_module_name = current_module_name_obj.get_str().unwrap();
 
     let is_package = mp

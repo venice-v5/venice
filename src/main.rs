@@ -6,6 +6,7 @@
 extern crate alloc;
 
 mod exports;
+mod qstrgen;
 mod serial;
 mod stubs;
 mod vasyncio;
