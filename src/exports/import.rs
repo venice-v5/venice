@@ -2,8 +2,6 @@ use alloc::{borrow::Cow, vec::Vec};
 
 use micropython_rs::{MicroPython, module::VptModuleFlags, obj::Obj, qstr::Qstr};
 
-use crate::println;
-
 pub fn absolute_name(mp: &MicroPython, mut level: i32, module_name: &[u8]) -> Vec<u8> {
     let qstr_obj = Obj::from_qstr(Qstr::from_bytes(b"__name__"));
     let current_module_name_obj = mp.globals().map.get(qstr_obj).unwrap();
@@ -33,8 +31,6 @@ pub fn absolute_name(mp: &MicroPython, mut level: i32, module_name: &[u8]) -> Ve
     absolute_name.extend_from_slice(chopped_module_name);
     absolute_name.push(b'.');
     absolute_name.extend_from_slice(module_name);
-
-    println!("absolute name: {}", str::from_utf8(&absolute_name).unwrap());
 
     absolute_name
 }
