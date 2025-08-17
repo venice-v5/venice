@@ -1,7 +1,4 @@
-use crate::{
-    obj::{Obj, ObjType},
-    raw::{mp_obj_base_t, mp_obj_type_t},
-};
+use crate::obj::{Obj, ObjBase, ObjFullType, ObjType};
 
 unsafe extern "C" {
     /// From: `py/obj.h`
@@ -28,7 +25,7 @@ pub struct Map {
 /// From: `py/obj.h`
 #[repr(C)]
 pub struct Dict {
-    base: mp_obj_base_t,
+    base: ObjBase,
     pub map: Map,
 }
 
@@ -80,9 +77,9 @@ impl Map {
 
 unsafe extern "C" {
     /// From: `py/obj.h
-    static mp_type_dict: mp_obj_type_t;
+    static mp_type_dict: ObjFullType;
 }
 
 unsafe impl ObjType for Dict {
-    const TYPE_OBJ: *const mp_obj_type_t = &raw const mp_type_dict;
+    const TYPE_OBJ: *const ObjFullType = &raw const mp_type_dict;
 }

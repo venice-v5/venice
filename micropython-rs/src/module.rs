@@ -7,13 +7,12 @@ use venice_program_table::Vpt;
 use crate::{
     MicroPython,
     map::Dict,
-    obj::{Obj, ObjType},
+    obj::{Obj, ObjBase, ObjFullType, ObjType},
     qstr::{Qstr, QstrShort},
-    raw::{mp_obj_base_t, mp_obj_type_t},
 };
 
 unsafe extern "C" {
-    static mp_type_module: mp_obj_type_t;
+    static mp_type_module: ObjFullType;
 
     /// From: `py/persistentcode.h`
     fn mp_raw_code_load_mem(buf: *const u8, len: usize, ctx: *mut CompiledModule);
@@ -41,7 +40,7 @@ pub type ProtoFun = *const c_void;
 /// From: `py/obj.h`
 #[repr(C)]
 pub struct Module {
-    base: mp_obj_base_t,
+    base: ObjBase,
     globals: *mut Dict,
 }
 
@@ -70,7 +69,7 @@ pub struct ModuleContext {
 }
 
 unsafe impl ObjType for ModuleContext {
-    const TYPE_OBJ: *const mp_obj_type_t = &raw const mp_type_module;
+    const TYPE_OBJ: *const ObjFullType = &raw const mp_type_module;
 }
 
 /// From: `py/bc.h`

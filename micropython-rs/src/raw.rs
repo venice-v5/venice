@@ -4,40 +4,12 @@
 
 use core::ffi::{c_char, c_void};
 
-use crate::{map::Dict, nlr::NlrBuf, obj::Obj, qstr::QstrPool};
-
-/// From: `py/obj.h`
-///
-/// This struct actually corresponds to `mp_obj_full_type_t`.
-#[repr(C)]
-pub struct mp_obj_type_t {
-    pub base: mp_obj_base_t,
-
-    pub flags: u16,
-    pub name: u16,
-
-    pub slot_index_make_new: u8,
-    pub slot_index_print: u8,
-    pub slot_index_call: u8,
-    pub slot_index_unary_op: u8,
-    pub slot_index_binary_op: u8,
-    pub slot_index_attr: u8,
-    pub slot_index_subscr: u8,
-    pub slot_index_iter: u8,
-    pub slot_index_buffer: u8,
-    pub slot_index_protocol: u8,
-    pub slot_index_parent: u8,
-    pub slot_index_locals_dict: u8,
-
-    pub slots: [*const c_void; 12],
-}
-
-/// From: `py/obj.h`
-#[derive(Clone, Copy)]
-#[repr(C)]
-pub struct mp_obj_base_t {
-    pub r#type: *const mp_obj_type_t,
-}
+use crate::{
+    map::Dict,
+    nlr::NlrBuf,
+    obj::{Obj, ObjBase},
+    qstr::QstrPool,
+};
 
 /// From: `py/nlr.h`
 pub type nlr_jump_callback_fun_t = extern "C" fn(ctx: *mut c_void);
@@ -51,7 +23,7 @@ pub struct nlr_jump_callback_node_t {
 
 #[repr(C)]
 pub struct mp_obj_tuple_t {
-    pub base: mp_obj_base_t,
+    pub base: ObjBase,
     pub len: usize,
     // mp_obj_t items[];
     pub items: (),
@@ -59,7 +31,7 @@ pub struct mp_obj_tuple_t {
 
 #[repr(C)]
 pub struct mp_obj_exception_t {
-    pub base: mp_obj_base_t,
+    pub base: ObjBase,
     pub traceback_alloc: u16,
     pub traceback_len: u16,
     pub traceback_data: *mut usize,

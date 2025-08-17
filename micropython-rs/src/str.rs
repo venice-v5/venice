@@ -1,16 +1,13 @@
-use crate::{
-    obj::ObjType,
-    raw::{mp_obj_base_t, mp_obj_type_t},
-};
+use crate::obj::{ObjBase, ObjFullType, ObjType};
 
 unsafe extern "C" {
-    static mp_type_str: mp_obj_type_t;
+    static mp_type_str: ObjFullType;
 }
 
 /// From: `py/objstr.h`
 #[repr(C)]
 pub struct Str {
-    base: mp_obj_base_t,
+    base: ObjBase,
     hash: usize,
     len: usize,
     data: *const u8,
@@ -27,5 +24,5 @@ impl Str {
 }
 
 unsafe impl ObjType for Str {
-    const TYPE_OBJ: *const crate::raw::mp_obj_type_t = &raw const mp_type_str;
+    const TYPE_OBJ: *const ObjFullType = &raw const mp_type_str;
 }

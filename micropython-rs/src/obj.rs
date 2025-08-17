@@ -1,11 +1,43 @@
+use core::ffi::c_void;
+
 use crate::{
     MicroPython,
     gc::m_malloc,
     print::{Print, PrintKind, mp_plat_print},
     qstr::Qstr,
-    raw::{mp_obj_base_t, mp_obj_type_t},
     str::Str,
 };
+
+/// From: `py/obj.h`
+#[repr(C)]
+pub struct ObjFullType {
+    base: ObjBase,
+
+    flags: u16,
+    name: u16,
+
+    slot_index_make_new: u8,
+    slot_index_print: u8,
+    slot_index_call: u8,
+    slot_index_unary_op: u8,
+    slot_index_binary_op: u8,
+    slot_index_attr: u8,
+    slot_index_subscr: u8,
+    slot_index_iter: u8,
+    slot_index_buffer: u8,
+    slot_index_protocol: u8,
+    slot_index_parent: u8,
+    slot_index_locals_dict: u8,
+
+    slots: [*const c_void; 12],
+}
+
+/// From: `py/obj.h`
+#[derive(Clone, Copy)]
+#[repr(C)]
+pub struct ObjBase {
+    r#type: *const ObjFullType,
+}
 
 /// MicroPython object
 ///
@@ -27,7 +59,7 @@ pub struct Obj(u32);
 ///
 /// Object representation must begin with an [`mp_obj_base_t`], always initialized to `TYPE_OBJ`
 pub unsafe trait ObjType: Sized {
-    const TYPE_OBJ: *const mp_obj_type_t;
+    const TYPE_OBJ: *const ObjFullType;
 }
 
 impl Obj {
@@ -92,7 +124,7 @@ impl Obj {
             return None;
         }
 
-        let ptr = self.0 as *mut mp_obj_base_t;
+        let ptr = self.0 as *mut ObjBase;
         if unsafe { *ptr }.r#type != T::TYPE_OBJ {
             return None;
         }
