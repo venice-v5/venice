@@ -1,7 +1,4 @@
-use crate::{
-    obj::{Obj, ObjBase, ObjFullType, ObjType},
-    qstr::Qstr,
-};
+use crate::obj::{Obj, ObjBase, ObjFullType, ObjType};
 
 unsafe extern "C" {
     /// From: `py/obj.h`
@@ -11,7 +8,7 @@ unsafe extern "C" {
 /// From: `py/obj.h`
 #[derive(Clone, Copy)]
 #[repr(C)]
-struct MapElem {
+pub struct MapElem {
     pub key: Obj,
     pub value: Obj,
 }
@@ -32,27 +29,6 @@ pub struct Dict {
     pub map: Map,
 }
 
-#[repr(C)]
-pub struct ConstMapElem {
-    key: Obj,
-    value: Obj,
-}
-
-/// From: `py/obj.h`
-#[repr(C)]
-pub struct ConstMap {
-    // this is actually 4 bitfields
-    used: usize,
-    alloc: usize,
-    table: *const ConstMapElem,
-}
-
-#[repr(C)]
-pub struct ConstDict {
-    base: ObjBase,
-    pub map: ConstMap,
-}
-
 /// From: `py/obj.h`
 #[allow(dead_code)]
 #[repr(C)]
@@ -66,27 +42,50 @@ enum LookupKind {
 
 #[macro_export]
 macro_rules! const_map {
-    [$($key:expr => $value:expr),*] => {{
-        use $crate::map::{ConstMap, ConstMapElem};
+    [$($key:expr => $value:expr),* $(,)?] => {{
+        use $crate::{map::{Map, MapElem}, obj::Obj};
 
-        static TABLE: &[ConstMapElem] = [$(ConstMapElem::new($key, $value)),*].as_slice();
+        static TABLE: &[MapElem] = [$(MapElem {
+            key: Obj::from_qstr($key),
+            value: $value,
+        }),*].as_slice();
 
-        ConstMap::new(TABLE)
+        unsafe {
+            Map::from_raw_parts(TABLE.as_ptr() as *mut MapElem, TABLE.len(), TABLE.len(), true, true, true)
+        }
     }};
 }
 
 #[macro_export]
 macro_rules! const_dict {
-    [$($key:expr => $value:expr),*] => {{
+    [$($key:expr => $value:expr),* $(,)?] => {{
         use $crate::{const_map, map::Dict};
 
-        ConstDict::new(const_map![$($key => $value),*])
+        Dict::new(const_map![$($key => $value),*])
     }};
 }
 
-unsafe impl Sync for ConstMap {}
+unsafe impl Sync for Map {}
 
 impl Map {
+    pub const unsafe fn from_raw_parts(
+        ptr: *mut MapElem,
+        len: usize,
+        alloc: usize,
+        all_qstr_keys: bool,
+        fixed: bool,
+        ordered: bool,
+    ) -> Self {
+        Self {
+            used: len << 3
+                | ((ordered as usize) << 2)
+                | ((fixed as usize) << 1)
+                | (all_qstr_keys as usize),
+            alloc,
+            table: ptr,
+        }
+    }
+
     pub fn get(&self, index: Obj) -> Option<Obj> {
         unsafe {
             let elem = mp_map_lookup(self as *const Self as *mut Self, index, LookupKind::Lookup);
@@ -121,32 +120,13 @@ impl Map {
     }
 }
 
-impl ConstMapElem {
-    pub const fn new(qstr: Qstr, value: Obj) -> Self {
-        Self {
-            key: Obj::from_qstr(qstr),
-            value,
-        }
-    }
-}
-
-impl ConstMap {
-    pub const fn new(table: &'static [ConstMapElem]) -> Self {
-        ConstMap {
-            used: table.len() << 3 | 0b111,
-            alloc: table.len(),
-            table: table.as_ptr(),
-        }
-    }
-}
-
 unsafe extern "C" {
     /// From: `py/obj.h
     static mp_type_dict: ObjFullType;
 }
 
-impl ConstDict {
-    pub const fn new(map: ConstMap) -> Self {
+impl Dict {
+    pub const fn new(map: Map) -> Self {
         Self {
             base: ObjBase::new(unsafe { &mp_type_dict }),
             map,
