@@ -136,7 +136,7 @@ fn main(mut mp: MicroPython) {
         })
         .payload();
 
-    mp.push_nlr(|mpy| mpy.exec_module(entrypoint_qstr, entrypoint));
+    mp.push_nlr(|mp| mp.exec_module(entrypoint_qstr, entrypoint));
 }
 
 /// # Safety
