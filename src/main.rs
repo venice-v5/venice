@@ -21,7 +21,10 @@ use micropython_rs::{MicroPython, qstr::Qstr};
 use talc::{ErrOnOom, Span, Talc, Talck};
 use venice_program_table::Vpt;
 
-use crate::serial::{print, println};
+use crate::{
+    serial::{print, println},
+    vasyncio::init_vasyncio,
+};
 
 /// Signature used by VEXos to verify the program and its properties.
 #[used]
@@ -153,6 +156,7 @@ unsafe fn startup() -> ! {
             .lock()
             .claim(Span::new(&raw mut __heap_start, &raw mut __heap_end))
             .expect("couldn't claim heap memory");
+        init_vasyncio();
     }
 
     let mut mp =
