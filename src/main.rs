@@ -143,30 +143,29 @@ fn main(mut mpy: MicroPython) {
 ///
 /// Must be called once immediately after program boot.
 unsafe fn startup() -> ! {
-    let mut bss_ptr = &raw mut __bss_start;
-    while bss_ptr < &raw mut __bss_end {
-        unsafe {
+    let mp = unsafe {
+        let mut bss_ptr = &raw mut __bss_start;
+        while bss_ptr < &raw mut __bss_end {
             bss_ptr.write_volatile(0);
             bss_ptr = bss_ptr.add(1);
         }
-    }
 
-    unsafe {
         ALLOCATOR
             .lock()
             .claim(Span::new(&raw mut __heap_start, &raw mut __heap_end))
             .expect("couldn't claim heap memory");
         init_vasyncio();
-    }
 
-    let mut mp =
-        unsafe { MicroPython::new(&raw mut __python_heap_start, &raw mut __python_heap_end) }
-            .unwrap();
+        let mut mp =
+            MicroPython::new(&raw mut __python_heap_start, &raw mut __python_heap_end).unwrap();
 
-    mp.add_vpt(
-        unsafe { Vpt::from_ptr(&raw const __bytecode_ram_start, VENDOR_ID) }
-            .expect("invalid VPT was uploaded"),
-    );
+        mp.add_vpt(
+            Vpt::from_ptr(&raw const __bytecode_ram_start, VENDOR_ID)
+                .expect("invalid VPT was uploaded"),
+        );
+
+        mp
+    };
 
     main(mp);
     exit();
