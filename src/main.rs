@@ -109,10 +109,10 @@ fn exit() -> ! {
     }
 }
 
-fn main(mut mpy: MicroPython) {
+fn main(mut mp: MicroPython) {
     const VENICE_PACKAGE_NAME_PROGRAM: &[u8] = b"__venice__package_name__";
 
-    let entrypoint_name = mpy
+    let entrypoint_name = mp
         .module_map()
         .get(VENICE_PACKAGE_NAME_PROGRAM)
         .unwrap_or_else(|| {
@@ -125,7 +125,7 @@ fn main(mut mpy: MicroPython) {
 
     let entrypoint_qstr = Qstr::from_bytes(entrypoint_name);
 
-    let entrypoint = mpy
+    let entrypoint = mp
         .module_map()
         .get(entrypoint_qstr.bytes())
         .unwrap_or_else(|| {
@@ -136,7 +136,7 @@ fn main(mut mpy: MicroPython) {
         })
         .payload();
 
-    mpy.push_nlr(|mpy| mpy.exec_module(entrypoint_qstr, entrypoint));
+    mp.push_nlr(|mpy| mpy.exec_module(entrypoint_qstr, entrypoint));
 }
 
 /// # Safety
