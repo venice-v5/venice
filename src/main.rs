@@ -17,8 +17,7 @@ use core::{
     sync::atomic::{AtomicBool, Ordering},
 };
 
-use micropython_rs::{MicroPython, qstr::Qstr};
-use talc::{ErrOnOom, Span, Talc, Talck};
+use micropython_rs::{MicroPython, gc::GcAlloc, qstr::Qstr};
 use venice_program_table::Vpt;
 
 use crate::{
@@ -41,7 +40,7 @@ static CODE_SIG: (vex_sdk::vcodesig, [u32; 4]) = (
 );
 
 #[global_allocator]
-static ALLOCATOR: Talck<spin::Mutex<()>, ErrOnOom> = Talck::new(Talc::new(ErrOnOom));
+static mut ALLOCATOR: GcAlloc = GcAlloc::uninit();
 
 // TODO: pick another ID
 const VENDOR_ID: u32 = 0x11235813;
@@ -75,9 +74,6 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
 unsafe extern "C" {
     static mut __bss_start: u32;
     static mut __bss_end: u32;
-
-    static mut __scratch_heap_start: u8;
-    static mut __scratch_heap_end: u8;
 
     static mut __heap_start: u8;
     static mut __heap_end: u8;
@@ -150,16 +146,9 @@ unsafe fn startup() -> ! {
             bss_ptr = bss_ptr.add(1);
         }
 
-        ALLOCATOR
-            .lock()
-            .claim(Span::new(
-                &raw mut __scratch_heap_start,
-                &raw mut __scratch_heap_end,
-            ))
-            .expect("couldn't claim scratch heap memory");
-        init_vasyncio();
-
         let mut mp = MicroPython::new(&raw mut __heap_start, &raw mut __heap_end).unwrap();
+        ALLOCATOR = GcAlloc::new(&mp);
+        init_vasyncio();
 
         mp.add_vpt(
             Vpt::from_ptr(&raw const __linked_file_start, VENDOR_ID)

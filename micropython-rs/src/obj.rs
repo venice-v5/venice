@@ -1,8 +1,11 @@
-use core::ffi::c_void;
+use core::{
+    alloc::{GlobalAlloc, Layout},
+    ffi::c_void,
+};
 
 use crate::{
     MicroPython,
-    gc::m_malloc,
+    gc::GcAlloc,
     print::{Print, PrintKind, mp_plat_print},
     qstr::Qstr,
     str::Str,
@@ -76,6 +79,18 @@ impl Obj {
     pub const NULL: Self = unsafe { Self::from_raw(0) };
     pub const NONE: Self = Self::from_immediate(0);
 
+    pub fn new<T: ObjType>(&mut self, o: T, alloc: &GcAlloc) -> Option<Obj> {
+        unsafe {
+            let layout = Layout::from_size_align(size_of::<T>(), 32).unwrap();
+            let mem = alloc.alloc(layout);
+            if mem.is_null() {
+                return None;
+            }
+            (mem as *mut T).write(o);
+            Some(Obj(mem as u32))
+        }
+    }
+
     pub const unsafe fn from_raw(inner: u32) -> Self {
         Self(inner)
     }
@@ -141,17 +156,6 @@ unsafe extern "C" {
 }
 
 impl MicroPython {
-    pub fn obj_new<T: ObjType>(&mut self, o: T) -> Option<Obj> {
-        unsafe {
-            let mem = m_malloc(size_of::<Self>());
-            if mem.is_null() {
-                return None;
-            }
-            (mem as *mut T).write(o);
-            Some(Obj(mem as u32))
-        }
-    }
-
     pub fn print(&mut self, obj: Obj, kind: PrintKind) {
         unsafe {
             mp_obj_print_helper(&raw const mp_plat_print, obj, kind);

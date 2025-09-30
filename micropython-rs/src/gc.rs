@@ -1,10 +1,14 @@
-use core::{arch::naked_asm, ffi::c_void};
+use core::{
+    alloc::{GlobalAlloc, Layout},
+    arch::naked_asm,
+    ffi::{c_uint, c_void},
+};
 
 use crate::MicroPython;
 
 unsafe extern "C" {
     /// From: `py/gc.h`
-    pub fn gc_init(start: *mut c_void, end: *mut c_void);
+    pub(crate) fn gc_init(start: *mut c_void, end: *mut c_void);
 
     /// From: `py/gc.h`
     fn gc_collect_start();
@@ -15,8 +19,14 @@ unsafe extern "C" {
     /// From: `py/gc.h`
     fn gc_collect_end();
 
-    /// From: `py/malloc.h`
-    pub fn m_malloc(size: usize) -> *mut c_void;
+    /// From: `py/gc.h`
+    fn gc_alloc(n_bytes: usize, alloc_flags: c_uint) -> *mut c_void;
+
+    /// From: `py/gc.h`
+    fn gc_free(ptr: *mut c_void);
+
+    /// From: `py/gc.h`
+    fn gc_realloc(ptr: *mut c_void, n_bytes: usize, allow_move: bool) -> *mut c_void;
 }
 
 #[unsafe(naked)]
@@ -56,5 +66,49 @@ impl MicroPython {
             );
             gc_collect_end();
         }
+    }
+}
+
+pub struct GcAlloc {
+    initialized: bool,
+}
+
+impl GcAlloc {
+    pub const fn new(_mp: &MicroPython) -> Self {
+        Self { initialized: true }
+    }
+
+    pub const fn uninit() -> Self {
+        Self { initialized: false }
+    }
+
+    fn assert_initialization(&self) {
+        if !self.initialized {
+            panic!("attempt to allocate with uninitialized allocator");
+        }
+    }
+}
+
+unsafe impl GlobalAlloc for GcAlloc {
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        self.assert_initialization();
+
+        if layout.align() > 32 {
+            panic!("can't allocate with alignment greater than 32");
+        }
+
+        unsafe { gc_alloc(layout.size(), 0) as *mut u8 }
+    }
+
+    unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
+        self.assert_initialization();
+
+        unsafe { gc_free(ptr as *mut c_void) };
+    }
+
+    unsafe fn realloc(&self, ptr: *mut u8, _layout: Layout, new_size: usize) -> *mut u8 {
+        self.assert_initialization();
+
+        unsafe { gc_realloc(ptr as *mut c_void, new_size, true) as *mut u8 }
     }
 }
