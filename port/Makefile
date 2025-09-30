@@ -10,7 +10,7 @@ CFLAGS += -I. -I$(MICROPYTHON) -I$(BUILD)
 SRC_C = modvasyncio.c
 SRC_QSTR += modvasyncio.c
 
-QSTR_DEFS += $(BUILD)/rust_qstrdefs.h
+QSTR_DEFS += venice_qstrdefs.h
 
 LIB = $(BUILD)/libmpyv5.a
 OBJ += $(PY_CORE_O) $(addprefix $(BUILD)/, $(SRC_C:.c=.o))
