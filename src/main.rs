@@ -76,13 +76,13 @@ unsafe extern "C" {
     static mut __bss_start: u32;
     static mut __bss_end: u32;
 
+    static mut __scratch_heap_start: u8;
+    static mut __scratch_heap_end: u8;
+
     static mut __heap_start: u8;
     static mut __heap_end: u8;
 
-    static mut __python_heap_start: u8;
-    static mut __python_heap_end: u8;
-
-    static __bytecode_ram_start: u8;
+    static __linked_file_start: u8;
 }
 
 #[unsafe(link_section = ".boot")]
@@ -152,15 +152,17 @@ unsafe fn startup() -> ! {
 
         ALLOCATOR
             .lock()
-            .claim(Span::new(&raw mut __heap_start, &raw mut __heap_end))
-            .expect("couldn't claim heap memory");
+            .claim(Span::new(
+                &raw mut __scratch_heap_start,
+                &raw mut __scratch_heap_end,
+            ))
+            .expect("couldn't claim scratch heap memory");
         init_vasyncio();
 
-        let mut mp =
-            MicroPython::new(&raw mut __python_heap_start, &raw mut __python_heap_end).unwrap();
+        let mut mp = MicroPython::new(&raw mut __heap_start, &raw mut __heap_end).unwrap();
 
         mp.add_vpt(
-            Vpt::from_ptr(&raw const __bytecode_ram_start, VENDOR_ID)
+            Vpt::from_ptr(&raw const __linked_file_start, VENDOR_ID)
                 .expect("invalid VPT was uploaded"),
         );
 

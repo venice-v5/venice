@@ -10,7 +10,7 @@
           "allTargets": false
         },
         "check": {
-          "targets": ["armv7a-vex-v5.json"]
+          "targets": ["armv7a-vex-v5"]
         }
       }
     }

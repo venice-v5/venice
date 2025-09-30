@@ -1,8 +1,6 @@
 [build]
-target = "./armv7a-vex-v5.json"
-
-[target.wasm32-unknown-unknown]
-rustflags = ["-Clink-arg=--export-memory", "-Clink-arg=--import-table"]
+target = "armv7a-vex-v5"
+rustflags = ["-Clink-arg=-Tvenice.ld"]
 
 [unstable]
 build-std = ["core", "compiler_builtins", "alloc"]
