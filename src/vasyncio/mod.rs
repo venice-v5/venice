@@ -1,4 +1,4 @@
-use micropython_rs::{const_dict, const_map, map::Dict};
+use micropython_rs::{const_dict, map::Dict};
 
 use crate::qstrgen::qstr;
 
