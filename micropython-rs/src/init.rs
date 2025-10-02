@@ -7,20 +7,16 @@ use thiserror::Error;
 
 use crate::gc::{Gc, gc_init};
 
-pub static INIT: AtomicBool = AtomicBool::new(false);
+static INIT: AtomicBool = AtomicBool::new(false);
 
 unsafe extern "C" {
     /// From: `py/runtime.h`
-    pub fn mp_init();
-
-    /// From: `py/runtime.h`
-    pub fn mp_deinit();
+    fn mp_init();
 
     /// From: `py/stackctrl.h`
-    pub fn mp_stack_ctrl_init();
+    fn mp_stack_ctrl_init();
 
     fn __libc_init_array();
-    fn __libc_fini_array();
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -55,11 +51,3 @@ pub fn token() -> Option<InitToken> {
         false => None,
     }
 }
-
-// Deinit function for potential future use
-//
-// unsafe {
-//     mp_deinit();
-//     __libc_fini_array();
-//     REENTRY_PTR.store(core::ptr::null_mut(), Ordering::Relaxed);
-// }
