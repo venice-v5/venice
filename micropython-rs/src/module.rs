@@ -1,14 +1,12 @@
 use core::{ffi::c_void, ptr::null};
 
-use bitflags::bitflags;
-use hashbrown::HashMap;
-use venice_program_table::Vpt;
-
 use crate::{
-    MicroPython,
+    init::InitToken,
     map::Dict,
+    nlr::push_nlr_callback,
     obj::{Obj, ObjBase, ObjFullType, ObjType},
     qstr::{Qstr, QstrShort},
+    state::{globals, locals, set_globals, set_locals},
 };
 
 unsafe extern "C" {
@@ -85,85 +83,44 @@ impl ModuleContext {
     }
 }
 
-bitflags! {
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub struct VptModuleFlags: u8 {
-        const IS_MODULE = 0b01;
-        const IS_PACKAGE = 0b10;
+pub fn exec_module(token: InitToken, name: Qstr, bc: &[u8]) -> Obj {
+    let context_obj = ModuleContext::new(name);
+    let context_ptr = context_obj.as_obj_raw().unwrap();
+
+    let mut cm = CompiledModule {
+        context: context_ptr,
+        rc: null(),
+    };
+
+    let old_globals = globals(token);
+    let old_locals = locals(token);
+    let new_globals = context_obj
+        .as_obj::<ModuleContext>()
+        .unwrap()
+        .module
+        .globals;
+
+    unsafe {
+        set_globals(token, new_globals);
+        set_locals(token, new_globals);
+        mp_raw_code_load_mem(bc.as_ptr(), bc.len(), &raw mut cm);
     }
+
+    let f = unsafe { mp_make_function_from_proto_fun(cm.rc.cast(), context_ptr, null()) };
+
+    push_nlr_callback(
+        token,
+        || unsafe { mp_call_function_0(f) },
+        || unsafe {
+            set_globals(token, old_globals);
+            set_locals(token, old_locals);
+        },
+        true,
+    );
+
+    context_obj
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct VptModule<'a> {
-    data: &'a [u8],
-}
-
-impl<'a> VptModule<'a> {
-    pub const fn flags(&self) -> VptModuleFlags {
-        VptModuleFlags::from_bits(self.data[0]).expect("malformed VPT: unknown module flags set")
-    }
-
-    pub fn payload(&self) -> &'a [u8] {
-        &self.data[1..]
-    }
-}
-
-impl MicroPython {
-    pub fn module_map(&self) -> &HashMap<&'static [u8], VptModule<'static>> {
-        &self.module_map
-    }
-
-    pub fn add_vpt(&mut self, vpt: Vpt<'static>) {
-        for program in vpt.program_iter() {
-            self.module_map.insert(
-                program.name(),
-                VptModule {
-                    data: program.payload(),
-                },
-            );
-        }
-    }
-
-    pub fn exec_module(&mut self, name: Qstr, bc: &[u8]) -> Obj {
-        let context_obj = ModuleContext::new(name);
-        let context_ptr = context_obj.as_obj_raw().unwrap();
-
-        let mut cm = CompiledModule {
-            context: context_ptr,
-            rc: null(),
-        };
-
-        let (old_globals, old_locals) = (
-            self.globals() as *const Dict as *mut Dict,
-            self.locals() as *const Dict as *mut Dict,
-        );
-        let new_globals = context_obj
-            .as_obj::<ModuleContext>()
-            .unwrap()
-            .module
-            .globals;
-
-        unsafe {
-            self.set_globals(new_globals);
-            self.set_locals(new_globals);
-            mp_raw_code_load_mem(bc.as_ptr(), bc.len(), &raw mut cm);
-        }
-
-        let f = unsafe { mp_make_function_from_proto_fun(cm.rc.cast(), context_ptr, null()) };
-
-        self.push_nlr_callback(
-            |this| this.allow_reentry(|| unsafe { mp_call_function_0(f) }),
-            |this| unsafe {
-                this.set_globals(old_globals);
-                this.set_locals(old_locals);
-            },
-            true,
-        );
-
-        context_obj
-    }
-
-    pub fn builtin_module(&self, name: Qstr, extensible: bool) -> Obj {
-        unsafe { mp_module_get_builtin(name, extensible) }
-    }
+pub fn builtin_module(_: InitToken, name: Qstr, extensible: bool) -> Obj {
+    unsafe { mp_module_get_builtin(name, extensible) }
 }

@@ -1,36 +1,42 @@
-use core::cell::UnsafeCell;
+// Safety: We can never create references to global statics used by MicroPython. So, the only way
+// to access them is through pointers, or carefully writing functions that with specific purposes
+// like get x, set y, that never call into MicroPython.
 
-use crate::{MicroPython, map::Dict, raw::mp_state_ctx_t};
+use crate::{init::InitToken, map::Dict, raw::mp_state_ctx_t};
 
-impl MicroPython {
-    pub(crate) fn state_ctx_raw(&self) -> *mut mp_state_ctx_t {
-        unsafe extern "C" {
-            /// From: `py/mp_state.h`
-            ///
-            /// Currently, MicroPython threads are disabled, so this is always the active [`StateCtx`].
-            static mp_state_ctx: UnsafeCell<mp_state_ctx_t>;
-        }
-
-        unsafe { mp_state_ctx.get() }
+fn state_ctx_raw() -> *mut mp_state_ctx_t {
+    unsafe extern "C" {
+        /// From: `py/mp_state.h`
+        ///
+        /// Currently, MicroPython threads are disabled, so this is always the active [`StateCtx`].
+        static mut mp_state_ctx: mp_state_ctx_t;
     }
 
-    pub fn state_ctx(&self) -> &mp_state_ctx_t {
-        unsafe { &*self.state_ctx_raw() }
-    }
+    &raw mut mp_state_ctx
+}
 
-    pub fn globals(&self) -> &Dict {
-        unsafe { &*self.state_ctx().thread.dict_globals }
-    }
+pub fn globals(_: InitToken) -> *mut Dict {
+    unsafe { (*state_ctx_raw()).thread.dict_globals }
+}
 
-    pub fn locals(&self) -> &Dict {
-        unsafe { &*self.state_ctx().thread.dict_locals }
-    }
+pub fn locals(_: InitToken) -> *mut Dict {
+    unsafe { (*state_ctx_raw()).thread.dict_locals }
+}
 
-    pub unsafe fn set_globals(&mut self, dict: *mut Dict) {
-        unsafe { (*self.state_ctx_raw()).thread.dict_globals = dict }
-    }
+pub fn loaded_modules(_: InitToken) -> *mut Dict {
+    unsafe { &raw mut (*state_ctx_raw()).vm.mp_loaded_modules_dict }
+}
 
-    pub unsafe fn set_locals(&mut self, dict: *mut Dict) {
-        unsafe { (*self.state_ctx_raw()).thread.dict_locals = dict }
-    }
+// TODO: place safety invariants
+
+pub unsafe fn set_globals(_: InitToken, dict: *mut Dict) {
+    unsafe { (*state_ctx_raw()).thread.dict_globals = dict };
+}
+
+pub unsafe fn set_locals(_: InitToken, dict: *mut Dict) {
+    unsafe { (*state_ctx_raw()).thread.dict_locals = dict };
+}
+
+pub fn stack_top(_: InitToken) -> *mut u8 {
+    unsafe { (*state_ctx_raw()).thread.stack_top }
 }

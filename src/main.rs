@@ -6,6 +6,7 @@
 extern crate alloc;
 
 mod exports;
+mod module_map;
 mod qstrgen;
 mod serial;
 mod stubs;
@@ -17,10 +18,17 @@ use core::{
     sync::atomic::{AtomicBool, Ordering},
 };
 
-use micropython_rs::{MicroPython, gc::GcAlloc, qstr::Qstr};
+use micropython_rs::{
+    gc::LockedGc,
+    init::{InitToken, init_mp},
+    module::exec_module,
+    nlr::push_nlr,
+    qstr::Qstr,
+};
 use venice_program_table::Vpt;
 
 use crate::{
+    module_map::{add_vpt, lock_module_map},
     serial::{print, println},
     vasyncio::init_vasyncio,
 };
@@ -40,7 +48,7 @@ static CODE_SIG: (vex_sdk::vcodesig, [u32; 4]) = (
 );
 
 #[global_allocator]
-static mut ALLOCATOR: GcAlloc = GcAlloc::uninit();
+static ALLOCATOR: LockedGc = LockedGc::new(None);
 
 // TODO: pick another ID
 const VENDOR_ID: u32 = 0x11235813;
@@ -105,11 +113,10 @@ fn exit() -> ! {
     }
 }
 
-fn main(mut mp: MicroPython) {
+fn main(token: InitToken) {
     const VENICE_PACKAGE_NAME_PROGRAM: &[u8] = b"__venice__package_name__";
 
-    let entrypoint_name = mp
-        .module_map()
+    let entrypoint_name = lock_module_map()
         .get(VENICE_PACKAGE_NAME_PROGRAM)
         .unwrap_or_else(|| {
             panic!(
@@ -121,8 +128,7 @@ fn main(mut mp: MicroPython) {
 
     let entrypoint_qstr = Qstr::from_bytes(entrypoint_name);
 
-    let entrypoint = mp
-        .module_map()
+    let entrypoint = lock_module_map()
         .get(entrypoint_qstr.bytes())
         .unwrap_or_else(|| {
             panic!(
@@ -132,32 +138,31 @@ fn main(mut mp: MicroPython) {
         })
         .payload();
 
-    mp.push_nlr(|mp| mp.exec_module(entrypoint_qstr, entrypoint));
+    push_nlr(token, || exec_module(token, entrypoint_qstr, entrypoint));
 }
 
 /// # Safety
 ///
 /// Must be called once immediately after program boot.
 unsafe fn startup() -> ! {
-    let mp = unsafe {
+    let token = unsafe {
         let mut bss_ptr = &raw mut __bss_start;
         while bss_ptr < &raw mut __bss_end {
             bss_ptr.write_volatile(0);
             bss_ptr = bss_ptr.add(1);
         }
 
-        let mut mp = MicroPython::new(&raw mut __heap_start, &raw mut __heap_end).unwrap();
-        ALLOCATOR = GcAlloc::new(&mp);
+        let (token, gc) = init_mp(&raw mut __heap_start, &raw mut __heap_end).unwrap();
+        *ALLOCATOR.lock() = Some(gc);
         init_vasyncio();
 
-        mp.add_vpt(
-            Vpt::from_ptr(&raw const __linked_file_start, VENDOR_ID)
-                .expect("invalid VPT was uploaded"),
-        );
+        let vpt = Vpt::from_ptr(&raw const __linked_file_start, VENDOR_ID)
+            .expect("invalid VPT was uploaded");
+        add_vpt(vpt);
 
-        mp
+        token
     };
 
-    main(mp);
+    main(token);
     exit();
 }

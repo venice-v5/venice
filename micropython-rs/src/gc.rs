@@ -2,9 +2,13 @@ use core::{
     alloc::{GlobalAlloc, Layout},
     arch::naked_asm,
     ffi::{c_uint, c_void},
+    ptr::null_mut,
 };
 
-use crate::MicroPython;
+use spin::{Mutex, MutexGuard};
+use thiserror::Error;
+
+use crate::{init::token, state::stack_top};
 
 unsafe extern "C" {
     /// From: `py/gc.h`
@@ -52,8 +56,32 @@ extern "C" fn collect_gc_regs(regs: &mut [u32; 10]) -> u32 {
     }
 }
 
-impl MicroPython {
-    pub fn collect_garbage(&mut self) {
+pub struct LockedGc {
+    gc: Mutex<Option<Gc>>,
+}
+
+pub struct Gc(());
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
+#[error("garbage collector not initialized")]
+pub struct NotInitialized;
+
+impl LockedGc {
+    pub const fn new(gc: Option<Gc>) -> Self {
+        Self { gc: Mutex::new(gc) }
+    }
+
+    pub fn lock<'a>(&'a self) -> MutexGuard<'a, Option<Gc>> {
+        self.gc.lock()
+    }
+}
+
+impl Gc {
+    pub(crate) unsafe fn new() -> Self {
+        Self(())
+    }
+
+    pub fn collect_garbage(&mut self) -> Result<(), NotInitialized> {
         let mut regs = [0; 10];
         let sp = collect_gc_regs(&mut regs);
 
@@ -61,54 +89,50 @@ impl MicroPython {
             gc_collect_start();
             gc_collect_root(
                 sp as *mut *mut c_void,
-                ((self.state_ctx().thread.stack_top as u32 - sp) / size_of::<usize>() as u32)
-                    as usize,
+                ((stack_top(token().unwrap()) as u32 - sp) / size_of::<usize>() as u32) as usize,
             );
             gc_collect_end();
         }
-    }
-}
 
-pub struct GcAlloc {
-    initialized: bool,
-}
-
-impl GcAlloc {
-    pub const fn new(_mp: &MicroPython) -> Self {
-        Self { initialized: true }
+        Ok(())
     }
 
-    pub const fn uninit() -> Self {
-        Self { initialized: false }
+    pub unsafe fn alloc(&mut self, size: usize) -> *mut u8 {
+        unsafe { gc_alloc(size, 0) as *mut u8 }
     }
 
-    fn assert_initialization(&self) {
-        if !self.initialized {
-            panic!("attempt to allocate with uninitialized allocator");
-        }
-    }
-}
-
-unsafe impl GlobalAlloc for GcAlloc {
-    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        self.assert_initialization();
-
-        if layout.align() > 32 {
-            panic!("can't allocate with alignment greater than 32");
-        }
-
-        unsafe { gc_alloc(layout.size(), 0) as *mut u8 }
-    }
-
-    unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
-        self.assert_initialization();
-
+    pub unsafe fn dealloc(&mut self, ptr: *mut u8) {
         unsafe { gc_free(ptr as *mut c_void) };
     }
 
-    unsafe fn realloc(&self, ptr: *mut u8, _layout: Layout, new_size: usize) -> *mut u8 {
-        self.assert_initialization();
-
+    pub unsafe fn realloc(&mut self, ptr: *mut u8, new_size: usize) -> *mut u8 {
         unsafe { gc_realloc(ptr as *mut c_void, new_size, true) as *mut u8 }
+    }
+}
+
+unsafe impl GlobalAlloc for LockedGc {
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        if layout.align() > 32 {
+            return null_mut();
+        }
+
+        self.lock()
+            .as_mut()
+            .map(|gc| unsafe { gc.alloc(layout.size()) })
+            .unwrap_or(null_mut())
+    }
+
+    unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
+        if let Some(gc) = self.lock().as_mut() {
+            unsafe { gc.dealloc(ptr) };
+        }
+        // fix: silent fail
+    }
+
+    unsafe fn realloc(&self, ptr: *mut u8, _layout: Layout, new_size: usize) -> *mut u8 {
+        self.lock()
+            .as_mut()
+            .map(|gc| unsafe { gc.realloc(ptr, new_size) })
+            .unwrap_or(null_mut())
     }
 }

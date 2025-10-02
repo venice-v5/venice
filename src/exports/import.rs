@@ -1,17 +1,25 @@
 use alloc::{borrow::Cow, vec::Vec};
 
-use micropython_rs::{MicroPython, module::VptModuleFlags, obj::Obj, qstr::Qstr};
+use micropython_rs::{
+    init::{InitToken, token},
+    module::{builtin_module, exec_module},
+    obj::Obj,
+    qstr::Qstr,
+    state::{globals, loaded_modules},
+};
 
-use crate::qstrgen::qstr;
+use crate::{
+    module_map::{VptModuleFlags, lock_module_map},
+    qstrgen::qstr,
+};
 
-pub fn absolute_name(mp: &MicroPython, mut level: i32, module_name: &[u8]) -> Vec<u8> {
+pub fn absolute_name(token: InitToken, mut level: i32, module_name: &[u8]) -> Vec<u8> {
     const NAME_OBJ: Obj = Obj::from_qstr(qstr!(__name__));
 
-    let current_module_name_obj = mp.globals().map.get(NAME_OBJ).unwrap();
+    let current_module_name_obj = unsafe { (*globals(token)).map.get(NAME_OBJ).unwrap() };
     let current_module_name = current_module_name_obj.get_str().unwrap();
 
-    let is_package = mp
-        .module_map()
+    let is_package = lock_module_map()
         .get(current_module_name)
         .unwrap()
         .flags()
@@ -39,30 +47,24 @@ pub fn absolute_name(mp: &MicroPython, mut level: i32, module_name: &[u8]) -> Ve
 }
 
 pub fn process_import_at_level(
-    mp: &mut MicroPython,
+    token: InitToken,
     full_name: Qstr,
     level_name: Qstr,
     outer_module_obj: Obj,
 ) -> Obj {
-    if let Some(loaded) = mp
-        .state_ctx()
-        .vm
-        .mp_loaded_modules_dict
-        .map
-        .get(Obj::from_qstr(full_name))
-    {
+    if let Some(loaded) = unsafe { (*loaded_modules(token)).map.get(Obj::from_qstr(full_name)) } {
         return loaded;
     }
 
     if outer_module_obj.is_null() {
-        let builtin = mp.builtin_module(level_name, false);
+        let builtin = builtin_module(token, level_name, false);
         if !builtin.is_null() {
             return builtin;
         }
     }
 
-    if let Some(module) = mp.module_map().get(full_name.bytes()) {
-        mp.exec_module(full_name, module.payload())
+    if let Some(module) = lock_module_map().get(full_name.bytes()) {
+        exec_module(token, full_name, module.payload())
     } else {
         panic!(
             "module {} not found",
@@ -71,11 +73,11 @@ pub fn process_import_at_level(
     }
 }
 
-pub fn import(mp: &mut MicroPython, module_name_qstr: Qstr, _fromtuple: Obj, level: i32) -> Obj {
+pub fn import(token: InitToken, module_name_qstr: Qstr, _fromtuple: Obj, level: i32) -> Obj {
     let mut module_name = Cow::Borrowed(module_name_qstr.bytes());
 
     if level != 0 {
-        module_name = Cow::Owned(absolute_name(mp, level, &module_name));
+        module_name = Cow::Owned(absolute_name(token, level, &module_name));
     }
 
     if module_name.is_empty() {
@@ -95,7 +97,8 @@ pub fn import(mp: &mut MicroPython, module_name_qstr: Qstr, _fromtuple: Obj, lev
             let full_name = Qstr::from_bytes(&module_name[..i]);
             let level_name = Qstr::from_bytes(&module_name[last_name..i]);
 
-            let module_obj = process_import_at_level(mp, full_name, level_name, outer_module_obj);
+            let module_obj =
+                process_import_at_level(token, full_name, level_name, outer_module_obj);
             outer_module_obj = module_obj;
 
             last_name = i + 1;
@@ -122,13 +125,10 @@ unsafe extern "C" fn venice_import(arg_count: usize, args: *const Obj) -> Obj {
         (Obj::NONE, 0)
     };
 
-    MicroPython::reenter(|mut mp| {
-        import(
-            unsafe { mp.as_mut() },
-            Qstr::from_bytes(module_name_obj.get_str().unwrap()),
-            fromtuple,
-            level,
-        )
-    })
-    .expect("reentry failed")
+    import(
+        token().unwrap(),
+        Qstr::from_bytes(module_name_obj.get_str().unwrap()),
+        fromtuple,
+        level,
+    )
 }

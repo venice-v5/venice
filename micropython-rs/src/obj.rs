@@ -1,15 +1,6 @@
-use core::{
-    alloc::{GlobalAlloc, Layout},
-    ffi::c_void,
-};
+use core::ffi::c_void;
 
-use crate::{
-    MicroPython,
-    gc::GcAlloc,
-    print::{Print, PrintKind, mp_plat_print},
-    qstr::Qstr,
-    str::Str,
-};
+use crate::{gc::Gc, qstr::Qstr, str::Str};
 
 /// From: `py/obj.h`
 #[repr(C)]
@@ -79,10 +70,9 @@ impl Obj {
     pub const NULL: Self = unsafe { Self::from_raw(0) };
     pub const NONE: Self = Self::from_immediate(0);
 
-    pub fn new<T: ObjType>(&mut self, o: T, alloc: &GcAlloc) -> Option<Obj> {
+    pub fn new<T: ObjType>(&mut self, o: T, alloc: &mut Gc) -> Option<Obj> {
         unsafe {
-            let layout = Layout::from_size_align(size_of::<T>(), 32).unwrap();
-            let mem = alloc.alloc(layout);
+            let mem = alloc.alloc(size_of::<T>());
             if mem.is_null() {
                 return None;
             }
@@ -151,14 +141,14 @@ impl Obj {
     }
 }
 
-unsafe extern "C" {
-    fn mp_obj_print_helper(print: *const Print, o_in: Obj, kind: PrintKind);
-}
-
-impl MicroPython {
-    pub fn print(&mut self, obj: Obj, kind: PrintKind) {
-        unsafe {
-            mp_obj_print_helper(&raw const mp_plat_print, obj, kind);
-        }
-    }
-}
+// for potential future use
+//
+// unsafe extern "C" {
+//     fn mp_obj_print_helper(print: *const Print, o_in: Obj, kind: PrintKind);
+// }
+//
+// pub fn print(&mut self, obj: Obj, kind: PrintKind) {
+//     unsafe {
+//         mp_obj_print_helper(&raw const mp_plat_print, obj, kind);
+//     }
+// }

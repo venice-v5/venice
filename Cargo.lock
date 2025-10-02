@@ -113,8 +113,8 @@ checksum = "32a282da65faaf38286cf3be983213fcf1d2e2a58700e808f83f4ea9a4804bc0"
 name = "micropython-rs"
 version = "0.1.0"
 dependencies = [
- "bitflags",
  "hashbrown",
+ "spin 0.10.0",
  "thiserror",
  "venice-program-table",
 ]
@@ -263,6 +263,7 @@ checksum = "5a5f39404a5da50712a4c1eecf25e90dd62b613502b7e925fd4e4d19b5c96512"
 name = "venice"
 version = "0.1.0"
 dependencies = [
+ "bitflags",
  "cty",
  "format-bytes",
  "hashbrown",

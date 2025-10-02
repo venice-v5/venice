@@ -4,7 +4,7 @@ use core::{
 };
 
 use crate::{
-    MicroPython,
+    init::InitToken,
     obj::Obj,
     print::{mp_obj_print_exception, mp_plat_print},
 };
@@ -42,62 +42,62 @@ pub struct NlrJumpCallbackNode<T> {
     data: T,
 }
 
-impl MicroPython {
-    pub fn push_nlr<R>(&mut self, f: impl FnOnce(&mut Self) -> R) -> Option<R> {
-        let mut nlr_buf = NlrBuf {
-            prev: null_mut(),
-            ret_val: null_mut(),
-            regs: [null_mut(); NLR_REG_COUNT],
-        };
+pub fn push_nlr<R>(_: InitToken, f: impl FnOnce() -> R) -> Option<R> {
+    let mut nlr_buf = NlrBuf {
+        prev: null_mut(),
+        ret_val: null_mut(),
+        regs: [null_mut(); NLR_REG_COUNT],
+    };
 
-        unsafe {
-            if nlr_push(&raw mut nlr_buf) == 0 {
-                let ret = f(self);
-                nlr_pop();
-                Some(ret)
-            } else {
-                mp_obj_print_exception(
-                    &raw const mp_plat_print,
-                    Obj::from_raw(nlr_buf.ret_val as u32),
-                );
-                None
-            }
+    unsafe {
+        if nlr_push(&raw mut nlr_buf) == 0 {
+            let ret = f();
+            nlr_pop();
+            Some(ret)
+        } else {
+            mp_obj_print_exception(
+                &raw const mp_plat_print,
+                Obj::from_raw(nlr_buf.ret_val as u32),
+            );
+            None
         }
     }
+}
 
-    pub fn push_nlr_callback<F, R, C>(&mut self, f: F, callback: C, run_after_pop: bool) -> R
+pub fn push_nlr_callback<F, R, C>(_: InitToken, f: F, callback: C, run_after_pop: bool) -> R
+where
+    F: FnOnce() -> R,
+    C: FnOnce(),
+{
+    // TODO: is bootstrapping necessary after removing the singleton?
+    extern "C" fn callback_bootstrap<C>(ctx_ptr: *mut c_void)
     where
-        F: FnOnce(&mut Self) -> R,
-        C: FnOnce(&mut Self),
+        C: FnOnce(),
     {
-        extern "C" fn callback_bootstrap<C>(ctx_ptr: *mut c_void)
-        where
-            C: FnOnce(&mut MicroPython),
-        {
-            let ctx_ptr = ctx_ptr as *const NlrJumpCallbackNode<(*mut MicroPython, C)>;
-            unsafe {
-                let ctx = core::ptr::read(ctx_ptr);
-                (ctx.data.1)(&mut *ctx.data.0)
-            }
-        }
-
-        let mut node = NlrJumpCallbackNode {
-            prev: core::ptr::null(),
-            fun: callback_bootstrap::<C>,
-            data: (self as *mut Self, callback),
-        };
-
+        let ctx_ptr = ctx_ptr as *const NlrJumpCallbackNode<C>;
         unsafe {
-            nlr_push_jump_callback(
-                &raw mut node as *mut NlrJumpCallbackNode<()>,
-                callback_bootstrap::<C>,
-            )
-        };
-        let ret = f(self);
-        unsafe {
-            nlr_pop_jump_callback(run_after_pop);
+            let ctx = core::ptr::read(ctx_ptr);
+            (ctx.data)()
         }
-
-        ret
     }
+
+    let mut node = NlrJumpCallbackNode {
+        prev: core::ptr::null(),
+        fun: callback_bootstrap::<C>,
+        data: callback,
+    };
+
+    unsafe {
+        nlr_push_jump_callback(
+            &raw mut node as *mut NlrJumpCallbackNode<()>,
+            callback_bootstrap::<C>,
+        )
+    };
+
+    let ret = f();
+    unsafe {
+        nlr_pop_jump_callback(run_after_pop);
+    }
+
+    ret
 }

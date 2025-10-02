@@ -3,9 +3,7 @@ mod readline;
 
 use core::ffi::{c_char, c_void};
 
-use micropython_rs::MicroPython;
-
-use crate::serial::print_bytes;
+use crate::{ALLOCATOR, serial::print_bytes};
 
 #[unsafe(no_mangle)]
 extern "C" fn mp_hal_stdout_tx_strn_cooked(str: *const c_char, len: u32) {
@@ -15,8 +13,12 @@ extern "C" fn mp_hal_stdout_tx_strn_cooked(str: *const c_char, len: u32) {
 
 #[unsafe(no_mangle)]
 unsafe extern "C" fn gc_collect() {
-    MicroPython::reenter(|mut ptr| unsafe { ptr.as_mut().collect_garbage() })
-        .expect("reentry failed");
+    ALLOCATOR
+        .lock()
+        .as_mut()
+        .unwrap()
+        .collect_garbage()
+        .unwrap();
 }
 
 #[unsafe(no_mangle)]
