@@ -21,7 +21,7 @@ pub enum PrintKind {
     /// Special format for printing exception in unhandled exception message
     Exc = 2,
     Json = 3,
-    /// Special format for printing bytes as an undercorated string
+    /// Special format for printing bytes as an undecorated string
     Raw = 4,
     /// Internal flag for printing exception subclasses
     ExcSubclass = 0x80,
