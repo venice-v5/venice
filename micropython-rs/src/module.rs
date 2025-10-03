@@ -4,13 +4,13 @@ use crate::{
     init::InitToken,
     map::Dict,
     nlr::push_nlr_callback,
-    obj::{Obj, ObjBase, ObjFullType, ObjType},
+    obj::{Obj, ObjBase, ObjTrait, ObjType},
     qstr::{Qstr, QstrShort},
     state::{globals, locals, set_globals, set_locals},
 };
 
 unsafe extern "C" {
-    static mp_type_module: ObjFullType;
+    static mp_type_module: ObjType;
 
     /// From: `py/persistentcode.h`
     fn mp_raw_code_load_mem(buf: *const u8, len: usize, ctx: *mut CompiledModule);
@@ -66,8 +66,8 @@ pub struct ModuleContext {
     constants: ModuleConstants,
 }
 
-unsafe impl ObjType for ModuleContext {
-    const TYPE_OBJ: *const ObjFullType = &raw const mp_type_module;
+unsafe impl ObjTrait for ModuleContext {
+    const OBJ_TYPE: *const ObjType = &raw const mp_type_module;
 }
 
 /// From: `py/bc.h`

@@ -1,10 +1,8 @@
-use core::ffi::c_void;
-
 use crate::{gc::Gc, qstr::Qstr, str::Str};
 
 /// From: `py/obj.h`
 #[repr(C)]
-pub struct ObjFullType {
+pub struct ObjType {
     base: ObjBase,
 
     flags: u16,
@@ -23,14 +21,14 @@ pub struct ObjFullType {
     slot_index_parent: u8,
     slot_index_locals_dict: u8,
 
-    slots: [*const c_void; 12],
+    slots: (),
 }
 
 /// From: `py/obj.h`
 #[derive(Clone, Copy)]
 #[repr(C)]
 pub struct ObjBase {
-    r#type: *const ObjFullType,
+    r#type: *const ObjType,
 }
 
 /// MicroPython object
@@ -51,17 +49,17 @@ pub struct Obj(u32);
 
 /// # Safety
 ///
-/// Object representation must begin with an [`mp_obj_base_t`], always initialized to `TYPE_OBJ`
-pub unsafe trait ObjType: Sized {
-    const TYPE_OBJ: *const ObjFullType;
+/// Object representation must begin with an [`mp_obj_base_t`], always initialized to `OBJ_TYPE`
+pub unsafe trait ObjTrait: Sized {
+    const OBJ_TYPE: *const ObjType;
 }
 
 unsafe impl Sync for ObjBase {}
 
 impl ObjBase {
-    pub const fn new(r#type: &'static ObjFullType) -> Self {
+    pub const fn new(r#type: &'static ObjType) -> Self {
         Self {
-            r#type: r#type as *const ObjFullType,
+            r#type: r#type as *const ObjType,
         }
     }
 }
@@ -70,7 +68,7 @@ impl Obj {
     pub const NULL: Self = unsafe { Self::from_raw(0) };
     pub const NONE: Self = Self::from_immediate(0);
 
-    pub fn new<T: ObjType>(&mut self, o: T, alloc: &mut Gc) -> Option<Obj> {
+    pub fn new<T: ObjTrait>(&mut self, o: T, alloc: &mut Gc) -> Option<Obj> {
         unsafe {
             let mem = alloc.alloc(size_of::<T>());
             if mem.is_null() {
@@ -123,20 +121,20 @@ impl Obj {
         None
     }
 
-    pub fn as_obj_raw<T: ObjType>(&self) -> Option<*mut T> {
+    pub fn as_obj_raw<T: ObjTrait>(&self) -> Option<*mut T> {
         if self.0 & 0b11 != 0 {
             return None;
         }
 
         let ptr = self.0 as *mut ObjBase;
-        if unsafe { *ptr }.r#type != T::TYPE_OBJ {
+        if unsafe { *ptr }.r#type != T::OBJ_TYPE {
             return None;
         }
 
         Some(ptr as *mut T)
     }
 
-    pub fn as_obj<T: ObjType>(&self) -> Option<&T> {
+    pub fn as_obj<T: ObjTrait>(&self) -> Option<&T> {
         self.as_obj_raw().map(|ptr| unsafe { &*ptr })
     }
 }

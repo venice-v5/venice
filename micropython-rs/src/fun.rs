@@ -1,4 +1,4 @@
-use crate::obj::{Obj, ObjBase, ObjFullType, ObjType};
+use crate::obj::{Obj, ObjBase, ObjTrait, ObjType};
 
 macro_rules! define_fun_type {
     ($name:ident, $fn_type:ty, $mp_type_name:ident) => {
@@ -9,11 +9,11 @@ macro_rules! define_fun_type {
         }
 
         unsafe extern "C" {
-            static $mp_type_name: ObjFullType;
+            static $mp_type_name: ObjType;
         }
 
-        unsafe impl ObjType for $name {
-            const TYPE_OBJ: *const ObjFullType = &raw const $mp_type_name;
+        unsafe impl ObjTrait for $name {
+            const OBJ_TYPE: *const ObjType = &raw const $mp_type_name;
         }
 
         impl $name {

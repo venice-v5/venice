@@ -1,7 +1,7 @@
-use crate::obj::{ObjBase, ObjFullType, ObjType};
+use crate::obj::{ObjBase, ObjTrait, ObjType};
 
 unsafe extern "C" {
-    static mp_type_str: ObjFullType;
+    static mp_type_str: ObjType;
 }
 
 /// From: `py/objstr.h`
@@ -23,6 +23,6 @@ impl Str {
     }
 }
 
-unsafe impl ObjType for Str {
-    const TYPE_OBJ: *const ObjFullType = &raw const mp_type_str;
+unsafe impl ObjTrait for Str {
+    const OBJ_TYPE: *const ObjType = &raw const mp_type_str;
 }
