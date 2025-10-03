@@ -68,7 +68,7 @@ impl Obj {
     pub const NULL: Self = unsafe { Self::from_raw(0) };
     pub const NONE: Self = Self::from_immediate(0);
 
-    pub fn new<T: ObjTrait>(&mut self, o: T, alloc: &mut Gc) -> Option<Obj> {
+    pub fn new<T: ObjTrait>(o: T, alloc: &mut Gc) -> Option<Obj> {
         unsafe {
             let mem = alloc.alloc(size_of::<T>());
             if mem.is_null() {
