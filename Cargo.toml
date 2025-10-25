@@ -11,9 +11,9 @@ cty = "0.2.2"
 hashbrown.workspace = true
 lazy_static.workspace = true
 spin.workspace = true
-bitflags = "2.9.2"
-no_std_io = "0.6.0"
+bitflags.workspace = true
 paste = "1.0.15"
+no_std_io = "0.6.0"
 talc = "4.4.3"
 vex-sdk = "0.26.0"
 
@@ -37,6 +37,7 @@ members = ["micropython-rs"]
 [workspace.dependencies]
 spin = "0.10.0"
 hashbrown = "0.15.4"
+bitflags = "2.9.2"
 
 [workspace.dependencies.venice-program-table]
 # path = "../venice-program-table"

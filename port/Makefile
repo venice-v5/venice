@@ -4,7 +4,7 @@ include $(MICROPYTHON)/py/mkenv.mk
 include $(MICROPYTHON)/py/py.mk
 
 CROSS_COMPILE = arm-none-eabi-
-CFLAGS += -mcpu=cortex-a9 -mfpu=neon-fp16 -mfloat-abi=hard -mthumb -Os -g
+CFLAGS += -mcpu=cortex-a9 -mfpu=neon-fp16 -mfloat-abi=hard -mthumb -Os
 CFLAGS += -I. -I$(MICROPYTHON) -I$(BUILD)
 
 SRC_C = modvasyncio.c

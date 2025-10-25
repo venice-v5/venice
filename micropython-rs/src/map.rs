@@ -41,6 +41,16 @@ enum LookupKind {
 }
 
 #[macro_export]
+macro_rules! map_table {
+    [$($key:expr => $value:expr),* $(,)?] => {
+        [$($crate::map::MapElem {
+            key: $crate::obj::Obj::from_qstr($key),
+            value: $value,
+        }),*]
+    }
+}
+
+#[macro_export]
 macro_rules! const_map {
     [$($key:expr => $value:expr),* $(,)?] => {{
         use $crate::{map::{Map, MapElem}, obj::Obj};
@@ -128,7 +138,7 @@ unsafe extern "C" {
 impl Dict {
     pub const fn new(map: Map) -> Self {
         Self {
-            base: ObjBase::new(unsafe { &mp_type_dict }),
+            base: ObjBase::new::<Self>(),
             map,
         }
     }

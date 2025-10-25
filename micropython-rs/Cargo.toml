@@ -7,4 +7,5 @@ edition = "2024"
 venice-program-table.workspace = true
 hashbrown.workspace = true
 spin.workspace = true
+bitflags.workspace = true
 thiserror = { version = "2.0.14", default-features = false }

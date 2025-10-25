@@ -19,9 +19,13 @@ macro_rules! define_fun_type {
         impl $name {
             pub const fn new(f: $fn_type) -> Self {
                 Self {
-                    base: ObjBase::new(unsafe { &$mp_type_name }),
+                    base: ObjBase::new::<Self>(),
                     fun: f,
                 }
+            }
+
+            pub fn as_obj(&'static self) -> Obj {
+                unsafe { Obj::from_raw(self as *const Self as u32) }
             }
         }
     };
