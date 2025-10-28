@@ -101,3 +101,18 @@ where
 
     ret
 }
+
+pub fn raise(_: InitToken, ex: Obj) -> ! {
+    unsafe extern "C" {
+        fn mp_obj_is_exception_instance(self_in: Obj) -> bool;
+        fn nlr_jump(val: *mut c_void) -> !;
+    }
+
+    unsafe {
+        if !mp_obj_is_exception_instance(ex) {
+            panic!("attempt to raise non-exception object");
+        }
+
+        nlr_jump(ex.as_ptr());
+    }
+}

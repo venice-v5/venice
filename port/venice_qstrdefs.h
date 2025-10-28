@@ -1,2 +1,5 @@
 Q(EventLoop)
 Q(new_event_loop)
+Q(Task)
+Q(spawn)
+Q(run)

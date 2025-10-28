@@ -1,4 +1,5 @@
 pub mod event_loop;
+pub mod task;
 
 use micropython_rs::{const_dict, fun::Fun0, map::Dict};
 

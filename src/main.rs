@@ -7,6 +7,7 @@ extern crate alloc;
 
 mod exports;
 mod module_map;
+mod obj;
 mod qstrgen;
 mod serial;
 mod stubs;

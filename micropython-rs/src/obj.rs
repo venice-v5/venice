@@ -262,7 +262,7 @@ impl ObjFullType {
 macro_rules! impl_slot_setter {
     ($fn_name:ident, $slot:expr, $ty:ty) => {
         impl ObjFullType {
-            pub const fn $fn_name(&mut self, value: $ty) -> &mut Self {
+            pub const fn $fn_name(mut self, value: $ty) -> Self {
                 *self.slot_index($slot) = $slot as u8;
                 self.slots[$slot as usize - 1] = value as *const c_void;
                 self
@@ -357,6 +357,19 @@ impl Obj {
         }
 
         None
+    }
+
+    pub fn is(&self, ty: *const ObjType) -> bool {
+        if self.0 as u32 & 0b11 != 0 {
+            return false;
+        }
+
+        let ptr = self.0 as *const ObjBase;
+        unsafe { *ptr }.r#type == ty
+    }
+
+    pub fn as_ptr(&self) -> *mut c_void {
+        self.0
     }
 
     pub fn as_obj_raw<T: ObjTrait>(&self) -> Option<*mut T> {
