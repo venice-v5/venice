@@ -30,7 +30,6 @@ use venice_program_table::Vpt;
 use crate::{
     module_map::{add_vpt, lock_module_map},
     serial::{print, println},
-    vasyncio::init_vasyncio,
 };
 
 /// Signature used by VEXos to verify the program and its properties.
@@ -154,7 +153,6 @@ unsafe fn startup() -> ! {
 
         let (token, gc) = init_mp(&raw mut __heap_start, &raw mut __heap_end).unwrap();
         *ALLOCATOR.lock() = Some(gc);
-        init_vasyncio();
 
         let vpt = Vpt::from_ptr(&raw const __linked_file_start, VENDOR_ID)
             .expect("invalid VPT was uploaded");

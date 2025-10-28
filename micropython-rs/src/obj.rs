@@ -97,7 +97,9 @@ pub struct ObjBase {
 /// [`ObjBase`]: super::raw::ObjBase
 #[derive(Clone, Copy)]
 #[repr(transparent)]
-pub struct Obj(u32);
+pub struct Obj(*mut c_void);
+
+unsafe impl Sync for Obj {}
 
 /// # Safety
 ///
@@ -296,7 +298,7 @@ impl ObjBase {
 }
 
 impl Obj {
-    pub const NULL: Self = unsafe { Self::from_raw(0) };
+    pub const NULL: Self = unsafe { Self::from_ptr(core::ptr::null_mut()) };
     pub const NONE: Self = Self::from_immediate(0);
 
     // TODO: return Result instead of Option
@@ -307,35 +309,39 @@ impl Obj {
                 return None;
             }
             (mem as *mut T).write(o);
-            Some(Obj(mem as u32))
+            Some(Obj(mem as *mut c_void))
         }
     }
 
     pub const unsafe fn from_raw(inner: u32) -> Self {
-        Self(inner)
+        Self(inner as *mut c_void)
+    }
+
+    pub const unsafe fn from_ptr(ptr: *mut c_void) -> Self {
+        Self(ptr)
     }
 
     pub const fn from_immediate(imm: u32) -> Self {
-        Self(imm << 3 | 0b110)
+        unsafe { Self::from_raw(imm << 3 | 0b110) }
     }
 
     pub const fn from_qstr(qstr: Qstr) -> Self {
-        Self((qstr.index() as u32) << 3 | 0b010)
+        unsafe { Self::from_raw((qstr.index() as u32) << 3 | 0b010) }
     }
 
-    pub const fn as_small_int(self) -> i32 {
+    pub fn as_small_int(self) -> i32 {
         // right shifting a signed integer (as opposed to an unsigned int) performs an arithmetic
         // right shift where the sign bit is preserved, e.g. 0b1000 >> 1 = 0b1100
         self.0 as i32 >> 1
     }
 
     pub const fn is_null(&self) -> bool {
-        self.0 == Self::NULL.0
+        self.0.is_null()
     }
 
-    pub const fn as_qstr(&self) -> Option<Qstr> {
-        if self.0 & 0b111 == 0b10 {
-            Some(unsafe { Qstr::from_index((self.0 >> 3) as usize) })
+    pub fn as_qstr(&self) -> Option<Qstr> {
+        if self.0 as u32 & 0b111 == 0b10 {
+            Some(unsafe { Qstr::from_index((self.0 as u32 >> 3) as usize) })
         } else {
             None
         }
@@ -354,7 +360,7 @@ impl Obj {
     }
 
     pub fn as_obj_raw<T: ObjTrait>(&self) -> Option<*mut T> {
-        if self.0 & 0b11 != 0 {
+        if self.0 as u32 & 0b11 != 0 {
             return None;
         }
 
