@@ -1,6 +1,5 @@
 [build]
 target = "armv7a-vex-v5"
-# rustflags = ["-Clink-arg=--defsym=__linked_file_length=4M"]
 
 [unstable]
 build-std = ["std", "panic_abort"]

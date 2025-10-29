@@ -67,14 +67,7 @@ fn init_main(token: InitToken) {
 }
 
 fn main() {
-    println!("Hello World!");
     let token = unsafe {
-        let mut bss_ptr = &raw mut __bss_start;
-        while bss_ptr < &raw mut __bss_end {
-            bss_ptr.write_volatile(0);
-            bss_ptr = bss_ptr.add(1);
-        }
-
         let (token, gc) = init_mp(&raw mut __heap_start, &raw mut __heap_end).unwrap();
         *ALLOCATOR.lock() = Some(gc);
 

@@ -74,9 +74,10 @@ fn main() {
     println!("cargo::rustc-env=GENERATED_QSTRS_RS={out_dir}/generated_qstrs.rs");
 
     println!("cargo::rustc-link-search=native={manifest_dir}/link");
+
+    println!("cargo::rustc-link-arg=-Tvenice.ld");
     println!("cargo::rustc-link-lib=c");
     println!("cargo::rustc-link-lib=m");
-
     println!("cargo::rustc-link-arg={libmpyv5}");
 
     vex_sdk_vexcode::link_sdk("V5_20240802_15_00_00");
