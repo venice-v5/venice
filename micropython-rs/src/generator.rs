@@ -24,5 +24,8 @@ pub struct ResumeResult {
 pub fn resume_gen(obj: Obj, send_val: Obj, throw_val: Obj) -> ResumeResult {
     let mut ret = Obj::NONE;
     let return_kind = unsafe { mp_obj_gen_resume(obj, send_val, throw_val, &raw mut ret) };
-    ResumeResult { obj, return_kind }
+    ResumeResult {
+        obj: ret,
+        return_kind,
+    }
 }

@@ -89,7 +89,7 @@ impl EventLoop {
 
         let ret = if let Some(obj) = ready.pop_front() {
             let task = obj.as_obj::<Task>().unwrap();
-            let result = resume_gen(task.coro(), Obj::NONE, Obj::NONE);
+            let result = resume_gen(task.coro(), Obj::NONE, Obj::NULL);
             match result.return_kind {
                 VmReturnKind::Normal => {}
                 VmReturnKind::Yield => ready.push_back(obj),
