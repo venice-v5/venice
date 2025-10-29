@@ -1,4 +1,4 @@
-use core::ffi::c_void;
+use std::ffi::c_void;
 
 use bitflags::bitflags;
 

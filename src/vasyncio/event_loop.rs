@@ -1,5 +1,7 @@
-use alloc::collections::{binary_heap::BinaryHeap, vec_deque::VecDeque};
-use core::cell::RefCell;
+use std::{
+    cell::RefCell,
+    collections::{binary_heap::BinaryHeap, vec_deque::VecDeque},
+};
 
 use micropython_rs::{
     const_dict,

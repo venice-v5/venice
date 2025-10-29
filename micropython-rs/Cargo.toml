@@ -5,7 +5,5 @@ edition = "2024"
 
 [dependencies]
 venice-program-table.workspace = true
-hashbrown.workspace = true
-spin.workspace = true
-bitflags.workspace = true
+bitflags = "2.9.2"
 thiserror = { version = "2.0.14", default-features = false }

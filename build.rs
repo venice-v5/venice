@@ -78,4 +78,6 @@ fn main() {
     println!("cargo::rustc-link-lib=m");
 
     println!("cargo::rustc-link-arg={libmpyv5}");
+
+    vex_sdk_vexcode::link_sdk("V5_20240802_15_00_00");
 }

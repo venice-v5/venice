@@ -1,12 +1,8 @@
 #![allow(non_camel_case_types)]
 
-use cty::{c_int, c_long, c_void, ptrdiff_t, size_t, ssize_t};
-use no_std_io::io::{Read, Write};
+use std::io::{Read, Write, stdin, stdout};
 
-use crate::{
-    exit,
-    serial::{STDIN, STDOUT},
-};
+use cty::{c_int, c_long, c_void, ptrdiff_t, size_t, ssize_t};
 
 const STDIN_FILENO: c_int = 0;
 const STDOUT_FILENO: c_int = 1;
@@ -24,12 +20,6 @@ const ENOSYS: c_int = 88;
 type off_t = c_long;
 
 #[unsafe(no_mangle)]
-extern "C" fn _init() {}
-
-#[unsafe(no_mangle)]
-extern "C" fn _fini() {}
-
-#[unsafe(no_mangle)]
 extern "C" fn _sbrk(_incr: ptrdiff_t) -> *mut c_void {
     unsafe { errno = ENOMEM };
     core::ptr::null_mut()
@@ -44,10 +34,7 @@ unsafe extern "C" fn _read(fd: c_int, buf: *mut c_void, count: size_t) -> ssize_
 
     let buf = unsafe { core::slice::from_raw_parts_mut(buf as *mut u8, count) };
 
-    let ret = STDIN
-        .try_lock()
-        .expect("attempt to read from stdin while locked")
-        .read(buf);
+    let ret = stdin().read(buf);
 
     ret.map(|read| read as ssize_t).unwrap_or_else(|_| {
         unsafe { errno = EIO };
@@ -64,10 +51,7 @@ unsafe extern "C" fn _write(fd: c_int, buf: *const c_void, count: size_t) -> ssi
 
     let buf = unsafe { core::slice::from_raw_parts(buf as *const u8, count) };
 
-    let ret = STDOUT
-        .try_lock()
-        .expect("attempt to write to stdout while locked")
-        .write(buf);
+    let ret = stdout().write(buf);
 
     ret.map(|written| written as ssize_t).unwrap_or_else(|_| {
         unsafe { errno = EIO };
@@ -107,8 +91,8 @@ unsafe extern "C" fn _fstat(_fd: c_int, _pstat: *mut stat) -> c_int {
 }
 
 #[unsafe(no_mangle)]
-unsafe extern "C" fn _exit(_status: c_int) -> ! {
-    exit()
+unsafe extern "C" fn _exit(status: c_int) -> ! {
+    std::process::exit(status);
 }
 
 #[unsafe(no_mangle)]

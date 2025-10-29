@@ -1,4 +1,4 @@
-use alloc::{borrow::Cow, vec::Vec};
+use std::borrow::Cow;
 
 use micropython_rs::{
     init::{InitToken, token},
@@ -9,7 +9,7 @@ use micropython_rs::{
 };
 
 use crate::{
-    module_map::{VptModuleFlags, lock_module_map},
+    module_map::{MODULE_MAP, VptModuleFlags},
     qstrgen::qstr,
 };
 
@@ -19,7 +19,9 @@ pub fn absolute_name(token: InitToken, mut level: i32, module_name: &[u8]) -> Ve
     let current_module_name_obj = unsafe { (*globals(token)).map.get(NAME_OBJ).unwrap() };
     let current_module_name = current_module_name_obj.get_str().unwrap();
 
-    let is_package = lock_module_map()
+    let is_package = MODULE_MAP
+        .get()
+        .unwrap()
         .get(current_module_name)
         .unwrap()
         .flags()
@@ -63,7 +65,7 @@ pub fn process_import_at_level(
         }
     }
 
-    if let Some(module) = lock_module_map().get(full_name.bytes()) {
+    if let Some(module) = MODULE_MAP.get().unwrap().get(full_name.bytes()) {
         exec_module(token, full_name, module.payload())
     } else {
         panic!(

@@ -2,7 +2,7 @@
 
 #![allow(non_camel_case_types)]
 
-use core::ffi::{c_char, c_void};
+use std::ffi::{c_char, c_void};
 
 use crate::{
     map::Dict,

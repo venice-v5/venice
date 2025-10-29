@@ -1,5 +1,3 @@
-#![no_std]
-
 mod raw;
 
 pub(crate) mod print;

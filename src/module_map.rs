@@ -1,9 +1,6 @@
-use core::ops::Deref;
+use std::{collections::HashMap, sync::OnceLock};
 
 use bitflags::bitflags;
-use hashbrown::HashMap;
-use lazy_static::lazy_static;
-use spin::{Mutex, MutexGuard};
 use venice_program_table::Vpt;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -31,36 +28,17 @@ impl<'a> VptModule<'a> {
 
 type ModuleMap = HashMap<&'static [u8], VptModule<'static>>;
 
-lazy_static! {
-    static ref MODULE_MAP: Mutex<ModuleMap> = Mutex::new(HashMap::new());
-}
+pub static MODULE_MAP: OnceLock<ModuleMap> = OnceLock::new();
 
-pub struct ModuleMapLock<'a> {
-    guard: MutexGuard<'a, ModuleMap>,
-}
-
-impl Deref for ModuleMapLock<'_> {
-    type Target = ModuleMap;
-
-    fn deref(&self) -> &Self::Target {
-        &self.guard
-    }
-}
-
-pub fn lock_module_map<'a>() -> ModuleMapLock<'a> {
-    ModuleMapLock {
-        guard: MODULE_MAP.lock(),
-    }
-}
-
-pub fn add_vpt(vpt: Vpt<'static>) {
-    let mut lock = MODULE_MAP.lock();
+pub fn init_module_map(vpt: Vpt<'static>) -> Result<(), ModuleMap> {
+    let mut map = HashMap::new();
     for program in vpt.program_iter() {
-        lock.insert(
+        map.insert(
             program.name(),
             VptModule {
                 data: program.payload(),
             },
         );
     }
+    MODULE_MAP.set(map)
 }

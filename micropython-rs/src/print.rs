@@ -1,4 +1,4 @@
-use core::ffi::{c_char, c_void};
+use std::ffi::{c_char, c_void};
 
 use crate::obj::Obj;
 

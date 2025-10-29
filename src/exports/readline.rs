@@ -1,8 +1,9 @@
-use core::ffi::{CStr, c_char, c_int};
+use std::{
+    ffi::{CStr, c_char, c_int},
+    io::stdin,
+};
 
 use micropython_rs::vstr::Vstr;
-
-use crate::serial::STDIN;
 
 pub struct Readline {
     // TODO: expand with state fields like history, cursor position
@@ -14,21 +15,11 @@ impl Readline {
     }
 
     pub fn read(&mut self, vstr: &mut Vstr, _prompt: &[u8]) {
-        let mut stdin = STDIN
-            .try_lock()
-            .expect("attempt to read while stdin was locked");
-        loop {
-            let char = stdin.read_char();
-            if char == -1 {
-                continue;
-            }
-
-            let char = char as u8;
-            if char == b'\n' {
-                break;
-            }
-
-            vstr.add_byte(char);
+        let mut buf = String::new();
+        stdin().read_line(&mut buf).expect("couldn't read line");
+        for byte in buf.bytes() {
+            // TODO: add the entire string with once call this is so inefficient
+            vstr.add_byte(byte);
         }
     }
 }

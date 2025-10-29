@@ -4,8 +4,8 @@ use core::{
     ffi::{c_uint, c_void},
     ptr::null_mut,
 };
+use std::sync::{Mutex, MutexGuard};
 
-use spin::{Mutex, MutexGuard};
 use thiserror::Error;
 
 use crate::{init::token, state::stack_top};
@@ -72,7 +72,7 @@ impl LockedGc {
     }
 
     pub fn lock<'a>(&'a self) -> MutexGuard<'a, Option<Gc>> {
-        self.gc.lock()
+        self.gc.lock().unwrap()
     }
 }
 
