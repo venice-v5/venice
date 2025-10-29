@@ -1,31 +1,8 @@
-[package]
-name = "venice"
-license = "MPL-2.0"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-micropython-rs.path = "./micropython-rs"
-venice-program-table.workspace = true
-cty = "0.2.2"
-bitflags = "2.9.2"
-paste = "1.0.15"
-vex-sdk = "0.27.1"
+[workspace]
+resolver = "3"
+members = ["packages/*"]
 
 [profile.release]
 lto = true
 strip = true
 opt-level = "s"
-
-[build-dependencies]
-format-bytes = "0.3.0"
-regex = "1.11.1"
-vex-sdk-vexcode = "0.0.1"
-
-[workspace]
-resolver = "3"
-members = ["micropython-rs"]
-
-[workspace.dependencies.venice-program-table]
-git = "https://github.com/venice-v5/venice-program-table.git"
-rev = "e5a1762be2eeaf94841bb972af4e447bbf5f4eea"
