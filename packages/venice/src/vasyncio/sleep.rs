@@ -4,7 +4,7 @@ use cty::c_void;
 use micropython_rs::{
     except::{raise_stop_iteration, raise_type_error},
     init::token,
-    obj::{Obj, ObjBase, ObjFullType, ObjTrait, TypeFlags},
+    obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
 
 use crate::{obj::alloc_obj, qstrgen::qstr};
@@ -15,8 +15,10 @@ pub struct Sleep {
     deadline: Instant,
 }
 
-static SLEEP_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::ITER_IS_ITERNEXT, qstr!(Sleep))
-    .set_slot_iter(sleep_iternext as *const c_void);
+pub static SLEEP_OBJ_TYPE: ObjFullType =
+    ObjFullType::new(TypeFlags::ITER_IS_ITERNEXT, qstr!(Sleep))
+        .set_slot_iter(sleep_iternext as *const c_void)
+        .set_slot_make_new(sleep_make_new);
 
 unsafe impl ObjTrait for Sleep {
     const OBJ_TYPE: *const micropython_rs::obj::ObjType = SLEEP_OBJ_TYPE.as_obj_type_ptr();
@@ -35,15 +37,43 @@ impl Sleep {
     }
 }
 
-pub extern "C" fn sleep_ms(ms: Obj) -> Obj {
-    let ms = match ms.as_small_int() {
-        Some(ms) => ms,
-        None => raise_type_error(
-            token().unwrap(),
-            "expected integer, got (TODO?: print type received)",
+extern "C" fn sleep_make_new(
+    _: *const ObjType,
+    n_args: usize,
+    n_kw: usize,
+    args: *const Obj,
+) -> Obj {
+    let token = token().unwrap();
+    if n_args != 0 {
+        raise_type_error(
+            token,
+            &format!("function doesn't take positional arguments, but {n_args} were provided"),
+        );
+    }
+
+    if n_kw < 1 {
+        raise_type_error(
+            token,
+            "expected at least one keyword argument (either `milliss=n` or `secs=n`)",
+        );
+    }
+
+    let slice = unsafe { std::slice::from_raw_parts(args, n_kw * 2) };
+    let arg_name = slice[0].get_str().unwrap();
+    let value = slice[1]
+        .as_small_int()
+        .unwrap_or_else(|| raise_type_error(token, "expected integer"));
+
+    let duration = match arg_name {
+        b"millis" => Duration::from_millis(value as u64),
+        b"secs" => Duration::from_secs(value as u64),
+        _ => raise_type_error(
+            token,
+            "invalid keyword argument (expected either `millis=n` or `secs=n`)",
         ),
     };
-    alloc_obj(Sleep::new(Duration::from_millis(ms as u64)))
+
+    alloc_obj(Sleep::new(duration))
 }
 
 extern "C" fn sleep_iternext(self_in: Obj) -> Obj {
