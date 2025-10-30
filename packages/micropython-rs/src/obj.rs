@@ -333,10 +333,14 @@ impl Obj {
         unsafe { Self::from_raw((qstr.index() as u32) << 3 | 0b010) }
     }
 
-    pub fn as_small_int(self) -> i32 {
+    pub fn as_small_int(self) -> Option<i32> {
+        let int = self.0 as i32;
+        if int & 0b1 != 1 {
+            return None;
+        }
         // right shifting a signed integer (as opposed to an unsigned int) performs an arithmetic
         // right shift where the sign bit is preserved, e.g. 0b1000 >> 1 = 0b1100
-        self.0 as i32 >> 1
+        Some(int >> 1)
     }
 
     pub const fn is_null(&self) -> bool {

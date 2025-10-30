@@ -2,7 +2,7 @@ use std::time::{Duration, Instant};
 
 use cty::c_void;
 use micropython_rs::{
-    except::raise_stop_iteration,
+    except::{raise_stop_iteration, raise_type_error},
     init::token,
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, TypeFlags},
 };
@@ -36,7 +36,14 @@ impl Sleep {
 }
 
 pub extern "C" fn sleep_ms(ms: Obj) -> Obj {
-    alloc_obj(Sleep::new(Duration::from_millis(ms.as_small_int() as u64)))
+    let ms = match ms.as_small_int() {
+        Some(ms) => ms,
+        None => raise_type_error(
+            token().unwrap(),
+            "expected integer, got (TODO?: print type received)",
+        ),
+    };
+    alloc_obj(Sleep::new(Duration::from_millis(ms as u64)))
 }
 
 extern "C" fn sleep_iternext(self_in: Obj) -> Obj {

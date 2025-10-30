@@ -1,4 +1,4 @@
-use crate::obj::Obj;
+use crate::obj::{Obj, ObjType};
 
 #[repr(C)]
 pub enum VmReturnKind {
@@ -14,6 +14,8 @@ unsafe extern "C" {
         throw_val: Obj,
         ret_val: *mut Obj,
     ) -> VmReturnKind;
+
+    pub static mp_type_gen_instance: ObjType;
 }
 
 pub struct ResumeResult {

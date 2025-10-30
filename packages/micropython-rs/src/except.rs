@@ -25,18 +25,37 @@ impl<'a> RomErrorText<'a> {
             _phantom: PhantomData,
         }
     }
+
+    pub const fn from_bytes(bytes: &'a [u8]) -> Self {
+        Self {
+            ptr: bytes.as_ptr(),
+            _phantom: PhantomData,
+        }
+    }
 }
 
-pub fn raise_value_error(_: InitToken, msg: RomErrorText) -> ! {
-    unsafe { mp_raise_ValueError(msg) };
+impl<'a> From<&'a str> for RomErrorText<'a> {
+    fn from(value: &'a str) -> Self {
+        Self::new(value)
+    }
 }
 
-pub fn raise_type_error(_: InitToken, msg: RomErrorText) -> ! {
-    unsafe { mp_raise_TypeError(msg) };
+impl<'a> From<&'a [u8]> for RomErrorText<'a> {
+    fn from(value: &'a [u8]) -> Self {
+        Self::from_bytes(value)
+    }
 }
 
-pub fn raise_not_implemented_error(_: InitToken, msg: RomErrorText) -> ! {
-    unsafe { mp_raise_NotImplementedError(msg) };
+pub fn raise_value_error<'a>(_: InitToken, msg: impl Into<RomErrorText<'a>>) -> ! {
+    unsafe { mp_raise_ValueError(msg.into()) };
+}
+
+pub fn raise_type_error<'a>(_: InitToken, msg: impl Into<RomErrorText<'a>>) -> ! {
+    unsafe { mp_raise_TypeError(msg.into()) };
+}
+
+pub fn raise_not_implemented_error<'a>(_: InitToken, msg: impl Into<RomErrorText<'a>>) -> ! {
+    unsafe { mp_raise_NotImplementedError(msg.into()) };
 }
 
 pub fn raise_stop_iteration(_: InitToken, arg: Obj) -> ! {

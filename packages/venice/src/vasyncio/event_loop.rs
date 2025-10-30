@@ -6,8 +6,9 @@ use std::{
 
 use micropython_rs::{
     const_dict,
+    except::raise_type_error,
     fun::{Fun1, Fun2},
-    generator::{VmReturnKind, resume_gen},
+    generator::{VmReturnKind, mp_type_gen_instance, resume_gen},
     init::token,
     map::Dict,
     nlr::raise,
@@ -123,6 +124,10 @@ pub extern "C" fn new_event_loop() -> Obj {
 }
 
 extern "C" fn event_loop_spawn(self_in: Obj, coro: Obj) -> Obj {
+    if !coro.is(&raw const mp_type_gen_instance) {
+        raise_type_error(token().unwrap(), "expected coroutine");
+    }
+
     self_in.as_obj::<EventLoop>().unwrap().spawn(coro)
 }
 
