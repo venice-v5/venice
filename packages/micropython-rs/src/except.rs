@@ -1,6 +1,9 @@
 use std::{ffi::c_int, marker::PhantomData};
 
-use crate::{init::InitToken, obj::Obj};
+use crate::{
+    init::InitToken,
+    obj::{Obj, ObjType},
+};
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -10,12 +13,15 @@ pub struct RomErrorText<'a> {
 }
 
 unsafe extern "C" {
+    fn mp_raise_msg(exc_type: *const ObjType, msg: RomErrorText) -> !;
     fn mp_raise_ValueError(msg: RomErrorText) -> !;
     fn mp_raise_TypeError(msg: RomErrorText) -> !;
     fn mp_raise_NotImplementedError(msg: RomErrorText) -> !;
     fn mp_raise_StopIteration(arg: Obj) -> !;
     fn mp_raise_OSError(errno_: c_int) -> !;
     fn mp_raise_OSError_with_filename(errno_: c_int, filename: *const u8) -> !;
+
+    pub static mp_type_ImportError: ObjType;
 }
 
 impl<'a> RomErrorText<'a> {
@@ -40,10 +46,24 @@ impl<'a> From<&'a str> for RomErrorText<'a> {
     }
 }
 
+impl<'a> From<&'a String> for RomErrorText<'a> {
+    fn from(value: &'a String) -> Self {
+        Self::new(value)
+    }
+}
+
 impl<'a> From<&'a [u8]> for RomErrorText<'a> {
     fn from(value: &'a [u8]) -> Self {
         Self::from_bytes(value)
     }
+}
+
+pub fn raise_msg<'a>(
+    _: InitToken,
+    exc_type: *const ObjType,
+    msg: impl Into<RomErrorText<'a>>,
+) -> ! {
+    unsafe { mp_raise_msg(exc_type, msg.into()) };
 }
 
 pub fn raise_value_error<'a>(_: InitToken, msg: impl Into<RomErrorText<'a>>) -> ! {

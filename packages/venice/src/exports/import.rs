@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 
 use micropython_rs::{
+    except::{mp_type_ImportError, raise_msg},
     init::{InitToken, token},
     module::{builtin_module, exec_module},
     obj::Obj,
@@ -68,10 +69,12 @@ pub fn process_import_at_level(
     if let Some(module) = MODULE_MAP.get().unwrap().get(full_name.bytes()) {
         exec_module(token, full_name, module.payload())
     } else {
-        panic!(
-            "module {} not found",
-            str::from_utf8(full_name.bytes()).unwrap_or("<invalid utf8 module name>")
-        )
+        let name = str::from_utf8(full_name.bytes()).unwrap_or("<invalid utf8 module name>");
+        raise_msg(
+            token,
+            &raw const mp_type_ImportError,
+            &format!("no module named '{name}'"),
+        );
     }
 }
 
