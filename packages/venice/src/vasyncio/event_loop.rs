@@ -95,7 +95,11 @@ impl EventLoop {
             let task = obj.as_obj::<Task>().unwrap();
             let result = resume_gen(task.coro(), Obj::NONE, Obj::NULL);
             match result.return_kind {
-                VmReturnKind::Normal => {}
+                VmReturnKind::Normal => {
+                    task.waiting_tasks()
+                        .iter()
+                        .for_each(|&w| ready.push_front(w));
+                }
                 VmReturnKind::Yield => {
                     if let Some(sleep) = result.obj.as_obj::<Sleep>() {
                         sleepers.push(Sleeper {
