@@ -1,8 +1,8 @@
-use std::cell::{Ref, RefCell};
+use std::cell::{Cell, Ref, RefCell};
 
 use cty::c_void;
 use micropython_rs::{
-    except::raise_type_error,
+    except::{raise_stop_iteration, raise_type_error},
     init::token,
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, TypeFlags},
 };
@@ -18,6 +18,7 @@ pub struct Task {
     // generator object
     coro: Obj,
     waiting_tasks: RefCell<Vec<Obj>>,
+    return_val: Cell<Obj>,
 }
 
 unsafe impl ObjTrait for Task {
@@ -30,6 +31,7 @@ impl Task {
             base: ObjBase::new::<Self>(),
             coro,
             waiting_tasks: RefCell::new(Vec::new()),
+            return_val: Cell::new(Obj::NULL),
         }
     }
 
@@ -44,11 +46,23 @@ impl Task {
     pub fn waiting_tasks<'a>(&'a self) -> Ref<'a, [Obj]> {
         Ref::map(self.waiting_tasks.borrow(), |tasks| tasks.as_slice())
     }
+
+    pub fn is_complete(&self) -> bool {
+        !self.return_val.get().is_null()
+    }
+
+    pub fn complete_with(&self, val: Obj) {
+        self.return_val.set(val);
+    }
 }
 
 extern "C" fn task_iternext(self_in: Obj) -> Obj {
     let task = self_in
         .as_obj::<Task>()
         .unwrap_or_else(|| raise_type_error(token().unwrap(), "expected Task"));
-    task.add_waiting_task(todo!());
+    if !task.is_complete() {
+        self_in
+    } else {
+        raise_stop_iteration(token().unwrap(), task.return_val.get())
+    }
 }

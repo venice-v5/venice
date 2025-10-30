@@ -96,6 +96,7 @@ impl EventLoop {
             let result = resume_gen(task.coro(), Obj::NONE, Obj::NULL);
             match result.return_kind {
                 VmReturnKind::Normal => {
+                    task.complete_with(result.obj);
                     task.waiting_tasks()
                         .iter()
                         .for_each(|&w| ready.push_front(w));
@@ -106,6 +107,8 @@ impl EventLoop {
                             task: obj,
                             deadline: sleep.deadline(),
                         });
+                    } else if let Some(awaited_task) = result.obj.as_obj::<Task>() {
+                        awaited_task.add_waiting_task(obj);
                     }
                 }
                 VmReturnKind::Exception => raise(token().unwrap(), result.obj),

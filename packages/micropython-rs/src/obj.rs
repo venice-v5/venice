@@ -298,8 +298,9 @@ impl_slot_setter!(set_slot_parent, Slot::Parent, *const c_void);
 
 unsafe impl Sync for ObjFullType {}
 unsafe impl Sync for ObjBase {}
-// this is definitely not true but i dont car :)
+// these are definitely not true but i dont car :)
 unsafe impl Sync for Obj {}
+unsafe impl Send for Obj {}
 
 unsafe extern "C" {
     static mp_type_type: ObjType;
