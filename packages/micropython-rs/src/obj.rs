@@ -99,11 +99,11 @@ pub struct ObjBase {
 #[repr(transparent)]
 pub struct Obj(*mut c_void);
 
-unsafe impl Sync for Obj {}
-
 /// # Safety
 ///
-/// Object representation must begin with an [`mp_obj_base_t`], always initialized to `OBJ_TYPE`
+/// Object representation must begin with an [`mp_obj_base_t`], always initialized to `OBJ_TYPE`.
+/// Additionally, all instances must be aligned to 4 bytes in memory, but this is already
+/// guaranteed if the first invariant is true, as a side effect.
 pub unsafe trait ObjTrait: Sized {
     const OBJ_TYPE: *const ObjType;
 }
@@ -261,6 +261,17 @@ impl ObjFullType {
     pub const fn as_obj_type_ptr(&'static self) -> *const ObjType {
         self as *const Self as *const ObjType
     }
+
+    pub const unsafe fn set_slot_locals_dict(mut self, value: *mut Dict) -> Self {
+        let slot = Slot::LocalsDict;
+        *self.slot_index(slot) = slot as u8;
+        self.slots[slot as usize - 1] = value as *const c_void;
+        self
+    }
+
+    pub const fn set_slot_locals_dict_from_static(self, value: &'static Dict) -> Self {
+        unsafe { self.set_slot_locals_dict(value as *const Dict as *mut Dict) }
+    }
 }
 
 macro_rules! impl_slot_setter {
@@ -284,10 +295,23 @@ impl_slot_setter!(set_slot_subscr, Slot::Subscr, SubscrFn);
 impl_slot_setter!(set_slot_iter, Slot::Iter, *const c_void);
 impl_slot_setter!(set_slot_protocol, Slot::Protocol, *const c_void);
 impl_slot_setter!(set_slot_parent, Slot::Parent, *const c_void);
-impl_slot_setter!(set_slot_locals_dict, Slot::LocalsDict, *mut Dict);
 
 unsafe impl Sync for ObjFullType {}
 unsafe impl Sync for ObjBase {}
+// this is definitely not true but i dont car :)
+unsafe impl Sync for Obj {}
+
+unsafe extern "C" {
+    static mp_type_type: ObjType;
+}
+
+unsafe impl ObjTrait for ObjType {
+    const OBJ_TYPE: *const ObjType = &raw const mp_type_type;
+}
+
+unsafe impl ObjTrait for ObjFullType {
+    const OBJ_TYPE: *const ObjType = &raw const mp_type_type;
+}
 
 impl ObjBase {
     pub const fn new<O: ObjTrait>() -> Self {
@@ -306,7 +330,7 @@ impl Obj {
     pub const NONE: Self = Self::from_immediate(0);
 
     // TODO: return Result instead of Option
-    pub fn new<T: ObjTrait>(o: T, alloc: &mut Gc) -> Option<Obj> {
+    pub fn new<T: ObjTrait>(o: T, alloc: &mut Gc) -> Option<Self> {
         unsafe {
             let mem = alloc.alloc(size_of::<T>());
             if mem.is_null() {
@@ -315,6 +339,10 @@ impl Obj {
             (mem as *mut T).write(o);
             Some(Obj(mem as *mut c_void))
         }
+    }
+
+    pub const fn from_static<T: ObjTrait>(o: &'static T) -> Self {
+        Self(o as *const T as *mut c_void)
     }
 
     pub const unsafe fn from_raw(inner: u32) -> Self {
@@ -376,7 +404,7 @@ impl Obj {
         unsafe { *ptr }.r#type == ty
     }
 
-    pub fn as_ptr(&self) -> *mut c_void {
+    pub const fn as_ptr(&self) -> *mut c_void {
         self.0
     }
 

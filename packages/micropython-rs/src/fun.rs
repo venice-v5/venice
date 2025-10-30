@@ -23,10 +23,6 @@ macro_rules! define_fun_type {
                     fun: f,
                 }
             }
-
-            pub const fn as_obj(&'static self) -> Obj {
-                unsafe { Obj::from_ptr(self as *const _ as *mut core::ffi::c_void) }
-            }
         }
     };
 }

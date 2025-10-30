@@ -53,15 +53,13 @@ macro_rules! map_table {
 #[macro_export]
 macro_rules! const_map {
     [$($key:expr => $value:expr),* $(,)?] => {{
-        use $crate::{map::{Map, MapElem}, obj::Obj};
-
-        static TABLE: &[MapElem] = [$(MapElem {
-            key: Obj::from_qstr($key),
+        static TABLE: &[$crate::map::MapElem] = [$($crate::map::MapElem {
+            key: $crate::obj::Obj::from_qstr($key),
             value: $value,
         }),*].as_slice();
 
         unsafe {
-            Map::from_raw_parts(TABLE.as_ptr() as *mut MapElem, TABLE.len(), TABLE.len(), true, true, true)
+            $crate::map::Map::from_raw_parts(TABLE.as_ptr() as *mut $crate::map::MapElem, TABLE.len(), TABLE.len(), true, true, true)
         }
     }};
 }
@@ -69,9 +67,7 @@ macro_rules! const_map {
 #[macro_export]
 macro_rules! const_dict {
     [$($key:expr => $value:expr),* $(,)?] => {{
-        use $crate::{const_map, map::Dict};
-
-        Dict::new(const_map![$($key => $value),*])
+        $crate::map::Dict::new($crate::const_map![$($key => $value),*])
     }};
 }
 
@@ -79,7 +75,7 @@ unsafe impl Sync for Map {}
 
 impl Map {
     pub const unsafe fn from_raw_parts(
-        ptr: *mut MapElem,
+        ptr: *const MapElem,
         len: usize,
         alloc: usize,
         all_qstr_keys: bool,
@@ -92,10 +88,9 @@ impl Map {
                 | ((fixed as usize) << 1)
                 | (all_qstr_keys as usize),
             alloc,
-            table: ptr,
+            table: ptr as *mut MapElem,
         }
     }
-
     pub fn get(&self, index: Obj) -> Option<Obj> {
         unsafe {
             let elem = mp_map_lookup(self as *const Self as *mut Self, index, LookupKind::Lookup);

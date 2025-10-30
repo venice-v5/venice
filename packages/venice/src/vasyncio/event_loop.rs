@@ -10,7 +10,6 @@ use micropython_rs::{
     fun::{Fun1, Fun2},
     generator::{VmReturnKind, mp_type_gen_instance, resume_gen},
     init::token,
-    map::Dict,
     nlr::raise,
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
@@ -20,12 +19,11 @@ use super::task::Task;
 use crate::{obj::alloc_obj, qstrgen::qstr, vasyncio::sleep::Sleep};
 
 pub static EVENT_LOOP_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(EventLoop))
-    .set_slot_locals_dict({
-        static mut LOCALS_DICT: Dict = const_dict![
-            qstr!(spawn) => Fun2::new(event_loop_spawn).as_obj(),
-            qstr!(run) => Fun1::new(event_loop_run).as_obj(),
-        ];
-        &raw mut LOCALS_DICT
+    .set_slot_locals_dict_from_static({
+        &const_dict![
+            qstr!(spawn) => Obj::from_static(&Fun2::new(event_loop_spawn)),
+            qstr!(run) => Obj::from_static(&Fun1::new(event_loop_run)),
+        ]
     });
 
 struct Sleeper {
