@@ -1,6 +1,7 @@
 use std::{
     cell::RefCell,
     collections::{binary_heap::BinaryHeap, vec_deque::VecDeque},
+    time::Instant,
 };
 
 use micropython_rs::{
@@ -15,7 +16,7 @@ use micropython_rs::{
 use vex_sdk::vexTasksRun;
 
 use super::task::Task;
-use crate::{obj::alloc_obj, qstrgen::qstr};
+use crate::{obj::alloc_obj, qstrgen::qstr, vasyncio::sleep::Sleep};
 
 pub static EVENT_LOOP_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(EventLoop))
     .set_slot_locals_dict({
@@ -28,8 +29,7 @@ pub static EVENT_LOOP_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), q
 
 struct Sleeper {
     task: Obj,
-    // TODO: replace with Instant
-    deadline: u32,
+    deadline: Instant,
 }
 
 impl PartialEq for Sleeper {
@@ -78,36 +78,43 @@ impl EventLoop {
         task
     }
 
+    // returns:
+    // true -> no more tasks/sleepers to run, stop
+    // false -> tasks/sleepers still in queues
     pub fn tick(&self) -> bool {
         let mut ready = self.ready.borrow_mut();
         let mut sleepers = self.sleepers.borrow_mut();
 
         if let Some(sleeper) = sleepers.peek()
-            && sleeper.deadline <= u32::MAX
+            && sleeper.deadline <= Instant::now()
         {
             let sleeper = sleepers.pop().unwrap();
             ready.push_back(sleeper.task);
         }
 
-        let ret = if let Some(obj) = ready.pop_front() {
+        if let Some(obj) = ready.pop_front() {
             let task = obj.as_obj::<Task>().unwrap();
             let result = resume_gen(task.coro(), Obj::NONE, Obj::NULL);
             match result.return_kind {
                 VmReturnKind::Normal => {}
-                VmReturnKind::Yield => ready.push_back(obj),
+                VmReturnKind::Yield => {
+                    if let Some(sleep) = result.obj.as_obj::<Sleep>() {
+                        sleepers.push(Sleeper {
+                            task: obj,
+                            deadline: sleep.deadline(),
+                        });
+                    }
+                }
                 VmReturnKind::Exception => raise(token().unwrap(), result.obj),
             }
-            true
-        } else {
-            false
-        };
+        }
 
         unsafe { vexTasksRun() };
-        ret
+        sleepers.is_empty() && ready.is_empty()
     }
 
     pub fn run(&self) {
-        while self.tick() {}
+        while !self.tick() {}
     }
 }
 
@@ -115,7 +122,7 @@ pub extern "C" fn new_event_loop() -> Obj {
     alloc_obj(EventLoop::new())
 }
 
-pub extern "C" fn event_loop_spawn(self_in: Obj, coro: Obj) -> Obj {
+extern "C" fn event_loop_spawn(self_in: Obj, coro: Obj) -> Obj {
     self_in.as_obj::<EventLoop>().unwrap().spawn(coro)
 }
 

@@ -2,6 +2,7 @@ mod raw;
 
 pub(crate) mod print;
 
+pub mod except;
 pub mod fun;
 pub mod gc;
 pub mod generator;
