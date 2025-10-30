@@ -60,7 +60,7 @@ pub struct EventLoop {
 }
 
 unsafe impl ObjTrait for EventLoop {
-    const OBJ_TYPE: *const ObjType = &raw const EVENT_LOOP_TYPE as *const ObjType;
+    const OBJ_TYPE: *const ObjType = EVENT_LOOP_TYPE.as_obj_type_ptr();
 }
 
 impl EventLoop {

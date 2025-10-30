@@ -1,4 +1,4 @@
-use micropython_rs::obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags};
+use micropython_rs::obj::{Obj, ObjBase, ObjFullType, ObjTrait, TypeFlags};
 
 use crate::qstrgen::qstr;
 
@@ -12,8 +12,7 @@ pub struct Task {
 }
 
 unsafe impl ObjTrait for Task {
-    const OBJ_TYPE: *const micropython_rs::obj::ObjType =
-        &raw const TASK_OBJ_TYPE as *const ObjType;
+    const OBJ_TYPE: *const micropython_rs::obj::ObjType = TASK_OBJ_TYPE.as_obj_type_ptr();
 }
 
 impl Task {

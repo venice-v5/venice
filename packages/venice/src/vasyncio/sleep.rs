@@ -19,7 +19,7 @@ static SLEEP_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::ITER_IS_ITERNEX
     .set_slot_iter(sleep_iternext as *const c_void);
 
 unsafe impl ObjTrait for Sleep {
-    const OBJ_TYPE: *const micropython_rs::obj::ObjType = &raw const SLEEP_OBJ_TYPE as *const _;
+    const OBJ_TYPE: *const micropython_rs::obj::ObjType = SLEEP_OBJ_TYPE.as_obj_type_ptr();
 }
 
 impl Sleep {

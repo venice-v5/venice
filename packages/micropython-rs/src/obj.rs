@@ -257,6 +257,10 @@ impl ObjFullType {
             Slot::LocalsDict => &mut self.slot_index_locals_dict,
         }
     }
+
+    pub const fn as_obj_type_ptr(&'static self) -> *const ObjType {
+        self as *const Self as *const ObjType
+    }
 }
 
 macro_rules! impl_slot_setter {
