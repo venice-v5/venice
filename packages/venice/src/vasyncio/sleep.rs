@@ -47,7 +47,7 @@ extern "C" fn sleep_make_new(
     if n_args != 0 {
         raise_type_error(
             token,
-            &format!("function doesn't take positional arguments, but {n_args} were provided"),
+            format!("function doesn't take positional arguments, but {n_args} were provided"),
         );
     }
 
