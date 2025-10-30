@@ -54,7 +54,7 @@ extern "C" fn sleep_make_new(
     if n_kw < 1 {
         raise_type_error(
             token,
-            "expected at least one keyword argument (either `milliss=n` or `secs=n`)",
+            "expected at least one keyword argument (either `millis=n` or `secs=n`)",
         );
     }
 
