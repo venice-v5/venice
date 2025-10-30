@@ -7,6 +7,11 @@ mod qstrgen;
 mod stubs;
 mod vasyncio;
 
+use std::{
+    io::{Write, stderr},
+    panic::PanicHookInfo,
+};
+
 use micropython_rs::{
     gc::LockedGc,
     init::{InitToken, init_mp},
@@ -67,9 +72,12 @@ fn init_main(token: InitToken) {
 }
 
 fn main() {
+    // I/O relies on memory allocation. I/O functions called before the allocator is initialized
+    // will fail.
     let token = unsafe {
         let (token, gc) = init_mp(&raw mut __heap_start, &raw mut __heap_end).unwrap();
         *ALLOCATOR.lock() = Some(gc);
+        std::panic::set_hook(Box::new(panic_hook));
 
         let vpt = Vpt::from_ptr(&raw const __linked_file_start, VENDOR_ID)
             .expect("invalid VPT was uploaded");
@@ -79,4 +87,16 @@ fn main() {
     };
 
     init_main(token);
+}
+
+fn panic_hook(info: &PanicHookInfo) {
+    // TODO: display on brain screen
+    eprintln!("Venice panicked!");
+    eprintln!(
+        "If you see this message as a user, please file a bug report at https://github.com/venice-v5/venice/issues\n"
+    );
+
+    eprintln!("{info}");
+    // for simulator
+    stderr().flush().unwrap();
 }
