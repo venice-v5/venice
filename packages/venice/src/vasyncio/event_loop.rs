@@ -1,6 +1,7 @@
 use std::{
     cell::RefCell,
     collections::{binary_heap::BinaryHeap, vec_deque::VecDeque},
+    sync::Mutex,
     time::Instant,
 };
 
@@ -10,7 +11,7 @@ use micropython_rs::{
     fun::{Fun1, Fun2},
     generator::{VmReturnKind, mp_type_gen_instance, resume_gen},
     init::token,
-    nlr::raise,
+    nlr::{push_nlr_callback, raise},
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
 use vex_sdk::vexTasksRun;
@@ -63,6 +64,8 @@ pub struct EventLoop {
 unsafe impl ObjTrait for EventLoop {
     const OBJ_TYPE: *const ObjType = EVENT_LOOP_OBJ_TYPE.as_obj_type_ptr();
 }
+
+static CURRENT_EVENT_LOOP: Mutex<Obj> = Mutex::new(Obj::NONE);
 
 impl EventLoop {
     pub fn new() -> Self {
@@ -142,7 +145,17 @@ extern "C" fn event_loop_spawn(self_in: Obj, coro: Obj) -> Obj {
     self_in.as_obj::<EventLoop>().unwrap().spawn(coro)
 }
 
-pub extern "C" fn event_loop_run(self_in: Obj) -> Obj {
-    self_in.as_obj::<EventLoop>().unwrap().run();
-    Obj::NULL
+extern "C" fn event_loop_run(self_in: Obj) -> Obj {
+    *CURRENT_EVENT_LOOP.lock().unwrap() = self_in;
+    push_nlr_callback(
+        token().unwrap(),
+        || self_in.as_obj::<EventLoop>().unwrap().run(),
+        || *CURRENT_EVENT_LOOP.lock().unwrap() = Obj::NONE,
+        true,
+    );
+    Obj::NONE
+}
+
+pub extern "C" fn get_running_loop() -> Obj {
+    *CURRENT_EVENT_LOOP.lock().unwrap()
 }
