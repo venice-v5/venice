@@ -329,6 +329,8 @@ impl ObjBase {
 impl Obj {
     pub const NULL: Self = unsafe { Self::from_ptr(core::ptr::null_mut()) };
     pub const NONE: Self = Self::from_immediate(0);
+    pub const TRUE: Self = Self::from_immediate(3);
+    pub const FALSE: Self = Self::from_immediate(1);
 
     // TODO: return Result instead of Option
     pub fn new<T: ObjTrait>(o: T, alloc: &mut Gc) -> Option<Self> {
@@ -352,6 +354,11 @@ impl Obj {
 
     pub const unsafe fn from_ptr(ptr: *mut c_void) -> Self {
         Self(ptr)
+    }
+
+    pub const fn from_small_int(int: i32) -> Self {
+        // TODO: add overflow assertion
+        unsafe { Self::from_raw((int << 1 | 0b1) as u32) }
     }
 
     pub const fn from_immediate(imm: u32) -> Self {
@@ -428,6 +435,22 @@ impl Obj {
 
     pub fn as_obj<T: ObjTrait>(&self) -> Option<&T> {
         self.as_obj_raw().map(|ptr| unsafe { &*ptr })
+    }
+
+    pub fn as_immediate(&self) -> Option<u32> {
+        if self.0 as u32 & 0b111 != 0b110 {
+            None
+        } else {
+            Some(self.0 as u32 >> 3)
+        }
+    }
+
+    pub fn as_bool(&self) -> Option<bool> {
+        self.as_immediate().and_then(|imm| match imm {
+            3 => Some(true),
+            1 => Some(false),
+            _ => None,
+        })
     }
 }
 
