@@ -159,3 +159,13 @@ extern "C" fn event_loop_run(self_in: Obj) -> Obj {
 pub extern "C" fn get_running_loop() -> Obj {
     *CURRENT_EVENT_LOOP.lock().unwrap()
 }
+
+pub extern "C" fn vasyncio_run(coro: Obj) -> Obj {
+    if !coro.is(&raw const mp_type_gen_instance) {
+        raise_type_error(token().unwrap(), "expected coroutine");
+    }
+
+    let eloop = EventLoop::new();
+    eloop.spawn(coro);
+    event_loop_run(alloc_obj(eloop))
+}
