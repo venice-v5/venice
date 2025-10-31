@@ -19,6 +19,10 @@ impl Direction {
             _ => None,
         }
     }
+
+    pub fn from_obj(obj: Obj) -> Option<Self> {
+        obj.as_small_int().and_then(Self::from_int)
+    }
 }
 
 pub static DIRECTION_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(Direction))

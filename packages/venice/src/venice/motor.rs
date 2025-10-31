@@ -35,6 +35,10 @@ impl Gearset {
             _ => None,
         }
     }
+
+    pub fn from_obj(obj: Obj) -> Option<Self> {
+        obj.as_small_int().and_then(Self::from_int)
+    }
 }
 
 pub static GEARSET_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(Gearset))
@@ -71,18 +75,12 @@ extern "C" fn motor_make_new(
         raise_value_error(token, "port number must be between 1 and 21");
     }
 
-    let gearset_int = args[1]
-        .as_small_int()
-        .unwrap_or_else(|| raise_type_error(token, "expected Gearset object"));
-    let gearset = Gearset::from_int(gearset_int)
+    let gearset = Gearset::from_obj(args[1])
         .unwrap_or_else(|| raise_type_error(token, "expected Gearset object"));
 
     let direction = match args.get(2) {
-        Some(d) => Direction::from_int(
-            d.as_small_int()
-                .unwrap_or_else(|| raise_type_error(token, "expected Direction object")),
-        )
-        .unwrap_or_else(|| raise_type_error(token, "expected Direction object")),
+        Some(d) => Direction::from_obj(*d)
+            .unwrap_or_else(|| raise_type_error(token, "expected Direction object")),
         None => Direction::Reverse,
     };
 
