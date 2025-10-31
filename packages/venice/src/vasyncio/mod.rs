@@ -12,7 +12,7 @@ use micropython_rs::{
 use crate::{
     qstrgen::qstr,
     vasyncio::{
-        event_loop::{EVENT_LOOP_OBJ_TYPE, get_running_loop, vasyncio_run},
+        event_loop::{EVENT_LOOP_OBJ_TYPE, get_running_loop, vasyncio_run, vasyncio_spawn},
         sleep::SLEEP_OBJ_TYPE,
     },
 };
@@ -25,4 +25,5 @@ static vasyncio_globals: Dict = const_dict![
     qstr!(Sleep) => Obj::from_static(&SLEEP_OBJ_TYPE),
     qstr!(get_running_loop) => Obj::from_static(&Fun0::new(get_running_loop)),
     qstr!(run) => Obj::from_static(&Fun1::new(vasyncio_run)),
+    qstr!(spawn) => Obj::from_static(&Fun1::new(vasyncio_spawn)),
 ];

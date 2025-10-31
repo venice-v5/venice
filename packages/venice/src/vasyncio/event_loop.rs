@@ -7,11 +7,12 @@ use std::{
 
 use micropython_rs::{
     const_dict,
-    except::raise_type_error,
+    except::{mp_type_RuntimeError, raise_msg, raise_type_error},
     fun::{Fun1, Fun2},
     generator::{VmReturnKind, mp_type_gen_instance, resume_gen},
     init::token,
-    nlr::{push_nlr_callback, raise},
+    nlr,
+    nlr::push_nlr_callback,
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
 use vex_sdk::vexTasksRun;
@@ -96,11 +97,18 @@ impl EventLoop {
             ready.push_back(sleeper.task);
         }
 
-        if let Some(obj) = ready.pop_front() {
-            let task = obj.as_obj::<Task>().unwrap();
+        let task_obj = ready.pop_front();
+        // let the task access the event loop while it's running
+        drop(ready);
+        drop(sleepers);
+
+        if let Some(task_obj) = task_obj {
+            let task = task_obj.as_obj::<Task>().unwrap();
+
             let result = resume_gen(task.coro(), Obj::NONE, Obj::NULL);
             match result.return_kind {
                 VmReturnKind::Normal => {
+                    let mut ready = self.ready.borrow_mut();
                     task.complete_with(result.obj);
                     task.waiting_tasks()
                         .iter()
@@ -108,20 +116,20 @@ impl EventLoop {
                 }
                 VmReturnKind::Yield => {
                     if let Some(sleep) = result.obj.as_obj::<Sleep>() {
-                        sleepers.push(Sleeper {
-                            task: obj,
+                        self.sleepers.borrow_mut().push(Sleeper {
+                            task: task_obj,
                             deadline: sleep.deadline(),
                         });
                     } else if let Some(awaited_task) = result.obj.as_obj::<Task>() {
-                        awaited_task.add_waiting_task(obj);
+                        awaited_task.add_waiting_task(task_obj);
                     }
                 }
-                VmReturnKind::Exception => raise(token().unwrap(), result.obj),
+                VmReturnKind::Exception => nlr::raise(token().unwrap(), result.obj),
             }
         }
 
         unsafe { vexTasksRun() };
-        sleepers.is_empty() && ready.is_empty()
+        self.sleepers.borrow().is_empty() && self.ready.borrow().is_empty()
     }
 
     pub fn run(&self) {
@@ -168,4 +176,17 @@ pub extern "C" fn vasyncio_run(coro: Obj) -> Obj {
     let eloop = EventLoop::new();
     eloop.spawn(coro);
     event_loop_run(alloc_obj(eloop))
+}
+
+pub extern "C" fn vasyncio_spawn(coro: Obj) -> Obj {
+    let eloop = get_running_loop();
+    if eloop.is_none() {
+        raise_msg(
+            token().unwrap(),
+            &raw const mp_type_RuntimeError,
+            "no running event loop",
+        );
+    }
+
+    event_loop_spawn(eloop, coro)
 }

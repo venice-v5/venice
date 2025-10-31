@@ -25,6 +25,7 @@ unsafe extern "C" {
     fn mp_raise_OSError_with_filename(errno_: c_int, filename: *const u8) -> !;
 
     pub static mp_type_ImportError: ObjType;
+    pub static mp_type_RuntimeError: ObjType;
 }
 
 impl<'a> RomErrorText<'a> {

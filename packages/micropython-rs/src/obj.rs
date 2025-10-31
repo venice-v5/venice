@@ -376,6 +376,10 @@ impl Obj {
         self.0.is_null()
     }
 
+    pub fn is_none(&self) -> bool {
+        self.0 == Self::NONE.0
+    }
+
     pub fn as_qstr(&self) -> Option<Qstr> {
         if self.0 as u32 & 0b111 == 0b10 {
             Some(unsafe { Qstr::from_index((self.0 as u32 >> 3) as usize) })
