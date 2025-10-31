@@ -18,13 +18,15 @@ use vex_sdk::vexTasksRun;
 use super::task::Task;
 use crate::{obj::alloc_obj, qstrgen::qstr, vasyncio::sleep::Sleep};
 
-pub static EVENT_LOOP_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(EventLoop))
-    .set_slot_locals_dict_from_static({
-        &const_dict![
-            qstr!(spawn) => Obj::from_static(&Fun2::new(event_loop_spawn)),
-            qstr!(run) => Obj::from_static(&Fun1::new(event_loop_run)),
-        ]
-    });
+pub static EVENT_LOOP_OBJ_TYPE: ObjFullType =
+    ObjFullType::new(TypeFlags::empty(), qstr!(EventLoop))
+        .set_slot_make_new(event_loop_new)
+        .set_slot_locals_dict_from_static({
+            &const_dict![
+                qstr!(spawn) => Obj::from_static(&Fun2::new(event_loop_spawn)),
+                qstr!(run) => Obj::from_static(&Fun1::new(event_loop_run)),
+            ]
+        });
 
 struct Sleeper {
     task: Obj,
@@ -59,7 +61,7 @@ pub struct EventLoop {
 }
 
 unsafe impl ObjTrait for EventLoop {
-    const OBJ_TYPE: *const ObjType = EVENT_LOOP_TYPE.as_obj_type_ptr();
+    const OBJ_TYPE: *const ObjType = EVENT_LOOP_OBJ_TYPE.as_obj_type_ptr();
 }
 
 impl EventLoop {
@@ -124,7 +126,11 @@ impl EventLoop {
     }
 }
 
-pub extern "C" fn new_event_loop() -> Obj {
+extern "C" fn event_loop_new(_: *const ObjType, n_args: usize, n_kw: usize, _: *const Obj) -> Obj {
+    if n_args != 0 || n_kw != 0 {
+        raise_type_error(token().unwrap(), "function does not accept any arguments");
+    }
+
     alloc_obj(EventLoop::new())
 }
 
