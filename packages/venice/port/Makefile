@@ -7,8 +7,8 @@ CROSS_COMPILE = arm-none-eabi-
 CFLAGS += -mcpu=cortex-a9 -mfpu=neon-fp16 -mfloat-abi=hard -mthumb -Os
 CFLAGS += -I. -I$(MICROPYTHON) -I$(BUILD)
 
-SRC_C = modvasyncio.c
-SRC_QSTR += modvasyncio.c
+SRC_C = modvasyncio.c modvenice.c
+SRC_QSTR += modvasyncio.c modvenice.c
 
 QSTR_DEFS += venice_qstrdefs.h
 

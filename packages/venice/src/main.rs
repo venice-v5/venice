@@ -6,6 +6,7 @@ mod obj;
 mod qstrgen;
 mod stubs;
 mod vasyncio;
+mod venice;
 
 use std::{
     io::{Write, stderr},
