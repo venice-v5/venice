@@ -66,7 +66,7 @@ unsafe impl ObjTrait for EventLoop {
     const OBJ_TYPE: *const ObjType = EVENT_LOOP_OBJ_TYPE.as_obj_type_ptr();
 }
 
-static CURRENT_EVENT_LOOP: Mutex<Obj> = Mutex::new(Obj::NONE);
+static RUNNING_LOOP: Mutex<Obj> = Mutex::new(Obj::NONE);
 
 impl EventLoop {
     pub fn new() -> Self {
@@ -154,18 +154,23 @@ extern "C" fn event_loop_spawn(self_in: Obj, coro: Obj) -> Obj {
 }
 
 extern "C" fn event_loop_run(self_in: Obj) -> Obj {
-    *CURRENT_EVENT_LOOP.lock().unwrap() = self_in;
+    let prev_loop = {
+        let mut lock = RUNNING_LOOP.lock().unwrap();
+        let prev = *lock;
+        *lock = self_in;
+        prev
+    };
     push_nlr_callback(
         token().unwrap(),
         || self_in.as_obj::<EventLoop>().unwrap().run(),
-        || *CURRENT_EVENT_LOOP.lock().unwrap() = Obj::NONE,
+        || *RUNNING_LOOP.lock().unwrap() = prev_loop,
         true,
     );
     Obj::NONE
 }
 
 pub extern "C" fn get_running_loop() -> Obj {
-    *CURRENT_EVENT_LOOP.lock().unwrap()
+    *RUNNING_LOOP.lock().unwrap()
 }
 
 pub extern "C" fn vasyncio_run(coro: Obj) -> Obj {
