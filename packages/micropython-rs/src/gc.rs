@@ -112,7 +112,7 @@ impl Gc {
 
 unsafe impl GlobalAlloc for LockedGc {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        if layout.align() > 32 {
+        if layout.align() > 4 {
             return null_mut();
         }
 
