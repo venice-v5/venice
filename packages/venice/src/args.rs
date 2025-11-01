@@ -279,9 +279,12 @@ impl Display for ArgType {
             Self::Bool => write!(f, "bool"),
             Self::Int => write!(f, "int"),
             Self::None => write!(f, "None"),
-            // TODO: use object type
             Self::Str => write!(f, "str"),
-            Self::Obj(_obj) => write!(f, "<object>"),
+            Self::Obj(ty) => write!(
+                f,
+                "{}",
+                str::from_utf8(ty.name().bytes()).expect("invalid utf8 type name wtf")
+            ),
         }
     }
 }
@@ -297,7 +300,7 @@ impl ArgError {
             Self::TypeMismatch { n, expected, found } => raise_type_error(
                 token,
                 format!(
-                    "expected type '{expected}' for argument #{}, found '{found}'",
+                    "expected type <{expected}> for argument #{}, found type <{found}>",
                     n + 1
                 ),
             ),
