@@ -1,6 +1,7 @@
 use std::ffi::c_void;
 
 use bitflags::bitflags;
+use thiserror::Error;
 
 use crate::{
     gc::Gc,
@@ -276,6 +277,10 @@ impl ObjBase {
     }
 }
 
+#[derive(Debug, Error)]
+#[error("gc allocation failed")]
+pub struct GcError;
+
 impl Obj {
     pub const NULL: Self = unsafe { Self::from_ptr(core::ptr::null_mut()) };
     pub const NONE: Self = Self::from_immediate(0);
@@ -283,14 +288,14 @@ impl Obj {
     pub const FALSE: Self = Self::from_immediate(1);
 
     // TODO: return Result instead of Option
-    pub fn new<T: ObjTrait>(o: T, alloc: &mut Gc) -> Option<Self> {
+    pub fn new<T: ObjTrait>(o: T, alloc: &mut Gc) -> Result<Self, GcError> {
         unsafe {
             let mem = alloc.alloc(size_of::<T>());
             if mem.is_null() {
-                return None;
+                return Err(GcError);
             }
             (mem as *mut T).write(o);
-            Some(Obj(mem as *mut c_void))
+            Ok(Obj(mem as *mut c_void))
         }
     }
 
