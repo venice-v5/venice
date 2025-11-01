@@ -1,4 +1,8 @@
-use vexide_devices::smart::*;
+use vexide_devices::smart::{
+    SmartPort, ai_vision::AiVisionSensor, distance::DistanceSensor, electromagnet::Electromagnet,
+    expander::AdiExpander, gps::GpsSensor, imu::InertialSensor, link::RadioLink, motor::Motor,
+    optical::OpticalSensor, rotation::RotationSensor, serial::SerialPort, vision::VisionSensor,
+};
 
 use crate::Device;
 

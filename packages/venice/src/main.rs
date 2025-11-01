@@ -10,7 +10,7 @@ mod vasyncio;
 mod venice;
 
 use std::{
-    io::{Write, stderr},
+    io::{Write, stderr, stdout},
     panic::PanicHookInfo,
 };
 
@@ -100,5 +100,6 @@ fn panic_hook(info: &PanicHookInfo) {
 
     eprintln!("{info}");
     // for simulator
+    stdout().flush().unwrap();
     stderr().flush().unwrap();
 }

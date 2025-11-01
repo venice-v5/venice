@@ -108,6 +108,34 @@ impl<'a> ArgValue<'a> {
             Self::Obj(o) => ArgType::Obj(o.obj_type().unwrap()),
         }
     }
+
+    pub fn as_int(self) -> Option<i32> {
+        match self {
+            Self::Int(int) => Some(int),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> Option<&'a [u8]> {
+        match self {
+            Self::Str(str) => Some(str),
+            _ => None,
+        }
+    }
+
+    pub fn as_bool(self) -> Option<bool> {
+        match self {
+            Self::Bool(bool) => Some(bool),
+            _ => None,
+        }
+    }
+
+    pub fn as_obj(self) -> Option<Obj> {
+        match self {
+            Self::Obj(obj) => Some(obj),
+            _ => None,
+        }
+    }
 }
 
 impl<'a> Arg<'a> {
@@ -263,6 +291,7 @@ impl ArgError {
         match self {
             Self::PositionalsExhuasted { n } => raise_type_error(
                 token,
+                // TODO: this may be confusing when a function accepts more than n + 1 arguments
                 format!("expected at least {} positional arguments", n + 1),
             ),
             Self::TypeMismatch { n, expected, found } => raise_type_error(

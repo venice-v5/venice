@@ -1,15 +1,15 @@
 use micropython_rs::{
-    const_dict,
     except::{raise_type_error, raise_value_error},
     init::token,
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
-use vexide_devices::smart::{
-    Motor,
-    motor::{Direction, Gearset},
+use vexide_devices::{
+    math::Direction,
+    smart::motor::{Gearset, Motor},
 };
 
 use crate::{
+    args::{ArgType, ArgValue, Args},
     obj::alloc_obj,
     qstrgen::qstr,
     venice::registries::{self, PortNumber},
@@ -24,85 +24,72 @@ pub struct MotorObj {
 pub static MOTOR_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(Motor)).set_slot_make_new(motor_make_new);
 
-const GEARSET_RED: i32 = 0;
-const GEARSET_GREEN: i32 = 1;
-const GEARSET_BLUE: i32 = 2;
-
-const DIRECTION_FORWARD: i32 = 0;
-const DIRECTION_REVERSE: i32 = 1;
-
-pub fn gearset_from_obj(obj: Obj) -> Option<Gearset> {
-    obj.as_small_int().and_then(|int| match int {
-        GEARSET_RED => Some(Gearset::Red),
-        GEARSET_GREEN => Some(Gearset::Green),
-        GEARSET_BLUE => Some(Gearset::Blue),
-        _ => None,
-    })
-}
-
-pub fn direction_from_obj(obj: Obj) -> Option<Direction> {
-    obj.as_small_int().and_then(|int| match int {
-        DIRECTION_FORWARD => Some(Direction::Forward),
-        DIRECTION_REVERSE => Some(Direction::Reverse),
-        _ => None,
-    })
-}
-
-pub static GEARSET_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(Gearset))
-    .set_slot_locals_dict_from_static(&const_dict![
-        qstr!(RED) => Obj::from_small_int(GEARSET_RED),
-        qstr!(GREEN) => Obj::from_small_int(GEARSET_GREEN),
-        qstr!(BLUE) => Obj::from_small_int(GEARSET_BLUE),
-    ]);
-
-pub static DIRECTION_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(Direction))
-    .set_slot_locals_dict_from_static(&const_dict![
-        qstr!(FORWARD) => Obj::from_small_int(DIRECTION_FORWARD),
-        qstr!(REVERSE) => Obj::from_small_int(DIRECTION_REVERSE),
-    ]);
-
 unsafe impl ObjTrait for MotorObj {
     const OBJ_TYPE: *const micropython_rs::obj::ObjType = MOTOR_OBJ_TYPE.as_obj_type_ptr();
 }
 
+fn gearset_from_str(str: &[u8]) -> Option<Gearset> {
+    match str {
+        b"red" => Some(Gearset::Red),
+        b"green" => Some(Gearset::Green),
+        b"blue" => Some(Gearset::Blue),
+        _ => None,
+    }
+}
+
+fn direction_from_str(str: &[u8]) -> Option<Direction> {
+    match str {
+        b"forward" => Some(Direction::Forward),
+        b"reverse" => Some(Direction::Reverse),
+        _ => None,
+    }
+}
+
 extern "C" fn motor_make_new(
     _: *const ObjType,
-    n_args: usize,
+    n_pos: usize,
     n_kw: usize,
-    args: *const Obj,
+    arg_ptr: *const Obj,
 ) -> Obj {
     let token = token().unwrap();
     if n_kw != 0 {
         raise_type_error(token, "function does not accept keyword arguments");
     }
 
-    if n_args < 2 || n_args > 4 {
-        raise_type_error(token, "function accepts at least 2 arguments and at most 4");
-    }
-
-    let args = unsafe { std::slice::from_raw_parts(args, n_args) };
+    let mut args = unsafe { Args::from_ptr(n_pos, n_kw, arg_ptr) }.reader();
     let port = PortNumber::from_i32(
-        args[0]
-            .as_small_int()
-            .unwrap_or_else(|| raise_type_error(token, "expected integer for port number")),
+        args.next_positional(ArgType::Int)
+            .unwrap_or_else(|e| e.raise_positional(token))
+            .as_int()
+            .unwrap(),
     )
     .unwrap_or_else(|_| raise_value_error(token, "port number must be between 1 and 21"));
 
-    let gearset = gearset_from_obj(args[1])
-        .unwrap_or_else(|| raise_type_error(token, "expect Gearset object"));
+    let gearset = gearset_from_str(
+        args.next_positional(ArgType::Str)
+            .unwrap_or_else(|e| e.raise_positional(token))
+            .as_str()
+            .unwrap(),
+    )
+    .unwrap_or_else(|| {
+        raise_value_error(
+            token,
+            "invalid gearset (expected one of 'red', 'green', or 'blue')",
+        )
+    });
 
-    let direction = match args.get(2) {
-        Some(d) => direction_from_obj(*d)
-            .unwrap_or_else(|| raise_type_error(token, "expected Direction object")),
-        None => Direction::Reverse,
-    };
-
-    let _exp = match args.get(3) {
-        Some(e) => e
-            .as_bool()
-            .unwrap_or_else(|| raise_type_error(token, "expected bool")),
-        None => false,
-    };
+    let direction = direction_from_str(
+        args.next_positional_or(ArgType::Str, ArgValue::Str(b"forward"))
+            .unwrap_or_else(|e| e.raise_positional(token))
+            .as_str()
+            .unwrap(),
+    )
+    .unwrap_or_else(|| {
+        raise_value_error(
+            token,
+            "invalid direction (expected one of 'forward' or 'reverse')",
+        )
+    });
 
     registries::with_port(
         port,

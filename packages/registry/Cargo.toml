@@ -4,4 +4,4 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-vexide-devices = "0.7.0"
+vexide-devices = { git = "https://github.com/vexide/vexide" }
