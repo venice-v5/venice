@@ -1,7 +1,6 @@
 use std::{
-    cell::RefCell,
+    cell::{Cell, RefCell},
     collections::{binary_heap::BinaryHeap, vec_deque::VecDeque},
-    sync::Mutex,
     time::Instant,
 };
 
@@ -66,7 +65,9 @@ unsafe impl ObjTrait for EventLoop {
     const OBJ_TYPE: *const ObjType = EVENT_LOOP_OBJ_TYPE.as_obj_type_ptr();
 }
 
-static RUNNING_LOOP: Mutex<Obj> = Mutex::new(Obj::NONE);
+thread_local! {
+    static RUNNING_LOOP: Cell<Obj> = Cell::new(Obj::NONE);
+}
 
 impl EventLoop {
     pub fn new() -> Self {
@@ -154,23 +155,18 @@ extern "C" fn event_loop_spawn(self_in: Obj, coro: Obj) -> Obj {
 }
 
 extern "C" fn event_loop_run(self_in: Obj) -> Obj {
-    let prev_loop = {
-        let mut lock = RUNNING_LOOP.lock().unwrap();
-        let prev = *lock;
-        *lock = self_in;
-        prev
-    };
+    let prev_loop = RUNNING_LOOP.replace(self_in);
     push_nlr_callback(
         token().unwrap(),
         || self_in.as_obj::<EventLoop>().unwrap().run(),
-        || *RUNNING_LOOP.lock().unwrap() = prev_loop,
+        || RUNNING_LOOP.set(prev_loop),
         true,
     );
     Obj::NONE
 }
 
 pub extern "C" fn get_running_loop() -> Obj {
-    *RUNNING_LOOP.lock().unwrap()
+    RUNNING_LOOP.get()
 }
 
 pub extern "C" fn vasyncio_run(coro: Obj) -> Obj {
