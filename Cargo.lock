@@ -1128,8 +1128,10 @@ dependencies = [
  "paste",
  "regex",
  "venice-program-table",
+ "vex-registry",
  "vex-sdk 0.27.1",
  "vex-sdk-vexcode",
+ "vexide-devices",
 ]
 
 [[package]]

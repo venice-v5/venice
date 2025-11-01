@@ -1,14 +1,11 @@
-pub mod direction;
 pub mod motor;
+pub mod registries;
 
 use micropython_rs::{const_dict, map::Dict, obj::Obj};
 
 use crate::{
     qstrgen::qstr,
-    venice::{
-        direction::DIRECTION_OBJ_TYPE,
-        motor::{GEARSET_OBJ_TYPE, MOTOR_OBJ_TYPE},
-    },
+    venice::motor::{DIRECTION_OBJ_TYPE, GEARSET_OBJ_TYPE, MOTOR_OBJ_TYPE},
 };
 
 #[unsafe(no_mangle)]

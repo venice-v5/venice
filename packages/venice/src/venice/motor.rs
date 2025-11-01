@@ -4,51 +4,64 @@ use micropython_rs::{
     init::token,
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
+use vexide_devices::smart::{
+    Motor,
+    motor::{Direction, Gearset},
+};
 
-use super::direction::Direction;
-use crate::{obj::alloc_obj, qstrgen::qstr};
+use crate::{
+    obj::alloc_obj,
+    qstrgen::qstr,
+    venice::registries::{self, PortNumber},
+};
 
 #[repr(C)]
-pub struct Motor {
+pub struct MotorObj {
     base: ObjBase,
-    port: u8,
-    gearset: Gearset,
-    direction: Direction,
-    exp: bool,
+    port: PortNumber,
 }
 
 pub static MOTOR_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(Motor)).set_slot_make_new(motor_make_new);
 
-enum Gearset {
-    Red = 0,
-    Green = 1,
-    Blue = 2,
+const GEARSET_RED: i32 = 0;
+const GEARSET_GREEN: i32 = 1;
+const GEARSET_BLUE: i32 = 2;
+
+const DIRECTION_FORWARD: i32 = 0;
+const DIRECTION_REVERSE: i32 = 1;
+
+pub fn gearset_from_obj(obj: Obj) -> Option<Gearset> {
+    obj.as_small_int().and_then(|int| match int {
+        GEARSET_RED => Some(Gearset::Red),
+        GEARSET_GREEN => Some(Gearset::Green),
+        GEARSET_BLUE => Some(Gearset::Blue),
+        _ => None,
+    })
 }
 
-impl Gearset {
-    pub fn from_int(int: i32) -> Option<Self> {
-        match int {
-            0 => Some(Self::Red),
-            1 => Some(Self::Green),
-            2 => Some(Self::Blue),
-            _ => None,
-        }
-    }
-
-    pub fn from_obj(obj: Obj) -> Option<Self> {
-        obj.as_small_int().and_then(Self::from_int)
-    }
+pub fn direction_from_obj(obj: Obj) -> Option<Direction> {
+    obj.as_small_int().and_then(|int| match int {
+        DIRECTION_FORWARD => Some(Direction::Forward),
+        DIRECTION_REVERSE => Some(Direction::Reverse),
+        _ => None,
+    })
 }
 
 pub static GEARSET_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(Gearset))
     .set_slot_locals_dict_from_static(&const_dict![
-        qstr!(RED) => Obj::from_small_int(Gearset::Red as i32),
-        qstr!(GREEN) => Obj::from_small_int(Gearset::Green as i32),
-        qstr!(BLUE) => Obj::from_small_int(Gearset::Blue as i32),
+        qstr!(RED) => Obj::from_small_int(GEARSET_RED),
+        qstr!(GREEN) => Obj::from_small_int(GEARSET_GREEN),
+        qstr!(BLUE) => Obj::from_small_int(GEARSET_BLUE),
     ]);
 
-unsafe impl ObjTrait for Motor {
+pub static DIRECTION_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(Direction))
+    .set_slot_locals_dict_from_static(&const_dict![
+        qstr!(FORWARD) => Obj::from_small_int(DIRECTION_FORWARD),
+        qstr!(REVERSE) => Obj::from_small_int(DIRECTION_REVERSE),
+    ]);
+
+unsafe impl ObjTrait for MotorObj {
     const OBJ_TYPE: *const micropython_rs::obj::ObjType = MOTOR_OBJ_TYPE.as_obj_type_ptr();
 }
 
@@ -68,34 +81,41 @@ extern "C" fn motor_make_new(
     }
 
     let args = unsafe { std::slice::from_raw_parts(args, n_args) };
-    let port = args[0]
-        .as_small_int()
-        .unwrap_or_else(|| raise_type_error(token, "expected integer for port number"));
-    if port < 1 || port > 21 {
-        raise_value_error(token, "port number must be between 1 and 21");
-    }
+    let port = PortNumber::from_i32(
+        args[0]
+            .as_small_int()
+            .unwrap_or_else(|| raise_type_error(token, "expected integer for port number")),
+    )
+    .unwrap_or_else(|_| raise_value_error(token, "port number must be between 1 and 21"));
 
-    let gearset = Gearset::from_obj(args[1])
-        .unwrap_or_else(|| raise_type_error(token, "expected Gearset object"));
+    let gearset = gearset_from_obj(args[1])
+        .unwrap_or_else(|| raise_type_error(token, "expect Gearset object"));
 
     let direction = match args.get(2) {
-        Some(d) => Direction::from_obj(*d)
+        Some(d) => direction_from_obj(*d)
             .unwrap_or_else(|| raise_type_error(token, "expected Direction object")),
         None => Direction::Reverse,
     };
 
-    let exp = match args.get(3) {
+    let _exp = match args.get(3) {
         Some(e) => e
             .as_bool()
             .unwrap_or_else(|| raise_type_error(token, "expected bool")),
         None => false,
     };
 
-    alloc_obj(Motor {
-        base: ObjBase::new::<Motor>(),
-        port: port as u8,
-        gearset,
-        direction,
-        exp,
+    registries::with_port(
+        port,
+        |motor: &mut Motor| {
+            // TODO: add device error exception
+            motor.set_gearset(gearset).unwrap();
+            motor.set_direction(direction).unwrap();
+        },
+        |port| Motor::new(port, gearset, direction),
+    );
+
+    alloc_obj(MotorObj {
+        base: ObjBase::new::<MotorObj>(),
+        port,
     })
 }

@@ -39,7 +39,7 @@ impl Registry {
         }
     }
 
-    pub fn with_device<D, F, I, R>(&mut self, f: F, init: I) -> R
+    pub fn with<D, F, I, R>(&mut self, f: F, init: I) -> R
     where
         D: Device,
         F: FnOnce(&mut D) -> R,
