@@ -1,10 +1,11 @@
 //! Open source MicroPython port for VEX V5 robots.
 
-mod args;
+pub mod args;
+pub mod module_map;
+pub mod obj;
+pub mod qstrgen;
+
 mod exports;
-mod module_map;
-mod obj;
-mod qstrgen;
 mod stubs;
 mod vasyncio;
 mod venice;
