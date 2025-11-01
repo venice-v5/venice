@@ -155,6 +155,13 @@ impl PartialEq for ObjType {
 
 impl Eq for ObjType {}
 
+impl ObjType {
+    pub fn name(&self) -> Qstr {
+        // SAFETY: maybe
+        unsafe { Qstr::from_index(self.name as usize) }
+    }
+}
+
 impl ObjFullType {
     pub const fn new(flags: TypeFlags, name: Qstr) -> Self {
         unsafe extern "C" {
@@ -351,7 +358,7 @@ impl Obj {
     }
 
     pub fn obj_type(&self) -> Option<&'static ObjType> {
-        if self.0 as u32 & 0b11 != 0 {
+        if self.0 as u32 & 0b11 == 0 {
             let ptr = self.0 as *const ObjBase;
             Some(unsafe { &*(*ptr).r#type })
         } else {
