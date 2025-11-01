@@ -1,7 +1,7 @@
 use crate::obj::{ObjBase, ObjTrait, ObjType};
 
 unsafe extern "C" {
-    static mp_type_str: ObjType;
+    pub static mp_type_str: ObjType;
 }
 
 /// From: `py/objstr.h`

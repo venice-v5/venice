@@ -1,5 +1,6 @@
 //! Open source MicroPython port for VEX V5 robots.
 
+mod args;
 mod exports;
 mod module_map;
 mod obj;

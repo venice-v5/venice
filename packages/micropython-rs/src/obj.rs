@@ -407,13 +407,17 @@ impl Obj {
         None
     }
 
-    pub fn is(&self, ty: *const ObjType) -> bool {
+    pub fn obj_type(&self) -> Option<*const ObjType> {
         if self.0 as u32 & 0b11 != 0 {
-            return false;
+            let ptr = self.0 as *const ObjBase;
+            Some(unsafe { *ptr }.r#type)
+        } else {
+            None
         }
+    }
 
-        let ptr = self.0 as *const ObjBase;
-        unsafe { *ptr }.r#type == ty
+    pub fn is(&self, ty: *const ObjType) -> bool {
+        self.obj_type().map(|t| ty == t).unwrap_or(false)
     }
 
     pub const fn as_ptr(&self) -> *mut c_void {
