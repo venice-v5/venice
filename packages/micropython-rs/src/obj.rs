@@ -5,6 +5,7 @@ use bitflags::bitflags;
 use crate::{
     gc::Gc,
     map::Dict,
+    ops::{BinaryOp, UnaryOp},
     print::{Print, PrintKind},
     qstr::Qstr,
     str::Str,
@@ -135,85 +136,6 @@ bitflags! {
         const ITER_IS_CUSTOM = 0x0100;
         const INSTANCE_TYPE = 0x0200;
     }
-}
-
-#[repr(C)]
-pub enum UnaryOp {
-    Positive,
-    Negative,
-    Invert,
-    Not,
-
-    Bool,
-    Len,
-    Hash,
-    Abs,
-    IntMaybe,
-    FloatMaybe,
-    ComplexMaybe,
-    Sizeof,
-}
-
-#[repr(C)]
-pub enum BinaryOp {
-    Less,
-    More,
-    Equal,
-    LessEqual,
-    MoreEqual,
-    NotEqual,
-    In,
-    Is,
-    ExceptionMatch,
-
-    InplaceOr,
-    InplaceXor,
-    InplaceAnd,
-    InplaceLshift,
-    InplaceRshift,
-    InplaceAdd,
-    InplaceSubtract,
-    InplaceMultiply,
-    InplaceMatMultiply,
-    InplaceFloorDivide,
-    InplaceTrueDivide,
-    InplaceModulo,
-    InplacePower,
-
-    Or,
-    Xor,
-    And,
-    Lshift,
-    Rshift,
-    Add,
-    Subtract,
-    Multiply,
-    MatMultiply,
-    FloorDivide,
-    TrueDivide,
-    Modulo,
-    Power,
-
-    Divmod,
-
-    Contains,
-
-    ReverseOr,
-    ReverseXor,
-    ReverseAnd,
-    ReverseLshift,
-    ReverseRshfit,
-    ReverseAdd,
-    ReverseSubtract,
-    ReverseMultiply,
-    ReverseMatMultiply,
-    ReverseFloorDivide,
-    ReverseTrueDivide,
-    ReverseModulo,
-    ReversePower,
-
-    NotIn,
-    IsNot,
 }
 
 pub type MakeNewFn =

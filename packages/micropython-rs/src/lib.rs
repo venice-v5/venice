@@ -11,6 +11,7 @@ pub mod map;
 pub mod module;
 pub mod nlr;
 pub mod obj;
+pub mod ops;
 pub mod qstr;
 pub mod state;
 pub mod str;
