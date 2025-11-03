@@ -3,7 +3,7 @@ use std::fmt::Display;
 use micropython_rs::{
     except::raise_type_error,
     init::InitToken,
-    obj::{Obj, ObjTrait, ObjType},
+    obj::{Obj, ObjTrait, ObjType, repr_c},
     str::Str,
 };
 
@@ -22,19 +22,21 @@ pub struct ArgsReader<'a> {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum ArgType {
-    None,
     Int,
-    Bool,
     Str,
+    None,
+    Bool,
+    Float,
     Obj(&'static ObjType),
 }
 
 #[derive(Clone, Copy)]
 pub enum ArgValue<'a> {
-    None,
     Int(i32),
-    Bool(bool),
     Str(&'a [u8]),
+    None,
+    Bool(bool),
+    Float(f32),
     Obj(Obj),
 }
 
@@ -59,31 +61,26 @@ pub enum ArgError {
 
 impl ArgType {
     fn of(obj: &Obj) -> Self {
-        let int = obj.as_ptr() as u32;
-        // - `xxxx...xxx1` is a small int, and bits 1 and above are the value
-        // - `xxxx...x010` is a qstr, and bits 3 and above are the value
-        // - `xxxx...x110` is an immediate object, and bits 3 and abvoe are the value
-        // - `xxxx...xx00` is a pointer to an [`ObjBase`]
-        match int & 0b111 {
-            0b010 => Self::Str,
-            0b110 => match obj.as_immediate().unwrap() {
-                0 => Self::None,
-                3 | 1 => Self::Bool,
-                _ => unimplemented!(),
-            },
-            _ => match int & 0b11 {
-                0b00 => {
-                    if obj.is(Str::OBJ_TYPE) {
-                        Self::Str
-                    } else {
-                        Self::Obj(obj.obj_type().unwrap())
-                    }
+        use repr_c::Ty;
+        match obj.ty().unwrap() {
+            Ty::Int => Self::Int,
+            Ty::Qstr => Self::Str,
+            Ty::Immediate => {
+                if obj.is_bool() {
+                    Self::Bool
+                } else {
+                    unimplemented!();
                 }
-                _ => match int & 0b1 {
-                    0b1 => Self::Int,
-                    _ => unreachable!(),
-                },
-            },
+            }
+            Ty::Float => Self::Float,
+            Ty::Ptr => {
+                let obj_type = obj.obj_type().unwrap();
+                if obj_type == Str::OBJ_TYPE {
+                    Self::Str
+                } else {
+                    Self::Obj(obj_type)
+                }
+            }
         }
     }
 }
@@ -91,20 +88,22 @@ impl ArgType {
 impl<'a> ArgValue<'a> {
     fn from_obj(obj: &'a Obj) -> Self {
         match ArgType::of(obj) {
-            ArgType::None => Self::None,
-            ArgType::Int => Self::Int(obj.as_small_int().unwrap()),
+            ArgType::Int => Self::Int(obj.to_int()),
             ArgType::Str => Self::Str(obj.get_str().unwrap()),
-            ArgType::Bool => Self::Bool(obj.as_bool().unwrap()),
+            ArgType::None => Self::None,
+            ArgType::Bool => Self::Bool(obj.try_to_bool().unwrap()),
+            ArgType::Float => Self::Float(obj.to_float()),
             ArgType::Obj(_) => Self::Obj(*obj),
         }
     }
 
     fn ty(self) -> ArgType {
         match self {
-            Self::None => ArgType::None,
             Self::Int(_) => ArgType::Int,
             Self::Str(_) => ArgType::Str,
+            Self::None => ArgType::None,
             Self::Bool(_) => ArgType::Bool,
+            Self::Float(_) => ArgType::Float,
             Self::Obj(o) => ArgType::Obj(o.obj_type().unwrap()),
         }
     }
@@ -276,10 +275,11 @@ impl<'a> ArgsReader<'a> {
 impl Display for ArgType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Bool => write!(f, "bool"),
             Self::Int => write!(f, "int"),
-            Self::None => write!(f, "None"),
             Self::Str => write!(f, "str"),
+            Self::None => write!(f, "None"),
+            Self::Bool => write!(f, "bool"),
+            Self::Float => write!(f, "float"),
             Self::Obj(ty) => write!(
                 f,
                 "{}",

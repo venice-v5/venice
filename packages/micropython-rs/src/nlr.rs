@@ -113,6 +113,6 @@ pub fn raise(_: InitToken, ex: Obj) -> ! {
             panic!("attempt to raise non-exception object");
         }
 
-        nlr_jump(ex.as_ptr());
+        nlr_jump(ex.inner());
     }
 }

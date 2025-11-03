@@ -103,7 +103,7 @@ impl EventLoop {
         drop(sleepers);
 
         if let Some(task_obj) = task_obj {
-            let task = task_obj.as_obj::<Task>().unwrap();
+            let task = task_obj.try_to_obj::<Task>().unwrap();
 
             let result = resume_gen(task.coro(), Obj::NONE, Obj::NULL);
             match result.return_kind {
@@ -115,12 +115,12 @@ impl EventLoop {
                         .for_each(|&w| ready.push_front(w));
                 }
                 VmReturnKind::Yield => {
-                    if let Some(sleep) = result.obj.as_obj::<Sleep>() {
+                    if let Some(sleep) = result.obj.try_to_obj::<Sleep>() {
                         self.sleepers.borrow_mut().push(Sleeper {
                             task: task_obj,
                             deadline: sleep.deadline(),
                         });
-                    } else if let Some(awaited_task) = result.obj.as_obj::<Task>() {
+                    } else if let Some(awaited_task) = result.obj.try_to_obj::<Task>() {
                         awaited_task.add_waiting_task(task_obj);
                     }
                 }
@@ -150,14 +150,14 @@ extern "C" fn event_loop_spawn(self_in: Obj, coro: Obj) -> Obj {
         raise_type_error(token().unwrap(), "expected coroutine");
     }
 
-    self_in.as_obj::<EventLoop>().unwrap().spawn(coro)
+    self_in.try_to_obj::<EventLoop>().unwrap().spawn(coro)
 }
 
 extern "C" fn event_loop_run(self_in: Obj) -> Obj {
     let prev_loop = RUNNING_LOOP.replace(self_in);
     push_nlr_callback(
         token().unwrap(),
-        || self_in.as_obj::<EventLoop>().unwrap().run(),
+        || self_in.try_to_obj::<EventLoop>().unwrap().run(),
         || RUNNING_LOOP.set(prev_loop),
         true,
     );

@@ -15,8 +15,9 @@
 // Literally the devil
 #define MICROPY_STACK_CHECK (0)
 
+#define MICROPY_OBJ_REPR MICROPY_OBJ_REPR_C
 #define MICROPY_LONGINT_IMPL MICROPY_LONGINT_IMPL_MPZ
-#define MICROPY_FLOAT_IMPL MICROPY_FLOAT_IMPL_DOUBLE
+#define MICROPY_FLOAT_IMPL MICROPY_FLOAT_IMPL_FLOAT
 
 typedef int32_t mp_int_t; // must be pointer size
 typedef uint32_t mp_uint_t; // must be pointer size

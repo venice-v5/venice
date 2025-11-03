@@ -58,7 +58,7 @@ impl Task {
 
 extern "C" fn task_iternext(self_in: Obj) -> Obj {
     let task = self_in
-        .as_obj::<Task>()
+        .try_to_obj::<Task>()
         .unwrap_or_else(|| raise_type_error(token().unwrap(), "expected Task"));
     if !task.is_complete() {
         self_in

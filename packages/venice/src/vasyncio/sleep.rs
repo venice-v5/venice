@@ -61,7 +61,7 @@ extern "C" fn sleep_make_new(
     let slice = unsafe { std::slice::from_raw_parts(args, n_kw * 2) };
     let arg_name = slice[0].get_str().unwrap();
     let value = slice[1]
-        .as_small_int()
+        .try_to_int()
         .unwrap_or_else(|| raise_type_error(token, "expected integer"));
 
     let duration = match arg_name {
@@ -77,7 +77,7 @@ extern "C" fn sleep_make_new(
 }
 
 extern "C" fn sleep_iternext(self_in: Obj) -> Obj {
-    let sleep = self_in.as_obj::<Sleep>().unwrap();
+    let sleep = self_in.try_to_obj::<Sleep>().unwrap();
     if sleep.deadline <= Instant::now() {
         raise_stop_iteration(token().unwrap(), Obj::NONE);
     } else {

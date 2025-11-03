@@ -1,4 +1,4 @@
-use std::ffi::c_void;
+use std::{ffi::c_void, ptr::NonNull};
 
 use bitflags::bitflags;
 use thiserror::Error;
@@ -113,10 +113,21 @@ pub struct ObjBase {
 #[repr(transparent)]
 pub struct Obj(*mut c_void);
 
-mod repr_c {
+pub mod repr_c {
     use std::ffi::c_void;
 
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+    pub enum Ty {
+        Int,
+        Qstr,
+        Immediate,
+        Float,
+        Ptr,
+    }
+
     pub const fn new_int(int: i32) -> *mut c_void {
+        // right shifting a signed integer (as opposed to an unsigned int) performs an arithmetic
+        // right shift where the sign bit is preserved, e.g. 0b1000 >> 1 = 0b1100
         (int << 1) as *mut c_void
     }
 
@@ -175,6 +186,27 @@ mod repr_c {
 
     pub const fn get_ptr(obj: *mut c_void) -> *mut c_void {
         obj
+    }
+
+    pub fn type_of(obj: *mut c_void) -> Option<Ty> {
+        let obj = obj as u32;
+        match obj & 0b1111 {
+            0b0110 => Some(match obj & 0xff80_0000 {
+                0 => Ty::Qstr,
+                _ => Ty::Float,
+            }),
+            0b1110 => Some(match obj * 0xff80_0000 {
+                0 => Ty::Immediate,
+                _ => Ty::Float,
+            }),
+            _ => match obj & 0b11 {
+                0b00 => Some(Ty::Ptr),
+                _ => match obj & 0b1 {
+                    0b1 => Some(Ty::Int),
+                    _ => None,
+                },
+            },
+        }
     }
 }
 
@@ -352,7 +384,6 @@ impl Obj {
     pub const TRUE: Self = Self::from_immediate(3);
     pub const FALSE: Self = Self::from_immediate(1);
 
-    // TODO: return Result instead of Option
     pub fn new<T: ObjTrait>(o: T, alloc: &mut Gc) -> Result<Self, GcError> {
         unsafe {
             let mem = alloc.alloc(size_of::<T>());
@@ -372,34 +403,48 @@ impl Obj {
         Self(inner as *mut c_void)
     }
 
+    pub const fn from_int(int: i32) -> Self {
+        // TODO: add overflow assertion
+        Self(repr_c::new_int(int))
+    }
+
+    pub const fn from_qstr(qstr: Qstr) -> Self {
+        Self(repr_c::new_qstr(qstr.index() as u32))
+    }
+
+    pub const fn from_immediate(imm: u32) -> Self {
+        Self(repr_c::new_immediate(imm))
+    }
+
+    pub const fn from_float(float: f32) -> Self {
+        Self(repr_c::new_float(float))
+    }
+
     pub const unsafe fn from_ptr(ptr: *mut c_void) -> Self {
         Self(ptr)
     }
 
-    pub const fn from_small_int(int: i32) -> Self {
-        // TODO: add overflow assertion
-        unsafe { Self::from_raw((int << 1 | 0b1) as u32) }
+    pub fn is_int(self) -> bool {
+        repr_c::is_int(self.0)
     }
 
-    pub const fn from_immediate(imm: u32) -> Self {
-        unsafe { Self::from_raw(imm << 3 | 0b110) }
+    pub fn is_qstr(self) -> bool {
+        repr_c::is_qstr(self.0)
     }
 
-    pub const fn from_qstr(qstr: Qstr) -> Self {
-        unsafe { Self::from_raw((qstr.index() as u32) << 3 | 0b010) }
+    pub fn is_immediate(self) -> bool {
+        repr_c::is_immediate(self.0)
     }
 
-    pub fn as_small_int(self) -> Option<i32> {
-        let int = self.0 as i32;
-        if int & 0b1 != 1 {
-            return None;
-        }
-        // right shifting a signed integer (as opposed to an unsigned int) performs an arithmetic
-        // right shift where the sign bit is preserved, e.g. 0b1000 >> 1 = 0b1100
-        Some(int >> 1)
+    pub fn is_float(self) -> bool {
+        repr_c::is_float(self.0)
     }
 
-    pub const fn is_null(&self) -> bool {
+    pub fn is_ptr(self) -> bool {
+        repr_c::is_ptr(self.0)
+    }
+
+    pub const fn is_null(self) -> bool {
         self.0.is_null()
     }
 
@@ -407,72 +452,108 @@ impl Obj {
         self.0 == Self::NONE.0
     }
 
-    pub fn as_qstr(&self) -> Option<Qstr> {
-        if self.0 as u32 & 0b111 == 0b10 {
-            Some(unsafe { Qstr::from_index((self.0 as u32 >> 3) as usize) })
+    pub fn is_bool(&self) -> bool {
+        self.try_to_bool().is_some()
+    }
+
+    pub fn is(self, ty: &ObjType) -> bool {
+        self.obj_type().map(|t| ty == t).unwrap_or(false)
+    }
+
+    pub fn ty(self) -> Option<repr_c::Ty> {
+        repr_c::type_of(self.0)
+    }
+
+    pub fn try_to_int(self) -> Option<i32> {
+        if repr_c::is_int(self.0) {
+            Some(repr_c::get_int(self.0))
         } else {
             None
         }
     }
 
+    pub fn try_to_qstr(self) -> Option<Qstr> {
+        if repr_c::is_qstr(self.0) {
+            Some(unsafe { Qstr::from_index(repr_c::get_qstr(self.0) as usize) })
+        } else {
+            None
+        }
+    }
+
+    pub fn try_to_immediate(self) -> Option<u32> {
+        if repr_c::is_immediate(self.0) {
+            Some(repr_c::get_immediate(self.0))
+        } else {
+            None
+        }
+    }
+
+    pub fn try_to_bool(self) -> Option<bool> {
+        self.try_to_immediate().and_then(|imm| match imm {
+            val if val == Self::TRUE.to_immediate() => Some(true),
+            val if val == Self::FALSE.to_immediate() => Some(false),
+            _ => None,
+        })
+    }
+
+    pub fn try_to_float(self) -> Option<f32> {
+        if repr_c::is_float(self.0) {
+            Some(repr_c::get_float(self.0))
+        } else {
+            None
+        }
+    }
+
+    pub fn try_to_obj_raw<T: ObjTrait>(self) -> Option<NonNull<T>> {
+        if let Some(ty) = self.obj_type()
+            && ty == T::OBJ_TYPE
+        {
+            Some(NonNull::new(self.0 as *mut T).unwrap())
+        } else {
+            None
+        }
+    }
+
+    pub fn try_to_obj<T: ObjTrait>(&self) -> Option<&T> {
+        self.try_to_obj_raw().map(|ptr| unsafe { ptr.as_ref() })
+    }
+
+    pub fn to_int(self) -> i32 {
+        repr_c::get_int(self.0)
+    }
+
+    pub fn to_immediate(self) -> u32 {
+        repr_c::get_immediate(self.0)
+    }
+
+    pub fn to_float(self) -> f32 {
+        repr_c::get_float(self.0)
+    }
+
+    pub const fn inner(self) -> *mut c_void {
+        self.0
+    }
+
     pub fn get_str(&self) -> Option<&[u8]> {
-        if let Some(qstr) = self.as_qstr() {
+        if let Some(qstr) = self.try_to_qstr() {
             return Some(qstr.bytes());
         }
 
-        if let Some(str) = Self::as_obj::<Str>(self) {
+        if let Some(str) = Self::try_to_obj::<Str>(self) {
             return Some(str.data());
         }
 
         None
     }
 
+    // TODO: is this really static?
     pub fn obj_type(&self) -> Option<&'static ObjType> {
-        if self.0 as u32 & 0b11 == 0 {
+        if self.is_ptr() && !self.is_null() {
             let ptr = self.0 as *const ObjBase;
             Some(unsafe { &*(*ptr).r#type })
         } else {
             None
         }
-    }
-
-    pub fn is(&self, ty: &ObjType) -> bool {
-        self.obj_type().map(|t| ty == t).unwrap_or(false)
-    }
-
-    pub const fn as_ptr(&self) -> *mut c_void {
-        self.0
-    }
-
-    pub fn as_obj_raw<T: ObjTrait>(&self) -> Option<*mut T> {
-        if let Some(ty) = self.obj_type()
-            && ty == T::OBJ_TYPE
-        {
-            Some(self.0 as *mut T)
-        } else {
-            None
-        }
-    }
-
-    pub fn as_obj<T: ObjTrait>(&self) -> Option<&T> {
-        self.as_obj_raw().map(|ptr| unsafe { &*ptr })
-    }
-
-    // TODO: use nonany to niche optimimize return value
-    pub fn as_immediate(&self) -> Option<u32> {
-        if self.0 as u32 & 0b111 != 0b110 {
-            None
-        } else {
-            Some(self.0 as u32 >> 3)
-        }
-    }
-
-    pub fn as_bool(&self) -> Option<bool> {
-        self.as_immediate().and_then(|imm| match imm {
-            3 => Some(true),
-            1 => Some(false),
-            _ => None,
-        })
     }
 }
 

@@ -119,7 +119,7 @@ unsafe extern "C" fn venice_import(arg_count: usize, args: *const Obj) -> Obj {
 
     let module_name_obj = args[0];
     let (fromtuple, level) = if args.len() >= 4 {
-        let level = args[4].as_small_int().unwrap();
+        let level = args[4].try_to_int().unwrap();
         if level < 0 {
             // TODO: Add exception API
             panic!("level cannot be negative")
