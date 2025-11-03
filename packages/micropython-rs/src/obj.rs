@@ -342,7 +342,7 @@ impl Obj {
     }
 
     pub fn obj_type(&self) -> Option<*const ObjType> {
-        if self.0 as u32 & 0b11 != 0 {
+        if !self.is_null() && self.0 as u32 & 0b11 != 0 {
             let ptr = self.0 as *const ObjBase;
             Some(unsafe { *ptr }.r#type)
         } else {
@@ -359,22 +359,20 @@ impl Obj {
     }
 
     pub fn as_obj_raw<T: ObjTrait>(&self) -> Option<*mut T> {
-        if self.0 as u32 & 0b11 != 0 {
-            return None;
+        if let Some(ty) = self.obj_type()
+            && ty == T::OBJ_TYPE
+        {
+            Some(self.0 as *mut T)
+        } else {
+            None
         }
-
-        let ptr = self.0 as *mut ObjBase;
-        if unsafe { *ptr }.r#type != T::OBJ_TYPE {
-            return None;
-        }
-
-        Some(ptr as *mut T)
     }
 
     pub fn as_obj<T: ObjTrait>(&self) -> Option<&T> {
         self.as_obj_raw().map(|ptr| unsafe { &*ptr })
     }
 
+    // TODO: use nonany to niche optimimize return value
     pub fn as_immediate(&self) -> Option<u32> {
         if self.0 as u32 & 0b111 != 0b110 {
             None
