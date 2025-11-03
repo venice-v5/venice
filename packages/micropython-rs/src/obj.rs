@@ -87,14 +87,26 @@ pub struct ObjBase {
 ///
 /// # Representation
 ///
-/// MicroPython has four object representations. This port uses representation A, whereby:
+/// MicroPython has four object representations:
 ///
-/// - `xxxx...xxx1` is a small int, and bits 1 and above are the value
-/// - `xxxx...x010` is a qstr, and bits 3 and above are the value
-/// - `xxxx...x110` is an immediate object, and bits 3 and abvoe are the value
-/// - `xxxx...xx00` is a pointer to an [`ObjBase`]
+/// - Repr A is optimized for 32-bit systems with 4-byte alignments. It can encode small integers,
+///   interned strings (qstrs), and immediate objects (such as None, True, and False) without
+///   indirection.
+/// - Repr B has the same capabilities of Repr A, except that it allows for 2-byte aligned
+///   pointers by increasing the amount of tagging bits used by other object types.
+/// - Repr C extends Repr A with the ability to store floating-point numbers without indirection,
+///   at the expense of decreasing the amount of bits allocated to qstrs and immediate objects
+/// - Repr D is optimized for 64-bit systems.
 ///
-/// [`ObjBase`]: super::raw::ObjBase
+/// ## Repr C
+///
+/// This port uses Repr C to optimize floating-point math, which is common in VEX programs.
+///
+/// - `iiiiiiii iiiiiiii iiiiiiii iiiiiii1` is a 31-bit integer
+/// - `01111111 1qqqqqqq qqqqqqqq qqqq0110` is a 19-bit qstr
+/// - `01111111 10000000 00000000 ssss0000` is an immediate object
+/// - `seeeeeee ffffffff ffffffff ffffff10` is a 30-bit float
+/// - `pppppppp pppppppp pppppppp pppppp00` is a pointer to an object, starting with [`ObjBase`]
 #[derive(Clone, Copy)]
 #[repr(transparent)]
 pub struct Obj(*mut c_void);
