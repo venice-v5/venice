@@ -106,12 +106,77 @@ pub struct ObjBase {
 ///
 /// - `iiiiiiii iiiiiiii iiiiiiii iiiiiii1` is a 31-bit integer
 /// - `01111111 1qqqqqqq qqqqqqqq qqqq0110` is a 19-bit qstr
-/// - `01111111 10000000 00000000 ssss0000` is an immediate object
+/// - `01111111 10000000 00000000 ssss1110` is an immediate object
 /// - `seeeeeee ffffffff ffffffff ffffff10` is a 30-bit float
 /// - `pppppppp pppppppp pppppppp pppppp00` is a pointer to an object, starting with [`ObjBase`]
 #[derive(Clone, Copy)]
 #[repr(transparent)]
 pub struct Obj(*mut c_void);
+
+mod repr_c {
+    use std::ffi::c_void;
+
+    pub const fn new_int(int: i32) -> *mut c_void {
+        (int << 1) as *mut c_void
+    }
+
+    pub const fn new_qstr(qstr: u32) -> *mut c_void {
+        (qstr << 4 | 0b110) as *mut c_void
+    }
+
+    pub const fn new_immediate(imm: u32) -> *mut c_void {
+        (imm << 4 | 0b1110) as *mut c_void
+    }
+
+    pub const fn new_float(float: f32) -> *mut c_void {
+        (float.to_bits() - 0x8080_0000 & !0b11) as *mut c_void
+    }
+
+    pub const fn new_ptr(ptr: *mut c_void) -> *mut c_void {
+        ptr
+    }
+
+    pub fn is_int(obj: *mut c_void) -> bool {
+        (obj as u32) & 0b1 == 0b1
+    }
+
+    pub fn is_qstr(obj: *mut c_void) -> bool {
+        (obj as u32) & 0xff80_000f == 0b0110
+    }
+
+    pub fn is_immediate(obj: *mut c_void) -> bool {
+        (obj as u32) & 0xff80_000f == 0b1110
+    }
+
+    pub fn is_float(obj: *mut c_void) -> bool {
+        let obj = obj as u32;
+        (obj & 0b11 == 0b10) && (obj & 0xff80_0007 != 0b110)
+    }
+
+    pub fn is_ptr(obj: *mut c_void) -> bool {
+        (obj as u32) & 0b11 == 0
+    }
+
+    pub fn get_int(obj: *mut c_void) -> i32 {
+        (obj as i32) >> 1
+    }
+
+    pub fn get_qstr(obj: *mut c_void) -> u32 {
+        (obj as u32) >> 4
+    }
+
+    pub fn get_immediate(obj: *mut c_void) -> u32 {
+        (obj as u32) >> 4
+    }
+
+    pub fn get_float(obj: *mut c_void) -> f32 {
+        f32::from_bits((obj as u32) - 0x8080_0000 & !0b11)
+    }
+
+    pub const fn get_ptr(obj: *mut c_void) -> *mut c_void {
+        obj
+    }
+}
 
 /// # Safety
 ///
