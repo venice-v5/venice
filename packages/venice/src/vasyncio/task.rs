@@ -22,7 +22,7 @@ pub struct Task {
 }
 
 unsafe impl ObjTrait for Task {
-    const OBJ_TYPE: *const micropython_rs::obj::ObjType = TASK_OBJ_TYPE.as_obj_type_ptr();
+    const OBJ_TYPE: &micropython_rs::obj::ObjType = TASK_OBJ_TYPE.as_obj_type();
 }
 
 impl Task {

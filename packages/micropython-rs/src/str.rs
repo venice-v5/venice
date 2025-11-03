@@ -1,7 +1,7 @@
 use crate::obj::{ObjBase, ObjTrait, ObjType};
 
 unsafe extern "C" {
-    pub static mp_type_str: ObjType;
+    static mp_type_str: ObjType;
 }
 
 /// From: `py/objstr.h`
@@ -24,5 +24,5 @@ impl Str {
 }
 
 unsafe impl ObjTrait for Str {
-    const OBJ_TYPE: *const ObjType = &raw const mp_type_str;
+    const OBJ_TYPE: &ObjType = unsafe { &mp_type_str };
 }

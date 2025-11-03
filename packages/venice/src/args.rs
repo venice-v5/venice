@@ -3,8 +3,8 @@ use std::fmt::Display;
 use micropython_rs::{
     except::raise_type_error,
     init::InitToken,
-    obj::{Obj, ObjType},
-    str::mp_type_str,
+    obj::{Obj, ObjTrait, ObjType},
+    str::Str,
 };
 
 #[derive(Clone, Copy)]
@@ -26,7 +26,7 @@ pub enum ArgType {
     Int,
     Bool,
     Str,
-    Obj(*const ObjType),
+    Obj(&'static ObjType),
 }
 
 #[derive(Clone, Copy)]
@@ -73,7 +73,7 @@ impl ArgType {
             },
             _ => match int & 0b11 {
                 0b00 => {
-                    if obj.is(&raw const mp_type_str) {
+                    if obj.is(Str::OBJ_TYPE) {
                         Self::Str
                     } else {
                         Self::Obj(obj.obj_type().unwrap())

@@ -13,7 +13,7 @@ macro_rules! define_fun_type {
         }
 
         unsafe impl ObjTrait for $name {
-            const OBJ_TYPE: *const ObjType = &raw const $mp_type_name;
+            const OBJ_TYPE: &ObjType = unsafe { &$mp_type_name };
         }
 
         impl $name {

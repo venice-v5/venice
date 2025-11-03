@@ -67,7 +67,7 @@ pub struct ModuleContext {
 }
 
 unsafe impl ObjTrait for ModuleContext {
-    const OBJ_TYPE: *const ObjType = &raw const mp_type_module;
+    const OBJ_TYPE: &ObjType = unsafe { &mp_type_module };
 }
 
 /// From: `py/bc.h`

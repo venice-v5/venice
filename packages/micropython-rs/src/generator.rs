@@ -15,8 +15,10 @@ unsafe extern "C" {
         ret_val: *mut Obj,
     ) -> VmReturnKind;
 
-    pub static mp_type_gen_instance: ObjType;
+    static mp_type_gen_instance: ObjType;
 }
+
+pub const GEN_INSTANCE_TYPE: &ObjType = unsafe { &mp_type_gen_instance };
 
 pub struct ResumeResult {
     pub obj: Obj,

@@ -21,7 +21,7 @@ pub static SLEEP_OBJ_TYPE: ObjFullType =
         .set_slot_make_new(sleep_make_new);
 
 unsafe impl ObjTrait for Sleep {
-    const OBJ_TYPE: *const micropython_rs::obj::ObjType = SLEEP_OBJ_TYPE.as_obj_type_ptr();
+    const OBJ_TYPE: &micropython_rs::obj::ObjType = SLEEP_OBJ_TYPE.as_obj_type();
 }
 
 impl Sleep {

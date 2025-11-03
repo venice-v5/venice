@@ -118,7 +118,7 @@ pub struct Obj(*mut c_void);
 /// Additionally, all instances must be aligned to 4 bytes in memory, but this is already
 /// guaranteed if the first invariant is true, as a side effect.
 pub unsafe trait ObjTrait: Sized {
-    const OBJ_TYPE: *const ObjType;
+    const OBJ_TYPE: &ObjType;
 }
 
 bitflags! {
@@ -146,6 +146,14 @@ pub type UnaryOpFn = extern "C" fn(op: UnaryOp, obj: Obj) -> Obj;
 pub type BinaryOpFn = extern "C" fn(op: BinaryOp, obj: Obj) -> Obj;
 pub type AttrFn = extern "C" fn(self_in: Obj, attr: Qstr, dest: *mut Obj);
 pub type SubscrFn = extern "C" fn(self_in: Obj, index: Obj, value: Obj) -> Obj;
+
+impl PartialEq for ObjType {
+    fn eq(&self, other: &Self) -> bool {
+        self as *const _ == other as *const _
+    }
+}
+
+impl Eq for ObjType {}
 
 impl ObjFullType {
     pub const fn new(flags: TypeFlags, name: Qstr) -> Self {
@@ -192,8 +200,9 @@ impl ObjFullType {
         }
     }
 
-    pub const fn as_obj_type_ptr(&'static self) -> *const ObjType {
-        self as *const Self as *const ObjType
+    pub const fn as_obj_type(&self) -> &ObjType {
+        // SAFETY: ObjType and ObjFullType have the same starting memory representation
+        unsafe { std::mem::transmute(self) }
     }
 
     pub const unsafe fn set_slot_locals_dict(mut self, value: *mut Dict) -> Self {
@@ -241,11 +250,11 @@ unsafe extern "C" {
 }
 
 unsafe impl ObjTrait for ObjType {
-    const OBJ_TYPE: *const ObjType = &raw const mp_type_type;
+    const OBJ_TYPE: &ObjType = unsafe { &mp_type_type };
 }
 
 unsafe impl ObjTrait for ObjFullType {
-    const OBJ_TYPE: *const ObjType = &raw const mp_type_type;
+    const OBJ_TYPE: &ObjType = unsafe { &mp_type_type };
 }
 
 impl ObjBase {
@@ -341,16 +350,16 @@ impl Obj {
         None
     }
 
-    pub fn obj_type(&self) -> Option<*const ObjType> {
-        if !self.is_null() && self.0 as u32 & 0b11 != 0 {
+    pub fn obj_type(&self) -> Option<&'static ObjType> {
+        if self.0 as u32 & 0b11 != 0 {
             let ptr = self.0 as *const ObjBase;
-            Some(unsafe { *ptr }.r#type)
+            Some(unsafe { &*(*ptr).r#type })
         } else {
             None
         }
     }
 
-    pub fn is(&self, ty: *const ObjType) -> bool {
+    pub fn is(&self, ty: &ObjType) -> bool {
         self.obj_type().map(|t| ty == t).unwrap_or(false)
     }
 

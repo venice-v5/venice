@@ -8,10 +8,9 @@ use micropython_rs::{
     const_dict,
     except::{mp_type_RuntimeError, raise_msg, raise_type_error},
     fun::{Fun1, Fun2},
-    generator::{VmReturnKind, mp_type_gen_instance, resume_gen},
+    generator::{GEN_INSTANCE_TYPE, VmReturnKind, resume_gen},
     init::token,
-    nlr,
-    nlr::push_nlr_callback,
+    nlr::{self, push_nlr_callback},
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
 use vex_sdk::vexTasksRun;
@@ -62,7 +61,7 @@ pub struct EventLoop {
 }
 
 unsafe impl ObjTrait for EventLoop {
-    const OBJ_TYPE: *const ObjType = EVENT_LOOP_OBJ_TYPE.as_obj_type_ptr();
+    const OBJ_TYPE: &ObjType = EVENT_LOOP_OBJ_TYPE.as_obj_type();
 }
 
 thread_local! {
@@ -147,7 +146,7 @@ extern "C" fn event_loop_new(_: *const ObjType, n_args: usize, n_kw: usize, _: *
 }
 
 extern "C" fn event_loop_spawn(self_in: Obj, coro: Obj) -> Obj {
-    if !coro.is(&raw const mp_type_gen_instance) {
+    if !coro.is(GEN_INSTANCE_TYPE) {
         raise_type_error(token().unwrap(), "expected coroutine");
     }
 
@@ -170,7 +169,7 @@ pub extern "C" fn get_running_loop() -> Obj {
 }
 
 pub extern "C" fn vasyncio_run(coro: Obj) -> Obj {
-    if !coro.is(&raw const mp_type_gen_instance) {
+    if !coro.is(GEN_INSTANCE_TYPE) {
         raise_type_error(token().unwrap(), "expected coroutine");
     }
 

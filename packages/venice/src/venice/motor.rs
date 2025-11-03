@@ -25,7 +25,7 @@ pub static MOTOR_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(Motor)).set_slot_make_new(motor_make_new);
 
 unsafe impl ObjTrait for MotorObj {
-    const OBJ_TYPE: *const micropython_rs::obj::ObjType = MOTOR_OBJ_TYPE.as_obj_type_ptr();
+    const OBJ_TYPE: &micropython_rs::obj::ObjType = MOTOR_OBJ_TYPE.as_obj_type();
 }
 
 fn gearset_from_str(str: &[u8]) -> Option<Gearset> {

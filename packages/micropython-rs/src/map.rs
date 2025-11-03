@@ -140,5 +140,5 @@ impl Dict {
 }
 
 unsafe impl ObjTrait for Dict {
-    const OBJ_TYPE: *const ObjType = &raw const mp_type_dict;
+    const OBJ_TYPE: &ObjType = unsafe { &mp_type_dict };
 }
