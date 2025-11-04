@@ -57,32 +57,20 @@ extern "C" fn motor_make_new(
     }
 
     let mut args = unsafe { Args::from_ptr(n_pos, n_kw, arg_ptr) }.reader();
-    let port = PortNumber::from_i32(
-        args.next_positional(ArgType::Int)
-            .unwrap_or_else(|e| e.raise_positional(token))
-            .as_int()
-            .unwrap(),
-    )
-    .unwrap_or_else(|_| raise_value_error(token, "port number must be between 1 and 21"));
+    let port = PortNumber::from_i32(args.next_positional(token, ArgType::Int).as_int())
+        .unwrap_or_else(|_| raise_value_error(token, "port number must be between 1 and 21"));
 
-    let gearset = gearset_from_str(
-        args.next_positional(ArgType::Str)
-            .unwrap_or_else(|e| e.raise_positional(token))
-            .as_str()
-            .unwrap(),
-    )
-    .unwrap_or_else(|| {
-        raise_value_error(
-            token,
-            "invalid gearset (expected one of 'red', 'green', or 'blue')",
-        )
-    });
+    let gearset = gearset_from_str(args.next_positional(token, ArgType::Str).as_str())
+        .unwrap_or_else(|| {
+            raise_value_error(
+                token,
+                "invalid gearset (expected one of 'red', 'green', or 'blue')",
+            )
+        });
 
     let direction = direction_from_str(
-        args.next_positional_or(ArgType::Str, ArgValue::Str(b"forward"))
-            .unwrap_or_else(|e| e.raise_positional(token))
-            .as_str()
-            .unwrap(),
+        args.next_positional_or(token, ArgType::Str, ArgValue::Str(b"forward"))
+            .as_str(),
     )
     .unwrap_or_else(|| {
         raise_value_error(

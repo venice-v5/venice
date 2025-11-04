@@ -108,31 +108,38 @@ impl<'a> ArgValue<'a> {
         }
     }
 
-    pub fn as_int(self) -> Option<i32> {
+    pub fn as_int(self) -> i32 {
         match self {
-            Self::Int(int) => Some(int),
-            _ => None,
+            Self::Int(int) => int,
+            _ => panic!(),
         }
     }
 
-    pub fn as_str(self) -> Option<&'a [u8]> {
+    pub fn as_str(self) -> &'a [u8] {
         match self {
-            Self::Str(str) => Some(str),
-            _ => None,
+            Self::Str(str) => str,
+            _ => panic!(),
         }
     }
 
-    pub fn as_bool(self) -> Option<bool> {
+    pub fn as_bool(self) -> bool {
         match self {
-            Self::Bool(bool) => Some(bool),
-            _ => None,
+            Self::Bool(bool) => bool,
+            _ => panic!(),
         }
     }
 
-    pub fn as_obj(self) -> Option<Obj> {
+    pub fn as_float(self) -> f32 {
         match self {
-            Self::Obj(obj) => Some(obj),
-            _ => None,
+            Self::Float(float) => float,
+            _ => panic!(),
+        }
+    }
+
+    pub fn as_obj(self) -> Obj {
+        match self {
+            Self::Obj(obj) => obj,
+            _ => panic!(),
         }
     }
 }
@@ -217,7 +224,7 @@ impl<'a> Args<'a> {
 }
 
 impl<'a> ArgsReader<'a> {
-    pub fn next_positional(&mut self, ty: ArgType) -> Result<ArgValue<'a>, ArgError> {
+    pub fn try_next_positional(&mut self, ty: ArgType) -> Result<ArgValue<'a>, ArgError> {
         if self.n < self.args.n_pos {
             let arg = self.args.nth_with_type(self.n, ty).map(|arg| arg.value());
             self.n += 1;
@@ -227,7 +234,36 @@ impl<'a> ArgsReader<'a> {
         }
     }
 
-    pub fn get_kw(&self, kw: &[u8], ty: ArgType) -> Result<ArgValue<'a>, ArgError> {
+    pub fn try_next_positional_or(
+        &mut self,
+        ty: ArgType,
+        default: ArgValue<'a>,
+    ) -> Result<ArgValue<'a>, ArgError> {
+        match self.try_next_positional(ty) {
+            Ok(v) => Ok(v),
+            Err(e) => match e {
+                ArgError::PositionalsExhuasted { .. } => Ok(default),
+                _ => Err(e),
+            },
+        }
+    }
+
+    pub fn next_positional(&mut self, token: InitToken, ty: ArgType) -> ArgValue<'a> {
+        self.try_next_positional(ty)
+            .unwrap_or_else(|e| e.raise_positional(token))
+    }
+
+    pub fn next_positional_or(
+        &mut self,
+        token: InitToken,
+        ty: ArgType,
+        default: ArgValue<'a>,
+    ) -> ArgValue<'a> {
+        self.try_next_positional_or(ty, default)
+            .unwrap_or_else(|e| e.raise_positional(token))
+    }
+
+    pub fn try_get_kw(&self, kw: &[u8], ty: ArgType) -> Result<ArgValue<'a>, ArgError> {
         for i in 0..self.args.n_kw {
             let arg = self.args.nth(self.args.n_pos + i).unwrap();
             match arg {
@@ -242,33 +278,35 @@ impl<'a> ArgsReader<'a> {
         Err(ArgError::NotPresent)
     }
 
-    pub fn next_positional_or<'b: 'a>(
-        &mut self,
-        ty: ArgType,
-        default: ArgValue<'b>,
-    ) -> Result<ArgValue<'a>, ArgError> {
-        match self.next_positional(ty) {
-            Ok(arg) => Ok(arg),
-            Err(err) => match err {
-                ArgError::PositionalsExhuasted { .. } => Ok(default),
-                _ => Err(err),
-            },
-        }
-    }
-
-    pub fn get_kw_or<'b: 'a>(
+    pub fn try_get_kw_or(
         &self,
         kw: &[u8],
         ty: ArgType,
-        default: ArgValue<'b>,
+        default: ArgValue<'a>,
     ) -> Result<ArgValue<'a>, ArgError> {
-        match self.get_kw(kw, ty) {
+        match self.try_get_kw(kw, ty) {
             Ok(arg) => Ok(arg),
             Err(err) => match err {
                 ArgError::NotPresent { .. } => Ok(default),
                 _ => Err(err),
             },
         }
+    }
+
+    pub fn get_kw(&self, token: InitToken, kw: &[u8], ty: ArgType) -> ArgValue<'a> {
+        self.try_get_kw(kw, ty)
+            .unwrap_or_else(|e| e.raise_kw(token, str::from_utf8(kw).unwrap()))
+    }
+
+    pub fn get_kw_or(
+        &self,
+        token: InitToken,
+        kw: &[u8],
+        ty: ArgType,
+        default: ArgValue<'a>,
+    ) -> ArgValue<'a> {
+        self.try_get_kw_or(kw, ty, default)
+            .unwrap_or_else(|e| e.raise_kw(token, str::from_utf8(kw).unwrap()))
     }
 }
 
