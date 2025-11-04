@@ -18,6 +18,7 @@ pub struct Args<'a> {
 pub struct ArgsReader<'a> {
     args: Args<'a>,
     n: usize,
+    token: InitToken,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -218,12 +219,52 @@ impl<'a> Args<'a> {
         }
     }
 
-    pub const fn reader(self) -> ArgsReader<'a> {
-        ArgsReader { args: self, n: 0 }
+    pub const fn reader(self, token: InitToken) -> ArgsReader<'a> {
+        ArgsReader {
+            args: self,
+            n: 0,
+            token,
+        }
     }
 }
 
 impl<'a> ArgsReader<'a> {
+    pub fn assert_npos(&self, min: usize, max: usize) -> &Self {
+        if self.args.n_pos < min || self.args.n_pos > max {
+            if max == 0 {
+                raise_type_error(
+                    self.token,
+                    format!("function does not accept positional arguments"),
+                )
+            } else {
+                raise_type_error(
+                    self.token,
+                    format!(
+                        "function expects at least {min} positional arguments and at most {max}"
+                    ),
+                )
+            }
+        }
+        self
+    }
+
+    pub fn assert_nkw(&self, min: usize, max: usize) -> &Self {
+        if self.args.n_kw < min || self.args.n_kw > max {
+            if max == 0 {
+                raise_type_error(
+                    self.token,
+                    format!("function does not accept keyword arguments"),
+                )
+            } else {
+                raise_type_error(
+                    self.token,
+                    format!("function expects at least {min} keyword arguments and at most {max}"),
+                )
+            }
+        }
+        self
+    }
+
     pub fn try_next_positional(&mut self, ty: ArgType) -> Result<ArgValue<'a>, ArgError> {
         if self.n < self.args.n_pos {
             let arg = self.args.nth_with_type(self.n, ty).map(|arg| arg.value());
@@ -248,19 +289,14 @@ impl<'a> ArgsReader<'a> {
         }
     }
 
-    pub fn next_positional(&mut self, token: InitToken, ty: ArgType) -> ArgValue<'a> {
+    pub fn next_positional(&mut self, ty: ArgType) -> ArgValue<'a> {
         self.try_next_positional(ty)
-            .unwrap_or_else(|e| e.raise_positional(token))
+            .unwrap_or_else(|e| e.raise_positional(self.token))
     }
 
-    pub fn next_positional_or(
-        &mut self,
-        token: InitToken,
-        ty: ArgType,
-        default: ArgValue<'a>,
-    ) -> ArgValue<'a> {
+    pub fn next_positional_or(&mut self, ty: ArgType, default: ArgValue<'a>) -> ArgValue<'a> {
         self.try_next_positional_or(ty, default)
-            .unwrap_or_else(|e| e.raise_positional(token))
+            .unwrap_or_else(|e| e.raise_positional(self.token))
     }
 
     pub fn try_get_kw(&self, kw: &[u8], ty: ArgType) -> Result<ArgValue<'a>, ArgError> {
@@ -293,20 +329,14 @@ impl<'a> ArgsReader<'a> {
         }
     }
 
-    pub fn get_kw(&self, token: InitToken, kw: &[u8], ty: ArgType) -> ArgValue<'a> {
+    pub fn get_kw(&self, kw: &[u8], ty: ArgType) -> ArgValue<'a> {
         self.try_get_kw(kw, ty)
-            .unwrap_or_else(|e| e.raise_kw(token, str::from_utf8(kw).unwrap()))
+            .unwrap_or_else(|e| e.raise_kw(self.token, str::from_utf8(kw).unwrap()))
     }
 
-    pub fn get_kw_or(
-        &self,
-        token: InitToken,
-        kw: &[u8],
-        ty: ArgType,
-        default: ArgValue<'a>,
-    ) -> ArgValue<'a> {
+    pub fn get_kw_or(&self, kw: &[u8], ty: ArgType, default: ArgValue<'a>) -> ArgValue<'a> {
         self.try_get_kw_or(kw, ty, default)
-            .unwrap_or_else(|e| e.raise_kw(token, str::from_utf8(kw).unwrap()))
+            .unwrap_or_else(|e| e.raise_kw(self.token, str::from_utf8(kw).unwrap()))
     }
 }
 

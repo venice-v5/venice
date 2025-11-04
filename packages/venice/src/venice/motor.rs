@@ -1,5 +1,5 @@
 use micropython_rs::{
-    except::{raise_type_error, raise_value_error},
+    except::raise_value_error,
     init::token,
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
@@ -52,16 +52,14 @@ extern "C" fn motor_make_new(
     arg_ptr: *const Obj,
 ) -> Obj {
     let token = token().unwrap();
-    if n_kw != 0 {
-        raise_type_error(token, "function does not accept keyword arguments");
-    }
 
-    let mut args = unsafe { Args::from_ptr(n_pos, n_kw, arg_ptr) }.reader();
-    let port = PortNumber::from_i32(args.next_positional(token, ArgType::Int).as_int())
+    let mut args = unsafe { Args::from_ptr(n_pos, n_kw, arg_ptr) }.reader(token);
+    args.assert_npos(2, 4).assert_nkw(0, 0);
+    let port = PortNumber::from_i32(args.next_positional(ArgType::Int).as_int())
         .unwrap_or_else(|_| raise_value_error(token, "port number must be between 1 and 21"));
 
-    let gearset = gearset_from_str(args.next_positional(token, ArgType::Str).as_str())
-        .unwrap_or_else(|| {
+    let gearset =
+        gearset_from_str(args.next_positional(ArgType::Str).as_str()).unwrap_or_else(|| {
             raise_value_error(
                 token,
                 "invalid gearset (expected one of 'red', 'green', or 'blue')",
@@ -69,7 +67,7 @@ extern "C" fn motor_make_new(
         });
 
     let direction = direction_from_str(
-        args.next_positional_or(token, ArgType::Str, ArgValue::Str(b"forward"))
+        args.next_positional_or(ArgType::Str, ArgValue::Str(b"forward"))
             .as_str(),
     )
     .unwrap_or_else(|| {
