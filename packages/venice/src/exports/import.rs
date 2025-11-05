@@ -72,8 +72,8 @@ pub fn process_import_at_level(
         let name = str::from_utf8(full_name.bytes()).unwrap_or("<invalid utf8 module name>");
         raise_msg(
             token,
-            &raw const mp_type_ImportError,
-            &format!("no module named '{name}'"),
+            &mp_type_ImportError,
+            format!("no module named '{name}'"),
         );
     }
 }

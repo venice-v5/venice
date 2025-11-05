@@ -182,7 +182,7 @@ pub extern "C" fn vasyncio_spawn(coro: Obj) -> Obj {
     if eloop.is_none() {
         raise_msg(
             token().unwrap(),
-            &raw const mp_type_RuntimeError,
+            &mp_type_RuntimeError,
             "no running event loop",
         );
     }

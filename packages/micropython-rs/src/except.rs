@@ -24,8 +24,8 @@ unsafe extern "C" {
     fn mp_raise_OSError(errno_: c_int) -> !;
     fn mp_raise_OSError_with_filename(errno_: c_int, filename: *const u8) -> !;
 
-    pub static mp_type_ImportError: ObjType;
-    pub static mp_type_RuntimeError: ObjType;
+    pub safe static mp_type_ImportError: ObjType;
+    pub safe static mp_type_RuntimeError: ObjType;
 }
 
 impl<'a> RomErrorText<'a> {
@@ -37,7 +37,7 @@ impl<'a> RomErrorText<'a> {
     }
 }
 
-pub fn raise_msg<'a>(_: InitToken, exc_type: *const ObjType, msg: impl AsRef<str>) -> ! {
+pub fn raise_msg(_: InitToken, exc_type: &ObjType, msg: impl AsRef<str>) -> ! {
     let cstring = CString::new(msg.as_ref()).unwrap();
     unsafe { mp_raise_msg(exc_type, RomErrorText::new(cstring.as_c_str())) };
 }
