@@ -71,7 +71,7 @@ thread_local! {
 impl EventLoop {
     pub fn new() -> Self {
         Self {
-            base: ObjBase::new::<EventLoop>(),
+            base: ObjBase::new(Self::OBJ_TYPE),
             ready: RefCell::new(VecDeque::new()),
             sleepers: RefCell::new(BinaryHeap::new()),
         }

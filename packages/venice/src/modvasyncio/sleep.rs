@@ -27,7 +27,7 @@ unsafe impl ObjTrait for Sleep {
 impl Sleep {
     pub fn new(duration: Duration) -> Self {
         Self {
-            base: ObjBase::new::<Self>(),
+            base: ObjBase::new(Self::OBJ_TYPE),
             deadline: Instant::now() + duration,
         }
     }

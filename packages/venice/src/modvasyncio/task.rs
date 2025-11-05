@@ -28,7 +28,7 @@ unsafe impl ObjTrait for Task {
 impl Task {
     pub fn new(coro: Obj) -> Self {
         Self {
-            base: ObjBase::new::<Self>(),
+            base: ObjBase::new(Self::OBJ_TYPE),
             coro,
             waiting_tasks: RefCell::new(Vec::new()),
             return_val: Cell::new(Obj::NULL),

@@ -30,9 +30,7 @@ impl GearsetObj {
 
     pub const fn new(gearset: Gearset) -> Self {
         Self {
-            base: unsafe {
-                ObjBase::from_obj_type(GEARSET_OBJ_TYPE.as_obj_type() as *const ObjType)
-            },
+            base: ObjBase::new(GEARSET_OBJ_TYPE.as_obj_type()),
             gearset,
         }
     }

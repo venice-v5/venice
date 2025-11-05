@@ -133,7 +133,7 @@ unsafe extern "C" {
 impl Dict {
     pub const fn new(map: Map) -> Self {
         Self {
-            base: ObjBase::new::<Self>(),
+            base: ObjBase::new(Self::OBJ_TYPE),
             map,
         }
     }

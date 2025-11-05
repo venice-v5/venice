@@ -262,12 +262,8 @@ impl ObjType {
 
 impl ObjFullType {
     pub const fn new(flags: TypeFlags, name: Qstr) -> Self {
-        unsafe extern "C" {
-            static mp_type_type: ObjType;
-        }
-
         Self {
-            base: unsafe { ObjBase::from_obj_type(&raw const mp_type_type) },
+            base: ObjBase::new(Self::OBJ_TYPE),
             flags: flags.bits(),
             name: name.index() as u16,
 
@@ -363,14 +359,8 @@ unsafe impl ObjTrait for ObjFullType {
 }
 
 impl ObjBase {
-    pub const fn new<O: ObjTrait>() -> Self {
-        Self {
-            r#type: O::OBJ_TYPE,
-        }
-    }
-
-    pub const unsafe fn from_obj_type(r#type: *const ObjType) -> Self {
-        Self { r#type }
+    pub const fn new(ty: &'static ObjType) -> Self {
+        Self { r#type: ty }
     }
 }
 

@@ -19,7 +19,7 @@ macro_rules! define_fun_type {
         impl $name {
             pub const fn new(f: $fn_type) -> Self {
                 Self {
-                    base: ObjBase::new::<Self>(),
+                    base: ObjBase::new(Self::OBJ_TYPE),
                     fun: f,
                 }
             }

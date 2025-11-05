@@ -66,7 +66,7 @@ extern "C" fn motor_make_new(
         .unwrap_or_else(|_| panic!("port is already in use"));
 
     alloc_obj(MotorObj {
-        base: ObjBase::new::<MotorObj>(),
+        base: ObjBase::new(MotorObj::OBJ_TYPE),
         guard,
     })
 }

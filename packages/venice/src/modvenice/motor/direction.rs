@@ -1,6 +1,6 @@
 use micropython_rs::{
     const_dict,
-    obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
+    obj::{Obj, ObjBase, ObjFullType, ObjTrait, TypeFlags},
 };
 use vexide_devices::math::Direction;
 
@@ -28,9 +28,7 @@ impl DirectionObj {
 
     pub const fn new(direction: Direction) -> Self {
         Self {
-            base: unsafe {
-                ObjBase::from_obj_type(DIRECTION_OBJ_TYPE.as_obj_type() as *const ObjType)
-            },
+            base: ObjBase::new(DIRECTION_OBJ_TYPE.as_obj_type()),
             direction,
         }
     }
