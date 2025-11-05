@@ -1,15 +1,16 @@
 pub mod direction;
+pub mod gearset;
 
 use micropython_rs::{
     except::raise_value_error,
     init::token,
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
-use vexide_devices::smart::motor::{Gearset, Motor};
+use vexide_devices::smart::motor::Motor;
 
 use crate::{
     args::{ArgType, ArgValue, Args},
-    modvenice::motor::direction::DirectionObj,
+    modvenice::motor::{direction::DirectionObj, gearset::GearsetObj},
     obj::alloc_obj,
     qstrgen::qstr,
     registry::{
@@ -31,15 +32,6 @@ unsafe impl ObjTrait for MotorObj {
     const OBJ_TYPE: &micropython_rs::obj::ObjType = MOTOR_OBJ_TYPE.as_obj_type();
 }
 
-fn gearset_from_str(str: &[u8]) -> Option<Gearset> {
-    match str {
-        b"red" => Some(Gearset::Red),
-        b"green" => Some(Gearset::Green),
-        b"blue" => Some(Gearset::Blue),
-        _ => None,
-    }
-}
-
 extern "C" fn motor_make_new(
     _: *const ObjType,
     n_pos: usize,
@@ -53,13 +45,12 @@ extern "C" fn motor_make_new(
     let port = PortNumber::from_i32(args.next_positional(ArgType::Int).as_int())
         .unwrap_or_else(|_| raise_value_error(token, "port number must be between 1 and 21"));
 
-    let gearset =
-        gearset_from_str(args.next_positional(ArgType::Str).as_str()).unwrap_or_else(|| {
-            raise_value_error(
-                token,
-                "invalid gearset (expected one of 'red', 'green', or 'blue')",
-            )
-        });
+    let gearset = args
+        .next_positional(ArgType::Obj(GearsetObj::OBJ_TYPE))
+        .as_obj()
+        .try_to_obj::<GearsetObj>()
+        .unwrap()
+        .gearset();
 
     let direction = args
         .next_positional_or(

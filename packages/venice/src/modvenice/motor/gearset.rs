@@ -1,0 +1,43 @@
+use micropython_rs::{
+    const_dict,
+    obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
+};
+use vexide_devices::smart::motor::Gearset;
+
+use crate::qstrgen::qstr;
+
+#[repr(C)]
+pub struct GearsetObj {
+    base: ObjBase,
+    gearset: Gearset,
+}
+
+static GEARSET_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(Gearset))
+    .set_slot_locals_dict_from_static(&const_dict![
+        qstr!(RED) => Obj::from_static(&GearsetObj::RED),
+        qstr!(GREEN) => Obj::from_static(&GearsetObj::GREEN),
+        qstr!(BLUE) => Obj::from_static(&GearsetObj::BLUE),
+    ]);
+
+unsafe impl ObjTrait for GearsetObj {
+    const OBJ_TYPE: &ObjType = GEARSET_OBJ_TYPE.as_obj_type();
+}
+
+impl GearsetObj {
+    pub const RED: Self = Self::new(Gearset::Red);
+    pub const GREEN: Self = Self::new(Gearset::Green);
+    pub const BLUE: Self = Self::new(Gearset::Blue);
+
+    pub const fn new(gearset: Gearset) -> Self {
+        Self {
+            base: unsafe {
+                ObjBase::from_obj_type(GEARSET_OBJ_TYPE.as_obj_type() as *const ObjType)
+            },
+            gearset,
+        }
+    }
+
+    pub const fn gearset(&self) -> Gearset {
+        self.gearset
+    }
+}
