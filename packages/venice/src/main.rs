@@ -8,6 +8,7 @@ pub mod qstrgen;
 mod exports;
 mod modvasyncio;
 mod modvenice;
+mod registry;
 mod stubs;
 
 use std::{

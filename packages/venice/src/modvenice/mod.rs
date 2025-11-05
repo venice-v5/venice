@@ -1,5 +1,4 @@
 pub mod motor;
-pub mod registries;
 
 use micropython_rs::{const_dict, map::Dict, obj::Obj};
 

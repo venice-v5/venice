@@ -1,7 +1,8 @@
 use std::sync::LazyLock;
 
-use vex_registry::{Device, Registry, RegistryGuard};
 use vexide_devices::{peripherals::Peripherals, smart::SmartPort};
+
+use super::{PortDevice, Registry, RegistryGuard};
 
 pub struct Registries {
     pub port_1: Registry,
@@ -110,7 +111,7 @@ static REGISTRIES: LazyLock<Registries> = LazyLock::new(|| Registries::new().unw
 
 pub fn try_lock_port<D, I>(port: PortNumber, init: I) -> Result<RegistryGuard<'static, D>, ()>
 where
-    D: Device,
+    D: PortDevice,
     I: FnOnce(SmartPort) -> D,
 {
     REGISTRIES.registry_by_port(port).try_lock(init)

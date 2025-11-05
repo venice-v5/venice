@@ -3,17 +3,16 @@ use micropython_rs::{
     init::token,
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
-use vex_registry::RegistryGuard;
 use vexide_devices::{
     math::Direction,
     smart::motor::{Gearset, Motor},
 };
 
-use super::registries::{self, PortNumber};
 use crate::{
     args::{ArgType, ArgValue, Args},
     obj::alloc_obj,
     qstrgen::qstr,
+    registry::{RegistryGuard, registries, registries::PortNumber},
 };
 
 #[repr(C)]
