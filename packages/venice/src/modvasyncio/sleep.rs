@@ -1,4 +1,4 @@
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use cty::c_void;
 use micropython_rs::{
@@ -12,7 +12,7 @@ use crate::{obj::alloc_obj, qstrgen::qstr};
 #[repr(C)]
 pub struct Sleep {
     base: ObjBase,
-    deadline: Instant,
+    deadline: super::instant::Instant,
 }
 
 pub static SLEEP_OBJ_TYPE: ObjFullType =
@@ -28,11 +28,11 @@ impl Sleep {
     pub fn new(duration: Duration) -> Self {
         Self {
             base: ObjBase::new(Self::OBJ_TYPE),
-            deadline: Instant::now() + duration,
+            deadline: super::instant::Instant::now() + duration,
         }
     }
 
-    pub fn deadline(&self) -> Instant {
+    pub fn deadline(&self) -> super::instant::Instant {
         self.deadline
     }
 }
@@ -78,7 +78,7 @@ extern "C" fn sleep_make_new(
 
 extern "C" fn sleep_iternext(self_in: Obj) -> Obj {
     let sleep = self_in.try_to_obj::<Sleep>().unwrap();
-    if sleep.deadline <= Instant::now() {
+    if sleep.deadline <= super::instant::Instant::now() {
         raise_stop_iteration(token().unwrap(), Obj::NONE);
     } else {
         self_in

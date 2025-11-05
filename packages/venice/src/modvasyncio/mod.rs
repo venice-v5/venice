@@ -1,4 +1,5 @@
 pub mod event_loop;
+pub mod instant;
 pub mod sleep;
 pub mod task;
 

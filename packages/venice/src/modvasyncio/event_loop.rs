@@ -1,7 +1,6 @@
 use std::{
     cell::{Cell, RefCell},
     collections::{binary_heap::BinaryHeap, vec_deque::VecDeque},
-    time::Instant,
 };
 
 use micropython_rs::{
@@ -30,7 +29,7 @@ pub static EVENT_LOOP_OBJ_TYPE: ObjFullType =
 
 struct Sleeper {
     task: Obj,
-    deadline: Instant,
+    deadline: super::instant::Instant,
 }
 
 impl PartialEq for Sleeper {
@@ -91,7 +90,7 @@ impl EventLoop {
         let mut sleepers = self.sleepers.borrow_mut();
 
         if let Some(sleeper) = sleepers.peek()
-            && sleeper.deadline <= Instant::now()
+            && sleeper.deadline <= super::instant::Instant::now()
         {
             let sleeper = sleepers.pop().unwrap();
             ready.push_back(sleeper.task);
