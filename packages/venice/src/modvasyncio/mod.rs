@@ -9,13 +9,11 @@ use micropython_rs::{
     obj::Obj,
 };
 
-use crate::{
-    qstrgen::qstr,
-    vasyncio::{
-        event_loop::{EVENT_LOOP_OBJ_TYPE, get_running_loop, vasyncio_run, vasyncio_spawn},
-        sleep::SLEEP_OBJ_TYPE,
-    },
+use self::{
+    event_loop::{EVENT_LOOP_OBJ_TYPE, get_running_loop, vasyncio_run, vasyncio_spawn},
+    sleep::SLEEP_OBJ_TYPE,
 };
+use crate::qstrgen::qstr;
 
 #[unsafe(no_mangle)]
 #[allow(non_upper_case_globals)]

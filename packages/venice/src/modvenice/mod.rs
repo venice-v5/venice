@@ -3,7 +3,8 @@ pub mod registries;
 
 use micropython_rs::{const_dict, map::Dict, obj::Obj};
 
-use crate::{qstrgen::qstr, venice::motor::MOTOR_OBJ_TYPE};
+use self::motor::MOTOR_OBJ_TYPE;
+use crate::qstrgen::qstr;
 
 #[unsafe(no_mangle)]
 #[allow(non_upper_case_globals)]

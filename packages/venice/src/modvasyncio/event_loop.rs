@@ -15,8 +15,8 @@ use micropython_rs::{
 };
 use vex_sdk::vexTasksRun;
 
-use super::task::Task;
-use crate::{obj::alloc_obj, qstrgen::qstr, vasyncio::sleep::Sleep};
+use super::{sleep::Sleep, task::Task};
+use crate::{obj::alloc_obj, qstrgen::qstr};
 
 pub static EVENT_LOOP_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(EventLoop))

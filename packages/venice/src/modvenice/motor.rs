@@ -9,11 +9,11 @@ use vexide_devices::{
     smart::motor::{Gearset, Motor},
 };
 
+use super::registries::{self, PortNumber};
 use crate::{
     args::{ArgType, ArgValue, Args},
     obj::alloc_obj,
     qstrgen::qstr,
-    venice::registries::{self, PortNumber},
 };
 
 #[repr(C)]

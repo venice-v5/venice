@@ -6,9 +6,9 @@ pub mod obj;
 pub mod qstrgen;
 
 mod exports;
+mod modvasyncio;
+mod modvenice;
 mod stubs;
-mod vasyncio;
-mod venice;
 
 use std::{
     io::{Write, stderr, stdout},
