@@ -1,18 +1,21 @@
+pub mod direction;
+
 use micropython_rs::{
     except::raise_value_error,
     init::token,
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
-use vexide_devices::{
-    math::Direction,
-    smart::motor::{Gearset, Motor},
-};
+use vexide_devices::smart::motor::{Gearset, Motor};
 
 use crate::{
     args::{ArgType, ArgValue, Args},
+    modvenice::motor::direction::DirectionObj,
     obj::alloc_obj,
     qstrgen::qstr,
-    registry::{RegistryGuard, registries, registries::PortNumber},
+    registry::{
+        RegistryGuard,
+        registries::{self, PortNumber},
+    },
 };
 
 #[repr(C)]
@@ -21,7 +24,7 @@ pub struct MotorObj {
     guard: RegistryGuard<'static, Motor>,
 }
 
-pub static MOTOR_OBJ_TYPE: ObjFullType =
+static MOTOR_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(Motor)).set_slot_make_new(motor_make_new);
 
 unsafe impl ObjTrait for MotorObj {
@@ -33,14 +36,6 @@ fn gearset_from_str(str: &[u8]) -> Option<Gearset> {
         b"red" => Some(Gearset::Red),
         b"green" => Some(Gearset::Green),
         b"blue" => Some(Gearset::Blue),
-        _ => None,
-    }
-}
-
-fn direction_from_str(str: &[u8]) -> Option<Direction> {
-    match str {
-        b"forward" => Some(Direction::Forward),
-        b"reverse" => Some(Direction::Reverse),
         _ => None,
     }
 }
@@ -66,16 +61,15 @@ extern "C" fn motor_make_new(
             )
         });
 
-    let direction = direction_from_str(
-        args.next_positional_or(ArgType::Str, ArgValue::Str(b"forward"))
-            .as_str(),
-    )
-    .unwrap_or_else(|| {
-        raise_value_error(
-            token,
-            "invalid direction (expected one of 'forward' or 'reverse')",
+    let direction = args
+        .next_positional_or(
+            ArgType::Obj(DirectionObj::OBJ_TYPE),
+            ArgValue::Obj(Obj::from_static(&DirectionObj::FORWARD)),
         )
-    });
+        .as_obj()
+        .try_to_obj::<DirectionObj>()
+        .unwrap()
+        .direction();
 
     let guard = registries::try_lock_port(port, |port| Motor::new(port, gearset, direction))
         .unwrap_or_else(|_| panic!("port is already in use"));
