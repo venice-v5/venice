@@ -42,9 +42,15 @@ pub enum ArgValue<'a> {
 }
 
 #[derive(Clone, Copy)]
+pub struct KwArg<'a> {
+    pub kw: &'a [u8],
+    pub value: ArgValue<'a>,
+}
+
+#[derive(Clone, Copy)]
 pub enum Arg<'a> {
     Positional(ArgValue<'a>),
-    Keyword { kw: &'a [u8], value: ArgValue<'a> },
+    Keyword(KwArg<'a>),
 }
 
 #[derive(Debug)]
@@ -58,6 +64,8 @@ pub enum ArgError {
     PositionalsExhuasted {
         n: usize,
     },
+    ExpectedKeyword,
+    KeywordsExhuasted,
 }
 
 impl ArgType {
@@ -149,7 +157,7 @@ impl<'a> Arg<'a> {
     pub const fn value(&self) -> ArgValue<'a> {
         match self {
             Self::Positional(value) => *value,
-            Self::Keyword { value, .. } => *value,
+            Self::Keyword(kw_arg) => kw_arg.value,
         }
     }
 }
@@ -199,10 +207,10 @@ impl<'a> Args<'a> {
         }
 
         let array_index = (kw_index * 2) + self.n_pos;
-        Ok(Arg::Keyword {
+        Ok(Arg::Keyword(KwArg {
             kw: self.args[array_index].get_str().unwrap(),
-            value: ArgValue::from_obj(&self.args[array_index]),
-        })
+            value: ArgValue::from_obj(&self.args[array_index + 1]),
+        }))
     }
 
     pub fn nth_with_type(&self, n: usize, ty: ArgType) -> Result<Arg<'a>, ArgError> {
@@ -303,7 +311,7 @@ impl<'a> ArgsReader<'a> {
         for i in 0..self.args.n_kw {
             let arg = self.args.nth(self.args.n_pos + i).unwrap();
             match arg {
-                Arg::Keyword { kw: arg_kw, value } => {
+                Arg::Keyword(KwArg { kw: arg_kw, value }) => {
                     if kw == arg_kw && ty == value.ty() {
                         return Ok(value);
                     }
@@ -337,6 +345,25 @@ impl<'a> ArgsReader<'a> {
     pub fn get_kw_or(&self, kw: &[u8], ty: ArgType, default: ArgValue<'a>) -> ArgValue<'a> {
         self.try_get_kw_or(kw, ty, default)
             .unwrap_or_else(|e| e.raise_kw(self.token, str::from_utf8(kw).unwrap()))
+    }
+
+    pub fn try_next_kw(&mut self, ty: ArgType) -> Result<KwArg<'a>, ArgError> {
+        match self.args.nth_with_type(self.n, ty) {
+            Ok(arg) => match arg {
+                Arg::Keyword(kw_arg) => Ok(kw_arg),
+                Arg::Positional(_) => Err(ArgError::ExpectedKeyword),
+            },
+            Err(e) => Err(match e {
+                ArgError::NotPresent => ArgError::KeywordsExhuasted,
+                ArgError::TypeMismatch { .. } => e,
+                _ => unreachable!(),
+            }),
+        }
+    }
+
+    pub fn next_kw(&mut self, ty: ArgType) -> KwArg<'a> {
+        self.try_next_kw(ty)
+            .unwrap_or_else(|e| e.raise_kw(self.token, ""))
     }
 }
 
@@ -389,6 +416,13 @@ impl ArgError {
                 token,
                 format!("expected keyword argument '{}'", arg_name.as_ref()),
             ),
+            Self::ExpectedKeyword => raise_type_error(
+                token,
+                format!("expected keyword argument instead of positional"),
+            ),
+            Self::KeywordsExhuasted => {
+                raise_type_error(token, format!("expected keyword argument"))
+            }
             _ => panic!("invalid kw arg error"),
         }
     }

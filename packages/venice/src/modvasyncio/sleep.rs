@@ -7,7 +7,11 @@ use micropython_rs::{
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
 
-use crate::{obj::alloc_obj, qstrgen::qstr};
+use crate::{
+    args::{ArgType, Args},
+    obj::alloc_obj,
+    qstrgen::qstr,
+};
 
 #[repr(C)]
 pub struct Sleep {
@@ -37,36 +41,16 @@ impl Sleep {
     }
 }
 
-extern "C" fn sleep_make_new(
-    _: *const ObjType,
-    n_args: usize,
-    n_kw: usize,
-    args: *const Obj,
-) -> Obj {
+extern "C" fn sleep_make_new(_: *const ObjType, n_pos: usize, n_kw: usize, ptr: *const Obj) -> Obj {
     let token = token().unwrap();
-    if n_args != 0 {
-        raise_type_error(
-            token,
-            format!("function doesn't take positional arguments, but {n_args} were provided"),
-        );
-    }
+    let mut args = unsafe { Args::from_ptr(n_pos, n_kw, ptr) }.reader(token);
+    args.assert_npos(0, 0).assert_nkw(1, 1);
 
-    if n_kw < 1 {
-        raise_type_error(
-            token,
-            "expected at least one keyword argument (either `millis=n` or `secs=n`)",
-        );
-    }
-
-    let slice = unsafe { std::slice::from_raw_parts(args, n_kw * 2) };
-    let arg_name = slice[0].get_str().unwrap();
-    let value = slice[1]
-        .try_to_int()
-        .unwrap_or_else(|| raise_type_error(token, "expected integer"));
-
-    let duration = match arg_name {
-        b"millis" => Duration::from_millis(value as u64),
-        b"secs" => Duration::from_secs(value as u64),
+    let arg = args.next_kw(ArgType::Int);
+    let val = arg.value.as_int() as u64;
+    let duration = match arg.kw {
+        b"millis" => Duration::from_millis(val),
+        b"secs" => Duration::from_secs(val),
         _ => raise_type_error(
             token,
             "invalid keyword argument (expected either `millis=n` or `secs=n`)",
