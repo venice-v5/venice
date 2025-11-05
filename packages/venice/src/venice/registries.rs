@@ -1,60 +1,60 @@
-use std::cell::RefCell;
+use std::sync::LazyLock;
 
-use vex_registry::{Device, Registry};
+use vex_registry::{Device, Registry, RegistryGuard};
 use vexide_devices::{peripherals::Peripherals, smart::SmartPort};
 
 pub struct Registries {
-    pub port_1: RefCell<Registry>,
-    pub port_2: RefCell<Registry>,
-    pub port_3: RefCell<Registry>,
-    pub port_4: RefCell<Registry>,
-    pub port_5: RefCell<Registry>,
-    pub port_6: RefCell<Registry>,
-    pub port_7: RefCell<Registry>,
-    pub port_8: RefCell<Registry>,
-    pub port_9: RefCell<Registry>,
-    pub port_10: RefCell<Registry>,
-    pub port_11: RefCell<Registry>,
-    pub port_12: RefCell<Registry>,
-    pub port_13: RefCell<Registry>,
-    pub port_14: RefCell<Registry>,
-    pub port_15: RefCell<Registry>,
-    pub port_16: RefCell<Registry>,
-    pub port_17: RefCell<Registry>,
-    pub port_18: RefCell<Registry>,
-    pub port_19: RefCell<Registry>,
-    pub port_20: RefCell<Registry>,
-    pub port_21: RefCell<Registry>,
+    pub port_1: Registry,
+    pub port_2: Registry,
+    pub port_3: Registry,
+    pub port_4: Registry,
+    pub port_5: Registry,
+    pub port_6: Registry,
+    pub port_7: Registry,
+    pub port_8: Registry,
+    pub port_9: Registry,
+    pub port_10: Registry,
+    pub port_11: Registry,
+    pub port_12: Registry,
+    pub port_13: Registry,
+    pub port_14: Registry,
+    pub port_15: Registry,
+    pub port_16: Registry,
+    pub port_17: Registry,
+    pub port_18: Registry,
+    pub port_19: Registry,
+    pub port_20: Registry,
+    pub port_21: Registry,
 }
 
 impl Registries {
     fn new() -> Option<Self> {
         Peripherals::take().map(|peris| Self {
-            port_1: RefCell::new(Registry::new(peris.port_1)),
-            port_2: RefCell::new(Registry::new(peris.port_2)),
-            port_3: RefCell::new(Registry::new(peris.port_3)),
-            port_4: RefCell::new(Registry::new(peris.port_4)),
-            port_5: RefCell::new(Registry::new(peris.port_5)),
-            port_6: RefCell::new(Registry::new(peris.port_6)),
-            port_7: RefCell::new(Registry::new(peris.port_7)),
-            port_8: RefCell::new(Registry::new(peris.port_8)),
-            port_9: RefCell::new(Registry::new(peris.port_9)),
-            port_10: RefCell::new(Registry::new(peris.port_10)),
-            port_11: RefCell::new(Registry::new(peris.port_11)),
-            port_12: RefCell::new(Registry::new(peris.port_12)),
-            port_13: RefCell::new(Registry::new(peris.port_13)),
-            port_14: RefCell::new(Registry::new(peris.port_14)),
-            port_15: RefCell::new(Registry::new(peris.port_15)),
-            port_16: RefCell::new(Registry::new(peris.port_16)),
-            port_17: RefCell::new(Registry::new(peris.port_17)),
-            port_18: RefCell::new(Registry::new(peris.port_18)),
-            port_19: RefCell::new(Registry::new(peris.port_19)),
-            port_20: RefCell::new(Registry::new(peris.port_20)),
-            port_21: RefCell::new(Registry::new(peris.port_21)),
+            port_1: Registry::new(peris.port_1),
+            port_2: Registry::new(peris.port_2),
+            port_3: Registry::new(peris.port_3),
+            port_4: Registry::new(peris.port_4),
+            port_5: Registry::new(peris.port_5),
+            port_6: Registry::new(peris.port_6),
+            port_7: Registry::new(peris.port_7),
+            port_8: Registry::new(peris.port_8),
+            port_9: Registry::new(peris.port_9),
+            port_10: Registry::new(peris.port_10),
+            port_11: Registry::new(peris.port_11),
+            port_12: Registry::new(peris.port_12),
+            port_13: Registry::new(peris.port_13),
+            port_14: Registry::new(peris.port_14),
+            port_15: Registry::new(peris.port_15),
+            port_16: Registry::new(peris.port_16),
+            port_17: Registry::new(peris.port_17),
+            port_18: Registry::new(peris.port_18),
+            port_19: Registry::new(peris.port_19),
+            port_20: Registry::new(peris.port_20),
+            port_21: Registry::new(peris.port_21),
         })
     }
 
-    fn registry_by_port(&self, port: PortNumber) -> &RefCell<Registry> {
+    fn registry_by_port(&self, port: PortNumber) -> &Registry {
         match port.number() {
             1 => &self.port_1,
             2 => &self.port_2,
@@ -106,15 +106,12 @@ impl PortNumber {
     }
 }
 
-pub fn with_port<D, F, I, R>(port: PortNumber, f: F, init: I) -> R
+static REGISTRIES: LazyLock<Registries> = LazyLock::new(|| Registries::new().unwrap());
+
+pub fn try_lock_port<D, I>(port: PortNumber, init: I) -> Result<RegistryGuard<'static, D>, ()>
 where
     D: Device,
-    F: FnOnce(&mut D) -> R,
     I: FnOnce(SmartPort) -> D,
 {
-    thread_local! {
-        static REGISTRIES: Registries = Registries::new().unwrap_or_else(|| panic!("registries can only be accessed from the main thread"));
-    }
-
-    REGISTRIES.with(|registries| registries.registry_by_port(port).borrow_mut().with(f, init))
+    REGISTRIES.registry_by_port(port).try_lock(init)
 }

@@ -11,4 +11,4 @@ pub trait Device: Any {
         Self: Sized;
 }
 
-pub use registry::Registry;
+pub use registry::{Registry, RegistryGuard};

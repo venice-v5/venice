@@ -3,6 +3,7 @@ use micropython_rs::{
     init::token,
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
+use vex_registry::RegistryGuard;
 use vexide_devices::{
     math::Direction,
     smart::motor::{Gearset, Motor},
@@ -18,7 +19,7 @@ use crate::{
 #[repr(C)]
 pub struct MotorObj {
     base: ObjBase,
-    port: PortNumber,
+    guard: RegistryGuard<'static, Motor>,
 }
 
 pub static MOTOR_OBJ_TYPE: ObjFullType =
@@ -77,18 +78,11 @@ extern "C" fn motor_make_new(
         )
     });
 
-    registries::with_port(
-        port,
-        |motor: &mut Motor| {
-            // TODO: add device error exception
-            motor.set_gearset(gearset).unwrap();
-            motor.set_direction(direction).unwrap();
-        },
-        |port| Motor::new(port, gearset, direction),
-    );
+    let guard = registries::try_lock_port(port, |port| Motor::new(port, gearset, direction))
+        .unwrap_or_else(|_| panic!("port is already in use"));
 
     alloc_obj(MotorObj {
         base: ObjBase::new::<MotorObj>(),
-        port,
+        guard,
     })
 }
