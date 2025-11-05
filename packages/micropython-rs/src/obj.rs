@@ -213,8 +213,9 @@ pub mod repr_c {
 /// # Safety
 ///
 /// Object representation must begin with an [`mp_obj_base_t`], always initialized to `OBJ_TYPE`.
-/// Additionally, all instances must be aligned to 4 bytes in memory, but this is already
-/// guaranteed if the first invariant is true, as a side effect.
+/// Additionally, all instances must be aligned to exactly 4 bytes in memory, but this is already
+/// guaranteed if the first invariant is true, as a side effect. A higher alignment than this will
+/// cause issues, since all objects are assumed to have an inherent alignment of 4.
 pub unsafe trait ObjTrait: Sized {
     const OBJ_TYPE: &ObjType;
 }
