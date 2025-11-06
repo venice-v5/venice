@@ -1,11 +1,11 @@
 use micropython_rs::{
     const_dict,
     except::{raise_type_error, raise_value_error},
-    fun::{Fun1, Fun2},
+    fun::{Fun1, Fun2, Fun3},
     init::token,
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
-use vexide_devices::{math::Angle, smart::rotation::RotationSensor};
+use vexide_devices::{math::{Direction}, smart::{rotation::RotationSensor}};
 
 use crate::{
     args::{ArgType, ArgValue, Args},
@@ -30,7 +30,12 @@ pub static ROTATION_SENSOR_OBJ_TYPE: ObjFullType =
         .set_slot_locals_dict_from_static(&const_dict![
             qstr!(angle) => Obj::from_static(&Fun2::new(rotation_sensor_angle)),
             qstr!(position) => Obj::from_static(&Fun1::new(rotation_sensor_position)),
-            qstr!(set_position) => Obj::from_static(&Fun2::new(rotation_sensor_set_position)),
+            qstr!(set_position) => Obj::from_static(&Fun3::new(rotation_sensor_set_position)),
+            qstr!(velocity) => Obj::from_static(&Fun1::new(rotation_sensor_velocity)),
+            qstr!(reset_position) => Obj::from_static(&Fun1::new(rotation_sensor_reset_position)),
+            qstr!(set_direction) => Obj::from_static(&Fun2::new(rotation_sensor_set_direction)),
+            qstr!(direction) => Obj::from_static(&Fun1::new(rotation_sensor_direction)),
+            qstr!(status) => Obj::from_static(&Fun1::new(rotation_sensor_status)),
         ]);
 
 unsafe impl ObjTrait for RotationSensorObj {
@@ -101,7 +106,7 @@ extern "C" fn rotation_sensor_position(self_in: Obj) -> Obj {
     Obj::from_float(position.as_radians() as f32)
 }
 
-extern "C" fn rotation_sensor_set_position(self_in: Obj, position: Obj) -> Obj {
+extern "C" fn rotation_sensor_set_position(self_in: Obj, position: Obj, unit: Obj) -> Obj {
     let token = token().unwrap();
     let position_float = position.try_to_float().unwrap_or_else(|| {
         raise_type_error(
@@ -112,11 +117,85 @@ extern "C" fn rotation_sensor_set_position(self_in: Obj, position: Obj) -> Obj {
             ),
         )
     });
+    let unit_obj = unit
+        .try_to_obj::<RotationUnitObj>()
+        .unwrap_or_else(|| {
+            raise_type_error(
+                token,
+                format!(
+                    "expected <RotationUnit> for argument #2, found <{}>",
+                    ArgType::of(&unit)
+                ),
+            )
+        });
+    let sensor = self_in.try_to_obj::<RotationSensorObj>().unwrap();
+    let angle = unit_obj.unit().from_float(position_float);
+    sensor
+        .guard
+        .borrow_mut()
+        .set_position(angle)
+        .unwrap_or_else(|e| raise_device_error(token, format!("{e}")));
+    Obj::NONE
+}
+
+extern "C" fn rotation_sensor_velocity(self_in: Obj) -> Obj {
+    let sensor = self_in.try_to_obj::<RotationSensorObj>().unwrap();
+    let velocity = sensor
+        .guard
+        .borrow_mut()
+        .velocity()
+        .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
+    Obj::from_float(velocity as f32)
+}
+
+extern "C" fn rotation_sensor_reset_position(self_in: Obj) -> Obj {
     let sensor = self_in.try_to_obj::<RotationSensorObj>().unwrap();
     sensor
         .guard
         .borrow_mut()
-        .set_position(Angle::from_radians(position_float as f64))
+        .reset_position()
+        .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
+    Obj::NONE
+}
+
+extern "C" fn rotation_sensor_set_direction(self_in: Obj, direction: Obj) -> Obj {
+    let token = token().unwrap();
+    let sensor = self_in.try_to_obj::<RotationSensorObj>().unwrap();
+    let dir = direction
+        .try_to_obj::<DirectionObj>()
+        .unwrap_or_else(|| {
+            raise_type_error(
+                token,
+                format!(
+                    "expected <Direction> for argument #1, found <{}>",
+                    ArgType::of(&direction)
+                ),
+            )
+        })
+        .direction();
+    sensor
+        .guard
+        .borrow_mut()
+        .set_direction(dir)
         .unwrap_or_else(|e| raise_device_error(token, format!("{e}")));
     Obj::NONE
+}
+
+extern "C" fn rotation_sensor_direction(self_in: Obj) -> Obj {
+    let sensor = self_in.try_to_obj::<RotationSensorObj>().unwrap();
+    let dir = sensor.guard.borrow().direction();
+    match dir {
+        Direction::Forward => Obj::from_static(&DirectionObj::FORWARD),
+        Direction::Reverse => Obj::from_static(&DirectionObj::REVERSE),
+    }
+}
+
+extern "C" fn rotation_sensor_status(self_in: Obj) -> Obj {
+    let sensor = self_in.try_to_obj::<RotationSensorObj>().unwrap();
+    let status = sensor
+        .guard
+        .borrow()
+        .status()
+        .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
+    Obj::from_int(status as i32)
 }
