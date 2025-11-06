@@ -26,6 +26,8 @@ Q(Motor)
 Q(set_voltage)
 Q(set_velocity)
 Q(brake)
+Q(set_gearset)
+Q(gearset)
 
 Q(Controller)
 Q(read_state)
