@@ -56,13 +56,6 @@ extern "C" fn motor_make_new(
     let port = PortNumber::from_i32(args.next_positional(ArgType::Int).as_int())
         .unwrap_or_else(|_| raise_value_error(token, "port number must be between 1 and 21"));
 
-    let gearset = args
-        .next_positional(ArgType::Obj(GearsetObj::OBJ_TYPE))
-        .as_obj()
-        .try_to_obj::<GearsetObj>()
-        .unwrap()
-        .gearset();
-
     let direction = args
         .next_positional_or(
             ArgType::Obj(DirectionObj::OBJ_TYPE),
@@ -73,8 +66,24 @@ extern "C" fn motor_make_new(
         .unwrap()
         .direction();
 
-    let guard = devices::try_lock_port(port, |port| Motor::new(port, gearset, direction))
-        .unwrap_or_else(|_| panic!("port is already in use"));
+    let exp = args
+        .get_kw_or(b"exp", ArgType::Bool, ArgValue::Bool(false))
+        .as_bool();
+
+    let guard = devices::try_lock_port(port, |port| {
+        if exp {
+            Motor::new_exp(port, direction)
+        } else {
+            let gearset = args
+                .next_positional(ArgType::Obj(GearsetObj::OBJ_TYPE))
+                .as_obj()
+                .try_to_obj::<GearsetObj>()
+                .unwrap()
+                .gearset();
+            Motor::new(port, gearset, direction)
+        }
+    })
+    .unwrap_or_else(|_| panic!("port is already in use"));
 
     alloc_obj(MotorObj {
         base: ObjBase::new(MotorObj::OBJ_TYPE),

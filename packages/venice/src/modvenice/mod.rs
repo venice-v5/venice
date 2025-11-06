@@ -1,5 +1,7 @@
 mod controller;
 mod motor;
+mod rotation_sensor;
+mod units;
 
 use micropython_rs::{
     const_dict,
@@ -11,9 +13,11 @@ use micropython_rs::{
 
 use self::{
     controller::ControllerObj,
-    motor::{MotorObj, direction::DirectionObj, gearset::GearsetObj},
+    motor::{MotorObj, brake::BrakeModeObj, direction::DirectionObj, gearset::GearsetObj},
+    rotation_sensor::RotationSensorObj,
+    units::rotation::RotationUnitObj,
 };
-use crate::{modvenice::motor::brake::BrakeModeObj, qstrgen::qstr};
+use crate::qstrgen::qstr;
 
 static DEVICE_ERROR_OBJ_TYPE: ObjFullType = new_exception_type(qstr!(DeviceError));
 
@@ -32,4 +36,7 @@ static venice_globals: Dict = const_dict![
     qstr!(BrakeMode) => Obj::from_static(BrakeModeObj::OBJ_TYPE),
 
     qstr!(Controller) => Obj::from_static(ControllerObj::OBJ_TYPE),
+
+    qstr!(RotationUnit) => Obj::from_static(RotationUnitObj::OBJ_TYPE),
+    qstr!(RotationSensor) => Obj::from_static(RotationSensorObj::OBJ_TYPE),
 ];
