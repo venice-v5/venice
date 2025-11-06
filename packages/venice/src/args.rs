@@ -69,7 +69,7 @@ pub enum ArgError {
 }
 
 impl ArgType {
-    fn of(obj: &Obj) -> Self {
+    pub fn of(obj: &Obj) -> Self {
         use repr_c::Ty;
         match obj.ty().unwrap() {
             Ty::Int => Self::Int,

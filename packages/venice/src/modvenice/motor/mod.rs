@@ -2,7 +2,9 @@ pub mod direction;
 pub mod gearset;
 
 use micropython_rs::{
-    except::raise_value_error,
+    const_dict,
+    except::{raise_type_error, raise_value_error},
+    fun::Fun2,
     init::token,
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
@@ -10,7 +12,10 @@ use vexide_devices::smart::motor::Motor;
 
 use crate::{
     args::{ArgType, ArgValue, Args},
-    modvenice::motor::{direction::DirectionObj, gearset::GearsetObj},
+    modvenice::{
+        motor::{direction::DirectionObj, gearset::GearsetObj},
+        raise_device_error,
+    },
     obj::alloc_obj,
     qstrgen::qstr,
     registry::{
@@ -25,8 +30,11 @@ pub struct MotorObj {
     guard: RegistryGuard<'static, Motor>,
 }
 
-static MOTOR_OBJ_TYPE: ObjFullType =
-    ObjFullType::new(TypeFlags::empty(), qstr!(Motor)).set_slot_make_new(motor_make_new);
+static MOTOR_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(Motor))
+    .set_slot_make_new(motor_make_new)
+    .set_slot_locals_dict_from_static(&const_dict![
+        qstr!(set_voltage) => Obj::from_static(&Fun2::new(motor_set_voltage))
+    ]);
 
 unsafe impl ObjTrait for MotorObj {
     const OBJ_TYPE: &micropython_rs::obj::ObjType = MOTOR_OBJ_TYPE.as_obj_type();
@@ -69,4 +77,24 @@ extern "C" fn motor_make_new(
         base: ObjBase::new(MotorObj::OBJ_TYPE),
         guard,
     })
+}
+
+extern "C" fn motor_set_voltage(self_in: Obj, volts: Obj) -> Obj {
+    let token = token().unwrap();
+    let motor = self_in.try_to_obj::<MotorObj>().unwrap();
+    motor
+        .guard
+        .borrow_mut()
+        .set_voltage(volts.try_to_float().unwrap_or_else(|| {
+            raise_type_error(
+                token,
+                format!(
+                    "expected float for argument #1, found {}",
+                    ArgType::of(&volts)
+                ),
+            )
+        }) as f64)
+        .unwrap_or_else(|e| raise_device_error(token, format!("{e}")));
+
+    Obj::NONE
 }
