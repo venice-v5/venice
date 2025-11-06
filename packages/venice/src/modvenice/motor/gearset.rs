@@ -35,6 +35,14 @@ impl GearsetObj {
         }
     }
 
+    pub const fn new_static(gearset: Gearset) -> &'static Self {
+        match gearset {
+            Gearset::Red => &Self::RED,
+            Gearset::Green => &Self::GREEN,
+            Gearset::Blue => &Self::BLUE,
+        }
+    }
+
     pub const fn gearset(&self) -> Gearset {
         self.gearset
     }

@@ -5,7 +5,7 @@ pub mod gearset;
 use micropython_rs::{
     const_dict,
     except::{raise_type_error, raise_value_error},
-    fun::Fun2,
+    fun::{Fun1, Fun2},
     init::token,
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
@@ -35,6 +35,8 @@ static MOTOR_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(
         qstr!(set_voltage) => Obj::from_static(&Fun2::new(motor_set_voltage)),
         qstr!(set_velocity) => Obj::from_static(&Fun2::new(motor_set_velocity)),
         qstr!(brake) => Obj::from_static(&Fun2::new(motor_brake)),
+        qstr!(set_gearset) => Obj::from_static(&Fun2::new(motor_set_gearset)),
+        qstr!(gearset) => Obj::from_static(&Fun1::new(motor_gearset)),
     ]);
 
 unsafe impl ObjTrait for MotorObj {
@@ -141,4 +143,37 @@ extern "C" fn motor_brake(self_in: Obj, mode: Obj) -> Obj {
         .brake(mode)
         .unwrap_or_else(|e| raise_device_error(token, format!("{e}")));
     Obj::NONE
+}
+
+extern "C" fn motor_set_gearset(self_in: Obj, gearset: Obj) -> Obj {
+    let token = token().unwrap();
+    let motor = self_in.try_to_obj::<MotorObj>().unwrap();
+    let gearset = gearset
+        .try_to_obj::<GearsetObj>()
+        .unwrap_or_else(|| {
+            raise_type_error(
+                token,
+                format!(
+                    "expected <Gearset> for argument #1, found <{}>",
+                    ArgType::of(&gearset)
+                ),
+            )
+        })
+        .gearset();
+    motor
+        .guard
+        .borrow_mut()
+        .set_gearset(gearset)
+        .unwrap_or_else(|e| raise_device_error(token, format!("{e}")));
+    Obj::NONE
+}
+
+extern "C" fn motor_gearset(self_in: Obj) -> Obj {
+    let motor = self_in.try_to_obj::<MotorObj>().unwrap();
+    let gearset = motor
+        .guard
+        .borrow()
+        .gearset()
+        .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
+    Obj::from_static(GearsetObj::new_static(gearset))
 }
