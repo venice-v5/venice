@@ -38,6 +38,7 @@ unsafe extern "C" {
     pub safe static mp_type_BaseException: ObjType;
     pub safe static mp_type_ImportError: ObjType;
     pub safe static mp_type_RuntimeError: ObjType;
+    pub safe static mp_type_BaseException: ObjType;
 }
 
 impl<'a> RomErrorText<'a> {
