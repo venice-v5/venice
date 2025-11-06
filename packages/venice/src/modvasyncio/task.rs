@@ -9,8 +9,10 @@ use micropython_rs::{
 
 use crate::qstrgen::qstr;
 
-static TASK_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::ITER_IS_ITERNEXT, qstr!(Task))
-    .set_slot_iter(task_iternext as *const c_void);
+static TASK_OBJ_TYPE: ObjFullType = unsafe {
+    ObjFullType::new(TypeFlags::ITER_IS_ITERNEXT, qstr!(Task))
+        .set_slot_iter(task_iternext as *const c_void)
+};
 
 #[repr(C)]
 pub struct Task {

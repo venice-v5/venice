@@ -238,12 +238,13 @@ bitflags! {
 }
 
 pub type MakeNewFn =
-    extern "C" fn(ty: *const ObjType, n_args: usize, n_kw: usize, args: *const Obj) -> Obj;
-pub type PrintFn = extern "C" fn(print: *const Print, o: Obj, kind: PrintKind);
-pub type CallFn = extern "C" fn(fun: Obj, n_args: usize, n_kw: usize, args: *const Obj) -> Obj;
+    unsafe extern "C" fn(ty: *const ObjType, n_args: usize, n_kw: usize, args: *const Obj) -> Obj;
+pub type PrintFn = unsafe extern "C" fn(print: *const Print, o: Obj, kind: PrintKind);
+pub type CallFn =
+    unsafe extern "C" fn(fun: Obj, n_args: usize, n_kw: usize, args: *const Obj) -> Obj;
 pub type UnaryOpFn = extern "C" fn(op: UnaryOp, obj: Obj) -> Obj;
 pub type BinaryOpFn = extern "C" fn(op: BinaryOp, obj: Obj) -> Obj;
-pub type AttrFn = extern "C" fn(self_in: Obj, attr: Qstr, dest: *mut Obj);
+pub type AttrFn = unsafe extern "C" fn(self_in: Obj, attr: Qstr, dest: *mut Obj);
 pub type SubscrFn = extern "C" fn(self_in: Obj, index: Obj, value: Obj) -> Obj;
 
 impl PartialEq for ObjType {
@@ -307,15 +308,30 @@ impl ObjFullType {
         unsafe { std::mem::transmute(self) }
     }
 
-    pub const unsafe fn set_slot_locals_dict(mut self, value: *mut Dict) -> Self {
-        let slot = Slot::LocalsDict;
+    pub const unsafe fn set_slot(mut self, slot: Slot, value: *const c_void) -> Self {
         *self.slot_index(slot) = slot as u8;
-        self.slots[slot as usize - 1] = value as *const c_void;
+        self.slots[slot as usize - 1] = value;
         self
     }
 
+    pub const unsafe fn set_slot_locals_dict(self, value: *mut Dict) -> Self {
+        unsafe { self.set_slot(Slot::LocalsDict, value as *const c_void) }
+    }
+
     pub const fn set_slot_locals_dict_from_static(self, value: &'static Dict) -> Self {
-        unsafe { self.set_slot_locals_dict(value as *const Dict as *mut Dict) }
+        unsafe { self.set_slot(Slot::LocalsDict, value as *const Dict as *const c_void) }
+    }
+
+    pub const unsafe fn set_slot_protocol(self, value: *const c_void) -> Self {
+        unsafe { self.set_slot(Slot::Protocol, value) }
+    }
+
+    pub const unsafe fn set_slot_iter(self, value: *const c_void) -> Self {
+        unsafe { self.set_slot(Slot::Iter, value) }
+    }
+
+    pub const fn set_slot_parent(self, value: &'static ObjType) -> Self {
+        unsafe { self.set_slot(Slot::Parent, value as *const ObjType as *const c_void) }
     }
 }
 
@@ -337,9 +353,6 @@ impl_slot_setter!(set_slot_unary_op, Slot::UnaryOp, UnaryOpFn);
 impl_slot_setter!(set_slot_binary_op, Slot::BinaryOp, BinaryOpFn);
 impl_slot_setter!(set_slot_attr, Slot::Attr, AttrFn);
 impl_slot_setter!(set_slot_subscr, Slot::Subscr, SubscrFn);
-impl_slot_setter!(set_slot_iter, Slot::Iter, *const c_void);
-impl_slot_setter!(set_slot_protocol, Slot::Protocol, *const c_void);
-impl_slot_setter!(set_slot_parent, Slot::Parent, *const c_void);
 
 unsafe impl Sync for ObjFullType {}
 unsafe impl Sync for ObjBase {}

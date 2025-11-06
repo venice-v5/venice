@@ -19,10 +19,11 @@ pub struct Sleep {
     deadline: super::instant::Instant,
 }
 
-pub static SLEEP_OBJ_TYPE: ObjFullType =
+pub static SLEEP_OBJ_TYPE: ObjFullType = unsafe {
     ObjFullType::new(TypeFlags::ITER_IS_ITERNEXT, qstr!(Sleep))
         .set_slot_iter(sleep_iternext as *const c_void)
-        .set_slot_make_new(sleep_make_new);
+        .set_slot_make_new(sleep_make_new)
+};
 
 unsafe impl ObjTrait for Sleep {
     const OBJ_TYPE: &micropython_rs::obj::ObjType = SLEEP_OBJ_TYPE.as_obj_type();
