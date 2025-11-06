@@ -58,7 +58,7 @@ extern "C" fn controller_rumble(_self_in: Obj, pattern_obj: Obj) -> Obj {
         raise_type_error(
             token,
             format!(
-                "expected <str> for argument 1, found {}",
+                "expected <str> for argument 1, found <{}>",
                 ArgType::of(&pattern_obj)
             ),
         )

@@ -17,6 +17,7 @@ Q(Direction)
 Q(FORWARD)
 Q(REVERSE)
 Q(set_voltage)
+Q(set_velocity)
 
 Q(Controller)
 Q(read_state)

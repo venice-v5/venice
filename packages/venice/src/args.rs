@@ -408,7 +408,7 @@ impl ArgError {
             Self::TypeMismatch { n, expected, found } => raise_type_error(
                 token,
                 format!(
-                    "expected type '{expected}' for argument {}, found '{found}'",
+                    "expected type <{expected}> for argument #{}, found <{found}>",
                     n + 1
                 ),
             ),

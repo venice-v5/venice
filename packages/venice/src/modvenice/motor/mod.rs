@@ -31,7 +31,8 @@ pub struct MotorObj {
 static MOTOR_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(Motor))
     .set_slot_make_new(motor_make_new)
     .set_slot_locals_dict_from_static(&const_dict![
-        qstr!(set_voltage) => Obj::from_static(&Fun2::new(motor_set_voltage))
+        qstr!(set_voltage) => Obj::from_static(&Fun2::new(motor_set_voltage)),
+        qstr!(set_velocity) => Obj::from_static(&Fun2::new(motor_set_velocity)),
     ]);
 
 unsafe impl ObjTrait for MotorObj {
@@ -87,11 +88,31 @@ extern "C" fn motor_set_voltage(self_in: Obj, volts: Obj) -> Obj {
             raise_type_error(
                 token,
                 format!(
-                    "expected float for argument #1, found {}",
+                    "expected <float> for argument #1, found <{}>",
                     ArgType::of(&volts)
                 ),
             )
         }) as f64)
+        .unwrap_or_else(|e| raise_device_error(token, format!("{e}")));
+
+    Obj::NONE
+}
+
+extern "C" fn motor_set_velocity(self_in: Obj, rpm: Obj) -> Obj {
+    let token = token().unwrap();
+    let motor = self_in.try_to_obj::<MotorObj>().unwrap();
+    motor
+        .guard
+        .borrow_mut()
+        .set_velocity(rpm.try_to_int().unwrap_or_else(|| {
+            raise_type_error(
+                token,
+                format!(
+                    "expected <int> for argument #1, found <{}>",
+                    ArgType::of(&rpm)
+                ),
+            )
+        }))
         .unwrap_or_else(|e| raise_device_error(token, format!("{e}")));
 
     Obj::NONE
