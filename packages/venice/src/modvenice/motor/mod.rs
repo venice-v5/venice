@@ -12,16 +12,14 @@ use vexide_devices::smart::motor::Motor;
 
 use crate::{
     args::{ArgType, ArgValue, Args},
+    devices::{self, PortNumber},
     modvenice::{
         motor::{direction::DirectionObj, gearset::GearsetObj},
         raise_device_error,
     },
     obj::alloc_obj,
     qstrgen::qstr,
-    registry::{
-        RegistryGuard,
-        registries::{self, PortNumber},
-    },
+    registry::RegistryGuard,
 };
 
 #[repr(C)]
@@ -70,7 +68,7 @@ extern "C" fn motor_make_new(
         .unwrap()
         .direction();
 
-    let guard = registries::try_lock_port(port, |port| Motor::new(port, gearset, direction))
+    let guard = devices::try_lock_port(port, |port| Motor::new(port, gearset, direction))
         .unwrap_or_else(|_| panic!("port is already in use"));
 
     alloc_obj(MotorObj {

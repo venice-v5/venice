@@ -2,9 +2,9 @@ use std::sync::LazyLock;
 
 use vexide_devices::{peripherals::Peripherals, smart::SmartPort};
 
-use super::{PortDevice, Registry, RegistryGuard};
+use crate::registry::{PortDevice, Registry, RegistryGuard};
 
-pub struct Registries {
+pub struct Devices {
     pub port_1: Registry,
     pub port_2: Registry,
     pub port_3: Registry,
@@ -28,7 +28,7 @@ pub struct Registries {
     pub port_21: Registry,
 }
 
-impl Registries {
+impl Devices {
     fn new() -> Option<Self> {
         Peripherals::take().map(|peris| Self {
             port_1: Registry::new(peris.port_1),
@@ -107,7 +107,7 @@ impl PortNumber {
     }
 }
 
-static REGISTRIES: LazyLock<Registries> = LazyLock::new(|| Registries::new().unwrap());
+static REGISTRIES: LazyLock<Devices> = LazyLock::new(|| Devices::new().unwrap());
 
 pub fn try_lock_port<D, I>(port: PortNumber, init: I) -> Result<RegistryGuard<'static, D>, ()>
 where

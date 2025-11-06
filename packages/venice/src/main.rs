@@ -5,6 +5,7 @@ pub mod module_map;
 pub mod obj;
 pub mod qstrgen;
 
+mod devices;
 mod exports;
 mod modvasyncio;
 mod modvenice;
