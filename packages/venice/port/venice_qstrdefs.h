@@ -8,16 +8,24 @@ Q(get_running_loop)
 
 Q(DeviceError)
 
-Q(Motor)
 Q(Gearset)
 Q(RED)
 Q(GREEN)
 Q(BLUE)
+
 Q(Direction)
 Q(FORWARD)
 Q(REVERSE)
+
+Q(BrakeMode)
+Q(BRAKE)
+Q(HOLD)
+Q(COAST)
+
+Q(Motor)
 Q(set_voltage)
 Q(set_velocity)
+Q(brake)
 
 Q(Controller)
 Q(read_state)

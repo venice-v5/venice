@@ -1,3 +1,4 @@
+pub mod brake;
 pub mod direction;
 pub mod gearset;
 
@@ -14,7 +15,7 @@ use crate::{
     args::{ArgType, ArgValue, Args},
     devices::{self, PortNumber},
     modvenice::{
-        motor::{direction::DirectionObj, gearset::GearsetObj},
+        motor::{brake::BrakeModeObj, direction::DirectionObj, gearset::GearsetObj},
         raise_device_error,
     },
     obj::alloc_obj,
@@ -33,6 +34,7 @@ static MOTOR_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(
     .set_slot_locals_dict_from_static(&const_dict![
         qstr!(set_voltage) => Obj::from_static(&Fun2::new(motor_set_voltage)),
         qstr!(set_velocity) => Obj::from_static(&Fun2::new(motor_set_velocity)),
+        qstr!(brake) => Obj::from_static(&Fun2::new(motor_brake)),
     ]);
 
 unsafe impl ObjTrait for MotorObj {
@@ -115,5 +117,28 @@ extern "C" fn motor_set_velocity(self_in: Obj, rpm: Obj) -> Obj {
         }))
         .unwrap_or_else(|e| raise_device_error(token, format!("{e}")));
 
+    Obj::NONE
+}
+
+extern "C" fn motor_brake(self_in: Obj, mode: Obj) -> Obj {
+    let token = token().unwrap();
+    let motor = self_in.try_to_obj::<MotorObj>().unwrap();
+    let mode = mode
+        .try_to_obj::<BrakeModeObj>()
+        .unwrap_or_else(|| {
+            raise_type_error(
+                token,
+                format!(
+                    "expected <BrakeMode> for argument #1, found <{}>",
+                    ArgType::of(&mode)
+                ),
+            )
+        })
+        .mode();
+    motor
+        .guard
+        .borrow_mut()
+        .brake(mode)
+        .unwrap_or_else(|e| raise_device_error(token, format!("{e}")));
     Obj::NONE
 }

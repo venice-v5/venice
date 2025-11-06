@@ -13,7 +13,7 @@ use self::{
     controller::ControllerObj,
     motor::{MotorObj, direction::DirectionObj, gearset::GearsetObj},
 };
-use crate::qstrgen::qstr;
+use crate::{modvenice::motor::brake::BrakeModeObj, qstrgen::qstr};
 
 static DEVICE_ERROR_OBJ_TYPE: ObjFullType = new_exception_type(qstr!(DeviceError));
 
@@ -29,6 +29,7 @@ static venice_globals: Dict = const_dict![
     qstr!(Motor) => Obj::from_static(MotorObj::OBJ_TYPE),
     qstr!(Gearset) => Obj::from_static(GearsetObj::OBJ_TYPE),
     qstr!(Direction) => Obj::from_static(DirectionObj::OBJ_TYPE),
+    qstr!(BrakeMode) => Obj::from_static(BrakeModeObj::OBJ_TYPE),
 
     qstr!(Controller) => Obj::from_static(ControllerObj::OBJ_TYPE),
 ];
