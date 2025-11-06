@@ -3,13 +3,13 @@ mod state;
 use micropython_rs::{
     const_dict,
     except::raise_type_error,
-    fun::Fun1,
+    fun::{Fun1, Fun2},
     init::token,
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
 
 use self::state::ControllerStateObj;
-use crate::{devices, modvenice::raise_device_error, obj::alloc_obj, qstrgen::qstr};
+use crate::{args::ArgType, devices, modvenice::raise_device_error, obj::alloc_obj, qstrgen::qstr};
 
 #[repr(C)]
 pub struct ControllerObj {
@@ -20,6 +20,7 @@ static CONTROLLER_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), q
     .set_slot_make_new(controller_make_new)
     .set_slot_locals_dict_from_static(&const_dict![
         qstr!(read_state) => Obj::from_static(&Fun1::new(controller_read_state)),
+        qstr!(rumble) => Obj::from_static(&Fun2::new(controller_rumble)),
     ]);
 
 unsafe impl ObjTrait for ControllerObj {
@@ -49,4 +50,24 @@ extern "C" fn controller_read_state(_self_in: Obj) -> Obj {
         .state()
         .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
     alloc_obj(ControllerStateObj::new(state))
+}
+
+extern "C" fn controller_rumble(_self_in: Obj, pattern_obj: Obj) -> Obj {
+    let token = token().unwrap();
+    let pattern = pattern_obj.get_str().unwrap_or_else(|| {
+        raise_type_error(
+            token,
+            format!(
+                "expected <str> for argument 1, found {}",
+                ArgType::of(&pattern_obj)
+            ),
+        )
+    });
+
+    // TODO: execute in event loop
+    let _result = devices::try_lock_controller()
+        .unwrap()
+        .rumble(str::from_utf8(pattern).unwrap());
+
+    Obj::NONE
 }
