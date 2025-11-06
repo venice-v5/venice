@@ -1,13 +1,21 @@
-pub mod motor;
+mod motor;
 
 use micropython_rs::{
     const_dict,
+    except::{new_exception_type, raise_msg},
+    init::InitToken,
     map::Dict,
-    obj::{Obj, ObjTrait},
+    obj::{Obj, ObjFullType, ObjTrait},
 };
 
 use self::motor::{MotorObj, direction::DirectionObj};
 use crate::qstrgen::qstr;
+
+static DEVICE_ERROR_OBJ_TYPE: ObjFullType = new_exception_type(qstr!(DeviceError));
+
+fn raise_device_error(token: InitToken, msg: impl AsRef<str>) -> ! {
+    raise_msg(token, DEVICE_ERROR_OBJ_TYPE.as_obj_type(), msg)
+}
 
 #[unsafe(no_mangle)]
 #[allow(non_upper_case_globals)]

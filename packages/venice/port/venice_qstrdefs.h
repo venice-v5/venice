@@ -6,6 +6,7 @@ Q(run)
 Q(Sleep)
 Q(get_running_loop)
 
+Q(DeviceError)
 Q(Motor)
 Q(Gearset)
 Q(RED)
