@@ -2,6 +2,7 @@ use micropython_rs::{
     const_dict,
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, TypeFlags},
 };
+use vexide_devices::math::Angle;
 
 use crate::qstrgen::qstr;
 
@@ -29,6 +30,16 @@ pub static ROTATION_UNIT_OBJ_TYPE: ObjFullType =
 
 unsafe impl ObjTrait for RotationUnitObj {
     const OBJ_TYPE: &micropython_rs::obj::ObjType = ROTATION_UNIT_OBJ_TYPE.as_obj_type();
+}
+
+impl RotationUnit {
+    pub fn in_angle(self, angle: Angle) -> f32 {
+        (match self {
+            Self::Radians => angle.as_radians(),
+            Self::Degrees => angle.as_degrees(),
+            Self::Turns => angle.as_turns(),
+        }) as f32
+    }
 }
 
 impl RotationUnitObj {

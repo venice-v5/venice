@@ -10,7 +10,9 @@ use vexide_devices::{math::Angle, smart::rotation::RotationSensor};
 use crate::{
     args::{ArgType, ArgValue, Args},
     devices::{PortNumber, try_lock_port},
-    modvenice::{motor::direction::DirectionObj, raise_device_error},
+    modvenice::{
+        motor::direction::DirectionObj, raise_device_error, units::rotation::RotationUnitObj,
+    },
     obj::alloc_obj,
     qstrgen::qstr,
     registry::RegistryGuard,
@@ -26,7 +28,7 @@ pub static ROTATION_SENSOR_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(RotationSensor))
         .set_slot_make_new(rotation_sensor_make_new)
         .set_slot_locals_dict_from_static(&const_dict![
-            qstr!(angle) => Obj::from_static(&Fun1::new(rotation_sensor_angle)),
+            qstr!(angle) => Obj::from_static(&Fun2::new(rotation_sensor_angle)),
             qstr!(position) => Obj::from_static(&Fun1::new(rotation_sensor_position)),
             qstr!(set_position) => Obj::from_static(&Fun2::new(rotation_sensor_set_position)),
         ]);
@@ -66,14 +68,27 @@ extern "C" fn rotation_sensor_make_new(
     })
 }
 
-extern "C" fn rotation_sensor_angle(self_in: Obj) -> Obj {
+extern "C" fn rotation_sensor_angle(self_in: Obj, unit: Obj) -> Obj {
+    let token = token().unwrap();
     let sensor = self_in.try_to_obj::<RotationSensorObj>().unwrap();
+    let unit = unit
+        .try_to_obj::<RotationUnitObj>()
+        .unwrap_or_else(|| {
+            raise_type_error(
+                token,
+                format!(
+                    "expected <RotationUnit> for argument #1, found <{}>",
+                    ArgType::of(&unit)
+                ),
+            )
+        })
+        .unit();
     let angle = sensor
         .guard
         .borrow_mut()
         .angle()
-        .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
-    Obj::from_float(angle.as_radians() as f32)
+        .unwrap_or_else(|e| raise_device_error(token, format!("{e}")));
+    Obj::from_float(unit.in_angle(angle))
 }
 
 extern "C" fn rotation_sensor_position(self_in: Obj) -> Obj {
