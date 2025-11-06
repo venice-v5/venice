@@ -36,6 +36,11 @@ Q(ButtonState)
 Q(JoystickState)
 Q(rumble)
 
+Q(RotationUnit)
+Q(RADIANS)
+Q(DEGREES)
+Q(TURNS)
+
 Q(RotationSensor)
 Q(angle)
 Q(position)
