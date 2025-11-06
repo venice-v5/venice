@@ -384,6 +384,8 @@ pub struct GcError;
 
 impl Obj {
     pub const NULL: Self = unsafe { Self::from_ptr(core::ptr::null_mut()) };
+    pub const SENTINEL: Self = unsafe { Self::from_ptr(4 as *mut c_void) };
+
     pub const NONE: Self = Self::from_immediate(0);
     pub const TRUE: Self = Self::from_immediate(3);
     pub const FALSE: Self = Self::from_immediate(1);
@@ -420,6 +422,13 @@ impl Obj {
         Self(repr_c::new_immediate(imm))
     }
 
+    pub const fn from_bool(bool: bool) -> Self {
+        match bool {
+            true => Self::TRUE,
+            false => Self::FALSE,
+        }
+    }
+
     pub const fn from_float(float: f32) -> Self {
         Self(repr_c::new_float(float))
     }
@@ -450,6 +459,10 @@ impl Obj {
 
     pub const fn is_null(self) -> bool {
         self.0.is_null()
+    }
+
+    pub fn is_sentinel(self) -> bool {
+        self.0 == Self::SENTINEL.0
     }
 
     pub fn is_none(&self) -> bool {

@@ -7,6 +7,7 @@ Q(Sleep)
 Q(get_running_loop)
 
 Q(DeviceError)
+
 Q(Motor)
 Q(Gearset)
 Q(RED)
@@ -16,3 +17,9 @@ Q(Direction)
 Q(FORWARD)
 Q(REVERSE)
 Q(set_voltage)
+
+Q(Controller)
+Q(read_state)
+Q(ControllerState)
+Q(ButtonState)
+Q(JoystickState)

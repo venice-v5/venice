@@ -1,10 +1,12 @@
-use std::sync::LazyLock;
+use std::sync::{LazyLock, Mutex, MutexGuard};
 
-use vexide_devices::{peripherals::Peripherals, smart::SmartPort};
+use vexide_devices::{controller::Controller, peripherals::Peripherals, smart::SmartPort};
 
 use crate::registry::{PortDevice, Registry, RegistryGuard};
 
 pub struct Devices {
+    pub controller: Mutex<Controller>,
+
     pub port_1: Registry,
     pub port_2: Registry,
     pub port_3: Registry,
@@ -31,6 +33,8 @@ pub struct Devices {
 impl Devices {
     fn new() -> Option<Self> {
         Peripherals::take().map(|peris| Self {
+            controller: Mutex::new(peris.primary_controller),
+
             port_1: Registry::new(peris.port_1),
             port_2: Registry::new(peris.port_2),
             port_3: Registry::new(peris.port_3),
@@ -115,4 +119,8 @@ where
     I: FnOnce(SmartPort) -> D,
 {
     REGISTRIES.registry_by_port(port).try_lock(init)
+}
+
+pub fn try_lock_controller() -> Result<MutexGuard<'static, Controller>, ()> {
+    REGISTRIES.controller.try_lock().map_err(|_| ())
 }
