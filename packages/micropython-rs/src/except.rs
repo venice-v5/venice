@@ -5,7 +5,9 @@ use std::{
 
 use crate::{
     init::InitToken,
-    obj::{Obj, ObjType},
+    obj::{Obj, ObjFullType, ObjType, TypeFlags},
+    print::{Print, PrintKind},
+    qstr::Qstr,
 };
 
 #[repr(C)]
@@ -16,6 +18,15 @@ pub struct RomErrorText<'a> {
 }
 
 unsafe extern "C" {
+    fn mp_obj_exception_make_new(
+        ty: *const ObjType,
+        n_args: usize,
+        n_kw: usize,
+        args: *const Obj,
+    ) -> Obj;
+    fn mp_obj_exception_print(print: *const Print, o: Obj, kind: PrintKind);
+    fn mp_obj_exception_attr(self_in: Obj, attr: Qstr, dest: *mut Obj);
+
     fn mp_raise_msg(exc_type: *const ObjType, msg: RomErrorText) -> !;
     fn mp_raise_ValueError(msg: RomErrorText) -> !;
     fn mp_raise_TypeError(msg: RomErrorText) -> !;
@@ -24,6 +35,7 @@ unsafe extern "C" {
     fn mp_raise_OSError(errno_: c_int) -> !;
     fn mp_raise_OSError_with_filename(errno_: c_int, filename: *const u8) -> !;
 
+    pub safe static mp_type_BaseException: ObjType;
     pub safe static mp_type_ImportError: ObjType;
     pub safe static mp_type_RuntimeError: ObjType;
 }
@@ -35,6 +47,14 @@ impl<'a> RomErrorText<'a> {
             _phantom: PhantomData,
         }
     }
+}
+
+pub const fn new_exception_type(name: Qstr) -> ObjFullType {
+    ObjFullType::new(TypeFlags::empty(), name)
+        .set_slot_make_new(mp_obj_exception_make_new)
+        .set_slot_print(mp_obj_exception_print)
+        .set_slot_attr(mp_obj_exception_attr)
+        .set_slot_parent(&mp_type_BaseException)
 }
 
 pub fn raise_msg(_: InitToken, exc_type: &ObjType, msg: impl AsRef<str>) -> ! {
