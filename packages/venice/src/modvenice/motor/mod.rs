@@ -6,11 +6,11 @@ pub mod motor_type;
 use micropython_rs::{
     const_dict,
     except::{raise_type_error, raise_value_error},
-    fun::{Fun1, Fun2, FunVar},
+    fun::{Fun1, Fun2, Fun3, FunVar},
     init::token,
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
-use vexide_devices::smart::motor::{Motor, MotorStatus};
+use vexide_devices::{math::Direction, smart::motor::{Motor, MotorStatus}};
 
 use crate::{
     args::{ArgType, ArgValue, Args, ArgsReader},
@@ -22,7 +22,7 @@ use crate::{
 };
 
 use {
-    brake::BrakeModeObj, direction::DirectionObj, gearset::GearsetObj
+    brake::BrakeModeObj, direction::DirectionObj, gearset::GearsetObj, motor_type::MotorTypeObj
 };
 
 use crate::modvenice::units::rotation::RotationUnitObj;
@@ -63,6 +63,13 @@ static MOTOR_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(
         qstr!(is_over_current) => Obj::from_static(&Fun1::new(motor_is_over_current)),
         qstr!(is_driver_fault) => Obj::from_static(&Fun1::new(motor_is_driver_fault)),
         qstr!(is_driver_over_current) => Obj::from_static(&Fun1::new(motor_is_driver_over_current)),
+        qstr!(status) => Obj::from_static(&Fun1::new(motor_status)),
+        qstr!(faults) => Obj::from_static(&Fun1::new(motor_faults)),
+        qstr!(motor_type) => Obj::from_static(&Fun1::new(motor_motor_type)),
+        qstr!(position) => Obj::from_static(&Fun2::new(motor_position)),
+        qstr!(set_position) => Obj::from_static(&Fun3::new(motor_set_position)),
+        qstr!(set_direction) => Obj::from_static(&Fun2::new(motor_set_direction)),
+        qstr!(direction) => Obj::from_static(&Fun1::new(motor_direction)),
     ]);
 
 unsafe impl ObjTrait for MotorObj {
@@ -405,4 +412,109 @@ extern "C" fn motor_is_driver_over_current(self_in: Obj) -> Obj {
     let motor = self_in.try_to_obj::<MotorObj>().unwrap();
     let is_over = motor.guard.borrow().is_driver_over_current().unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
     Obj::from_bool(is_over)
+}
+
+extern "C" fn motor_motor_type(self_in: Obj) -> Obj {
+    let motor = self_in.try_to_obj::<MotorObj>().unwrap();
+    let mt = motor.guard.borrow().motor_type();
+    Obj::from_static(MotorTypeObj::new_static(mt))
+}
+
+extern "C" fn motor_position(self_in: Obj, unit: Obj) -> Obj {
+    let token = token().unwrap();
+    let motor = self_in.try_to_obj::<MotorObj>().unwrap();
+    let unit = unit
+        .try_to_obj::<RotationUnitObj>()
+        .unwrap_or_else(|| {
+            raise_type_error(
+                token,
+                format!(
+                    "expected <RotationUnit> for argument #1, found <{}>",
+                    ArgType::of(&unit)
+                ),
+            )
+        })
+        .unit();
+    let angle = motor
+        .guard
+        .borrow()
+        .position()
+        .unwrap_or_else(|e| raise_device_error(token, format!("{e}")));
+    Obj::from_float(unit.in_angle(angle))
+}
+
+extern "C" fn motor_set_position(self_in: Obj, position: Obj, unit: Obj) -> Obj {
+    let token = token().unwrap();
+    let position_float = position.try_to_float().unwrap_or_else(|| {
+        raise_type_error(
+            token,
+            format!(
+                "expected <float> for argument #1, found <{}>",
+                ArgType::of(&position)
+            ),
+        )
+    });
+    let unit_obj = unit
+        .try_to_obj::<RotationUnitObj>()
+        .unwrap_or_else(|| {
+            raise_type_error(
+                token,
+                format!(
+                    "expected <RotationUnit> for argument #2, found <{}>",
+                    ArgType::of(&unit)
+                ),
+            )
+        });
+    let motor = self_in.try_to_obj::<MotorObj>().unwrap();
+    let angle = unit_obj.unit().from_float(position_float);
+    motor
+        .guard
+        .borrow_mut()
+        .set_position(angle)
+        .unwrap_or_else(|e| raise_device_error(token, format!("{e}")));
+    Obj::NONE
+}
+
+extern "C" fn motor_set_direction(self_in: Obj, direction: Obj) -> Obj {
+    let token = token().unwrap();
+    let motor = self_in.try_to_obj::<MotorObj>().unwrap();
+    let dir = direction
+        .try_to_obj::<DirectionObj>()
+        .unwrap_or_else(|| {
+            raise_type_error(
+                token,
+                format!(
+                    "expected <Direction> for argument #1, found <{}>",
+                    ArgType::of(&direction)
+                ),
+            )
+        })
+        .direction();
+    motor
+        .guard
+        .borrow_mut()
+        .set_direction(dir)
+        .unwrap_or_else(|e| raise_device_error(token, format!("{e}")));
+    Obj::NONE
+}
+
+extern "C" fn motor_direction(self_in: Obj) -> Obj {
+    let motor = self_in.try_to_obj::<MotorObj>().unwrap();
+    let dir = motor.guard.borrow().direction().unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
+    match dir {
+        Direction::Forward => Obj::from_static(&DirectionObj::FORWARD),
+        Direction::Reverse => Obj::from_static(&DirectionObj::REVERSE),
+    }
+}
+
+extern "C" fn motor_status(self_in: Obj) -> Obj {
+    let motor = self_in.try_to_obj::<MotorObj>().unwrap();
+    let status = motor.guard.borrow().status().unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
+    Obj::from_int(status.bits() as i32)
+}
+
+extern "C" fn motor_faults(self_in: Obj) -> Obj {
+    let motor = self_in.try_to_obj::<MotorObj>().unwrap();
+    let faults = motor.guard.borrow().faults().unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
+    Obj::from_int(faults.bits() as i32)
 }
