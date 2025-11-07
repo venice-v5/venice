@@ -35,3 +35,8 @@ define_fun_type!(
     extern "C" fn(Obj, Obj, Obj) -> Obj,
     mp_type_fun_builtin_3
 );
+define_fun_type!(
+    FunVar,
+    unsafe extern "C" fn(n_args: usize, ptr: *const Obj) -> Obj,
+    mp_type_fun_builtin_var
+);

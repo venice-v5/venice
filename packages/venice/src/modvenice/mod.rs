@@ -20,7 +20,7 @@ use self::{
     rotation_sensor::RotationSensorObj,
     units::{rotation::RotationUnitObj, time::TimeUnitObj},
 };
-use crate::qstrgen::qstr;
+use crate::{modvenice::motor::motor_type::MotorTypeObj, qstrgen::qstr};
 
 static DEVICE_ERROR_OBJ_TYPE: ObjFullType = new_exception_type(qstr!(DeviceError));
 
@@ -38,7 +38,7 @@ static venice_globals: Dict = const_dict![
     qstr!(Gearset) => Obj::from_static(GearsetObj::OBJ_TYPE),
     qstr!(BrakeMode) => Obj::from_static(BrakeModeObj::OBJ_TYPE),
     qstr!(Direction) => Obj::from_static(DirectionObj::OBJ_TYPE),
-
+    qstr!(MotorType) => Obj::from_static(MotorTypeObj::OBJ_TYPE),
     // controller
     qstr!(Controller) => Obj::from_static(ControllerObj::OBJ_TYPE),
     qstr!(ControllerState) => Obj::from_static(ControllerStateObj::OBJ_TYPE),
