@@ -15,12 +15,15 @@ use crate::{
     args::{ArgType, ArgValue, Args},
     devices::{self, PortNumber},
     modvenice::{
-        motor::{brake::BrakeModeObj, direction::DirectionObj, gearset::GearsetObj},
         raise_device_error,
     },
     obj::alloc_obj,
     qstrgen::qstr,
     registry::RegistryGuard,
+};
+
+use {
+    brake::BrakeModeObj, direction::DirectionObj, gearset::GearsetObj
 };
 
 #[repr(C)]

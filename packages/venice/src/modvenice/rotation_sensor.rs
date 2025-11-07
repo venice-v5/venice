@@ -11,7 +11,13 @@ use crate::{
     args::{ArgType, ArgValue, Args},
     devices::{PortNumber, try_lock_port},
     modvenice::{
-        motor::direction::DirectionObj, raise_device_error, units::rotation::RotationUnitObj,
+        motor::{
+            direction::DirectionObj,
+        },
+        raise_device_error, units::{
+            rotation::RotationUnitObj,
+            time::{TimeUnitObj}
+        }
     },
     obj::alloc_obj,
     qstrgen::qstr,
@@ -36,6 +42,7 @@ pub static ROTATION_SENSOR_OBJ_TYPE: ObjFullType =
             qstr!(set_direction) => Obj::from_static(&Fun2::new(rotation_sensor_set_direction)),
             qstr!(direction) => Obj::from_static(&Fun1::new(rotation_sensor_direction)),
             qstr!(status) => Obj::from_static(&Fun1::new(rotation_sensor_status)),
+            qstr!(set_data_interval) => Obj::from_static(&Fun3::new(rotation_sensor_set_data_interval)),
         ]);
 
 unsafe impl ObjTrait for RotationSensorObj {
@@ -198,4 +205,35 @@ extern "C" fn rotation_sensor_status(self_in: Obj) -> Obj {
         .status()
         .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
     Obj::from_int(status as i32)
+}
+
+extern "C" fn rotation_sensor_set_data_interval(self_in: Obj, interval: Obj, unit: Obj) -> Obj {
+    let token = token().unwrap();
+    let interval_float = interval.try_to_float().unwrap_or_else(|| {
+        raise_type_error(
+            token,
+            format!(
+                "expected <float> for argument #1, found <{}>",
+                ArgType::of(&interval)
+            ),
+        )
+    });
+    let unit_obj = unit
+        .try_to_obj::<TimeUnitObj>()
+        .unwrap_or_else(|| {
+            raise_type_error(
+                token,
+                format!(
+                    "expected <TimeUnit> for argument #2, found <{}>",
+                    ArgType::of(&unit)
+                ),
+            )
+        });
+    let sensor = self_in.try_to_obj::<RotationSensorObj>().unwrap();
+    sensor
+        .guard
+        .borrow_mut()
+        .set_data_interval(unit_obj.unit().from_float(interval_float))
+        .unwrap_or_else(|e| raise_device_error(token, format!("{e}")));
+    Obj::NONE
 }

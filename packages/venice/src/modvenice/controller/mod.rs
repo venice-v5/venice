@@ -1,4 +1,4 @@
-mod state;
+pub mod state;
 
 use micropython_rs::{
     const_dict,

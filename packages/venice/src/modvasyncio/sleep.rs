@@ -2,15 +2,13 @@ use std::time::Duration;
 
 use cty::c_void;
 use micropython_rs::{
-    except::{raise_stop_iteration, raise_type_error},
+    except::raise_stop_iteration,
     init::token,
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
 
 use crate::{
-    args::{ArgType, Args},
-    obj::alloc_obj,
-    qstrgen::qstr,
+    args::{ArgType, Args}, modvenice::units::time::TimeUnitObj, obj::alloc_obj, qstrgen::qstr
 };
 
 #[repr(C)]
@@ -45,19 +43,11 @@ impl Sleep {
 extern "C" fn sleep_make_new(_: *const ObjType, n_pos: usize, n_kw: usize, ptr: *const Obj) -> Obj {
     let token = token().unwrap();
     let mut args = unsafe { Args::from_ptr(n_pos, n_kw, ptr) }.reader(token);
-    args.assert_npos(0, 0).assert_nkw(1, 1);
+    args.assert_npos(2, 2);
 
-    let arg = args.next_kw(ArgType::Int);
-    let val = arg.value.as_int() as u64;
-    let duration = match arg.kw {
-        b"millis" => Duration::from_millis(val),
-        b"secs" => Duration::from_secs(val),
-        _ => raise_type_error(
-            token,
-            "invalid keyword argument (expected either `millis=n` or `secs=n`)",
-        ),
-    };
-
+    let interval_float = args.next_positional(ArgType::Float).as_float();
+    let unit_obj = args.next_positional(ArgType::Obj(TimeUnitObj::OBJ_TYPE)).as_obj();
+    let duration = unit_obj.try_to_obj::<TimeUnitObj>().unwrap().unit().from_float(interval_float);
     alloc_obj(Sleep::new(duration))
 }
 

@@ -51,3 +51,8 @@ Q(status)
 Q(direction)
 Q(set_direction)
 Q(reset_position)
+
+Q(TimeUnit)
+Q(set_data_interval)
+Q(MILLIS)
+Q(SECOND)
