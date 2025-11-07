@@ -9,7 +9,8 @@ use micropython_rs::{
 };
 
 use self::state::ControllerStateObj;
-use crate::{args::ArgType, devices, modvenice::raise_device_error, obj::alloc_obj, qstrgen::qstr};
+use super::raise_device_error;
+use crate::{args::ArgType, devices, obj::alloc_obj, qstrgen::qstr};
 
 #[repr(C)]
 pub struct ControllerObj {

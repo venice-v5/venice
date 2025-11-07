@@ -3,6 +3,9 @@ pub mod direction;
 pub mod gearset;
 pub mod motor_type;
 
+use brake::BrakeModeObj;
+use direction::DirectionObj;
+use gearset::GearsetObj;
 use micropython_rs::{
     const_dict,
     except::{raise_type_error, raise_value_error},
@@ -12,6 +15,7 @@ use micropython_rs::{
 };
 use vexide_devices::{math::Direction, smart::motor::{Motor, MotorStatus}};
 
+use super::raise_device_error;
 use crate::{
     args::{ArgType, ArgValue, Args, ArgsReader},
     devices::{self, PortNumber},

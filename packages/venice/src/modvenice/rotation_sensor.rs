@@ -5,19 +5,15 @@ use micropython_rs::{
     init::token,
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
-use vexide_devices::{math::{Direction}, smart::{rotation::RotationSensor}};
+use vexide_devices::{math::Direction, smart::rotation::RotationSensor};
 
 use crate::{
     args::{ArgType, ArgValue, Args},
     devices::{PortNumber, try_lock_port},
     modvenice::{
-        motor::{
-            direction::DirectionObj,
-        },
-        raise_device_error, units::{
-            rotation::RotationUnitObj,
-            time::{TimeUnitObj}
-        }
+        motor::direction::DirectionObj,
+        raise_device_error,
+        units::{rotation::RotationUnitObj, time::TimeUnitObj},
     },
     obj::alloc_obj,
     qstrgen::qstr,
@@ -30,20 +26,22 @@ pub struct RotationSensorObj {
     guard: RegistryGuard<'static, RotationSensor>,
 }
 
-pub static ROTATION_SENSOR_OBJ_TYPE: ObjFullType =
-    ObjFullType::new(TypeFlags::empty(), qstr!(RotationSensor))
-        .set_slot_make_new(rotation_sensor_make_new)
-        .set_slot_locals_dict_from_static(&const_dict![
-            qstr!(angle) => Obj::from_static(&Fun2::new(rotation_sensor_angle)),
-            qstr!(position) => Obj::from_static(&Fun1::new(rotation_sensor_position)),
-            qstr!(set_position) => Obj::from_static(&Fun3::new(rotation_sensor_set_position)),
-            qstr!(velocity) => Obj::from_static(&Fun1::new(rotation_sensor_velocity)),
-            qstr!(reset_position) => Obj::from_static(&Fun1::new(rotation_sensor_reset_position)),
-            qstr!(set_direction) => Obj::from_static(&Fun2::new(rotation_sensor_set_direction)),
-            qstr!(direction) => Obj::from_static(&Fun1::new(rotation_sensor_direction)),
-            qstr!(status) => Obj::from_static(&Fun1::new(rotation_sensor_status)),
-            qstr!(set_data_interval) => Obj::from_static(&Fun3::new(rotation_sensor_set_data_interval)),
-        ]);
+pub static ROTATION_SENSOR_OBJ_TYPE: ObjFullType = ObjFullType::new(
+    TypeFlags::empty(),
+    qstr!(RotationSensor),
+)
+.set_slot_make_new(rotation_sensor_make_new)
+.set_slot_locals_dict_from_static(&const_dict![
+    qstr!(angle) => Obj::from_static(&Fun2::new(rotation_sensor_angle)),
+    qstr!(position) => Obj::from_static(&Fun1::new(rotation_sensor_position)),
+    qstr!(set_position) => Obj::from_static(&Fun3::new(rotation_sensor_set_position)),
+    qstr!(velocity) => Obj::from_static(&Fun1::new(rotation_sensor_velocity)),
+    qstr!(reset_position) => Obj::from_static(&Fun1::new(rotation_sensor_reset_position)),
+    qstr!(set_direction) => Obj::from_static(&Fun2::new(rotation_sensor_set_direction)),
+    qstr!(direction) => Obj::from_static(&Fun1::new(rotation_sensor_direction)),
+    qstr!(status) => Obj::from_static(&Fun1::new(rotation_sensor_status)),
+    qstr!(set_data_interval) => Obj::from_static(&Fun3::new(rotation_sensor_set_data_interval)),
+]);
 
 unsafe impl ObjTrait for RotationSensorObj {
     const OBJ_TYPE: &ObjType = ROTATION_SENSOR_OBJ_TYPE.as_obj_type();
@@ -124,17 +122,15 @@ extern "C" fn rotation_sensor_set_position(self_in: Obj, position: Obj, unit: Ob
             ),
         )
     });
-    let unit_obj = unit
-        .try_to_obj::<RotationUnitObj>()
-        .unwrap_or_else(|| {
-            raise_type_error(
-                token,
-                format!(
-                    "expected <RotationUnit> for argument #2, found <{}>",
-                    ArgType::of(&unit)
-                ),
-            )
-        });
+    let unit_obj = unit.try_to_obj::<RotationUnitObj>().unwrap_or_else(|| {
+        raise_type_error(
+            token,
+            format!(
+                "expected <RotationUnit> for argument #2, found <{}>",
+                ArgType::of(&unit)
+            ),
+        )
+    });
     let sensor = self_in.try_to_obj::<RotationSensorObj>().unwrap();
     let angle = unit_obj.unit().from_float(position_float);
     sensor
@@ -218,17 +214,15 @@ extern "C" fn rotation_sensor_set_data_interval(self_in: Obj, interval: Obj, uni
             ),
         )
     });
-    let unit_obj = unit
-        .try_to_obj::<TimeUnitObj>()
-        .unwrap_or_else(|| {
-            raise_type_error(
-                token,
-                format!(
-                    "expected <TimeUnit> for argument #2, found <{}>",
-                    ArgType::of(&unit)
-                ),
-            )
-        });
+    let unit_obj = unit.try_to_obj::<TimeUnitObj>().unwrap_or_else(|| {
+        raise_type_error(
+            token,
+            format!(
+                "expected <TimeUnit> for argument #2, found <{}>",
+                ArgType::of(&unit)
+            ),
+        )
+    });
     let sensor = self_in.try_to_obj::<RotationSensorObj>().unwrap();
     sensor
         .guard

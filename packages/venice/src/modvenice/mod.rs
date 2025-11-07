@@ -1,7 +1,7 @@
 mod controller;
+mod motor;
 mod rotation_sensor;
 pub mod units;
-mod motor;
 
 use micropython_rs::{
     const_dict,
@@ -12,15 +12,13 @@ use micropython_rs::{
 };
 
 use self::{
-    controller::ControllerObj,
-    motor::{
-        MotorObj,
-        brake::BrakeModeObj, direction::DirectionObj, gearset::GearsetObj
-        },
+    controller::{
+        ControllerObj,
+        state::{ButtonStateObj, ControllerStateObj, JoystickStateObj},
+    },
+    motor::{MotorObj, brake::BrakeModeObj, direction::DirectionObj, gearset::GearsetObj},
     rotation_sensor::RotationSensorObj,
-    units::{
-        rotation::RotationUnitObj,
-    }
+    units::{rotation::RotationUnitObj, time::TimeUnitObj},
 };
 use crate::{modvenice::{controller::state::{ButtonStateObj, ControllerStateObj, JoystickStateObj}, motor::motor_type::MotorTypeObj, units::time::TimeUnitObj}, qstrgen::qstr};
 
