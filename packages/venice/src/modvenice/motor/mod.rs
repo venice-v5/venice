@@ -17,16 +17,7 @@ use vexide_devices::{math::Direction, smart::motor::{Motor, MotorStatus}};
 
 use super::raise_device_error;
 use crate::{
-    args::{ArgType, ArgValue, Args, ArgsReader},
-    devices::{self, PortNumber},
-    modvenice::raise_device_error,
-    obj::alloc_obj,
-    qstrgen::qstr,
-    registry::RegistryGuard,
-};
-
-use {
-    brake::BrakeModeObj, direction::DirectionObj, gearset::GearsetObj, motor_type::MotorTypeObj
+    args::{ArgType, ArgValue, Args, ArgsReader}, devices::{self, PortNumber}, modvenice::motor::motor_type::MotorTypeObj, obj::alloc_obj, qstrgen::qstr, registry::RegistryGuard
 };
 
 use crate::modvenice::units::rotation::RotationUnitObj;
