@@ -1,7 +1,7 @@
 mod controller;
 mod motor;
 mod rotation_sensor;
-mod units;
+pub mod units;
 
 use micropython_rs::{
     const_dict,
@@ -12,10 +12,13 @@ use micropython_rs::{
 };
 
 use self::{
-    controller::ControllerObj,
+    controller::{
+        ControllerObj,
+        state::{ButtonStateObj, ControllerStateObj, JoystickStateObj},
+    },
     motor::{MotorObj, brake::BrakeModeObj, direction::DirectionObj, gearset::GearsetObj},
     rotation_sensor::RotationSensorObj,
-    units::rotation::RotationUnitObj,
+    units::{rotation::RotationUnitObj, time::TimeUnitObj},
 };
 use crate::qstrgen::qstr;
 
@@ -30,13 +33,22 @@ fn raise_device_error(token: InitToken, msg: impl AsRef<str>) -> ! {
 static venice_globals: Dict = const_dict![
     qstr!(__name__) => Obj::from_qstr(qstr!(__name__)),
 
+    // motor
     qstr!(Motor) => Obj::from_static(MotorObj::OBJ_TYPE),
     qstr!(Gearset) => Obj::from_static(GearsetObj::OBJ_TYPE),
-    qstr!(Direction) => Obj::from_static(DirectionObj::OBJ_TYPE),
     qstr!(BrakeMode) => Obj::from_static(BrakeModeObj::OBJ_TYPE),
+    qstr!(Direction) => Obj::from_static(DirectionObj::OBJ_TYPE),
 
+    // controller
     qstr!(Controller) => Obj::from_static(ControllerObj::OBJ_TYPE),
+    qstr!(ControllerState) => Obj::from_static(ControllerStateObj::OBJ_TYPE),
+    qstr!(ButtonState) => Obj::from_static(ButtonStateObj::OBJ_TYPE),
+    qstr!(JoystickState) => Obj::from_static(JoystickStateObj::OBJ_TYPE),
 
-    qstr!(RotationUnit) => Obj::from_static(RotationUnitObj::OBJ_TYPE),
+    // other devices
     qstr!(RotationSensor) => Obj::from_static(RotationSensorObj::OBJ_TYPE),
+
+    // units
+    qstr!(RotationUnit) => Obj::from_static(RotationUnitObj::OBJ_TYPE),
+    qstr!(TimeUnit) => Obj::from_static(TimeUnitObj::OBJ_TYPE)
 ];

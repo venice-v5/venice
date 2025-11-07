@@ -40,6 +40,14 @@ impl RotationUnit {
             Self::Turns => angle.as_turns(),
         }) as f32
     }
+    pub fn from_float(self, value: f32) -> Angle {
+        let value = value as f64;
+        match self {
+            Self::Radians => Angle::from_radians(value),
+            Self::Degrees => Angle::from_degrees(value),
+            Self::Turns => Angle::from_turns(value),
+        }
+    }
 }
 
 impl RotationUnitObj {
