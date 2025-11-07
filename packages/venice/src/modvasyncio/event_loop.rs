@@ -57,6 +57,7 @@ pub struct EventLoop {
     base: ObjBase,
     ready: RefCell<VecDeque<Obj>>,
     sleepers: RefCell<BinaryHeap<Sleeper>>,
+    current_task: Cell<Obj>,
 }
 
 unsafe impl ObjTrait for EventLoop {
@@ -73,6 +74,7 @@ impl EventLoop {
             base: ObjBase::new(Self::OBJ_TYPE),
             ready: RefCell::new(VecDeque::new()),
             sleepers: RefCell::new(BinaryHeap::new()),
+            current_task: Cell::new(Obj::NULL),
         }
     }
 
@@ -80,6 +82,49 @@ impl EventLoop {
         let task = alloc_obj(Task::new(coro));
         self.ready.borrow_mut().push_back(task);
         task
+    }
+
+    /// `task_obj` and `coro` are nullable
+    pub fn tick_coro(&self, mut task_obj: Obj, mut coro: Obj) -> bool {
+        if task_obj.is_null() {
+            task_obj = self.current_task.get()
+        }
+
+        let task = task_obj.try_to_obj::<Task>().unwrap();
+        if coro.is_null() {
+            coro = task.coro();
+        }
+        assert!(coro.is(micropython_rs::generator::GEN_INSTANCE_TYPE));
+
+        let prev_task_obj = self.current_task.replace(task_obj);
+        let result = resume_gen(coro, Obj::NONE, Obj::NULL);
+        let terminated = match result.return_kind {
+            VmReturnKind::Normal => {
+                let mut ready = self.ready.borrow_mut();
+                task.complete_with(result.obj);
+                task.waiting_tasks()
+                    .iter()
+                    .for_each(|&w| ready.push_front(w));
+
+                true
+            }
+            VmReturnKind::Yield => {
+                if let Some(sleep) = result.obj.try_to_obj::<Sleep>() {
+                    self.sleepers.borrow_mut().push(Sleeper {
+                        task: task_obj,
+                        deadline: sleep.deadline(),
+                    });
+                } else if let Some(awaited_task) = result.obj.try_to_obj::<Task>() {
+                    awaited_task.add_waiting_task(task_obj);
+                }
+
+                false
+            }
+            VmReturnKind::Exception => nlr::raise(token().unwrap(), result.obj),
+        };
+
+        self.current_task.set(prev_task_obj);
+        terminated
     }
 
     // returns:
@@ -102,29 +147,7 @@ impl EventLoop {
         drop(sleepers);
 
         if let Some(task_obj) = task_obj {
-            let task = task_obj.try_to_obj::<Task>().unwrap();
-
-            let result = resume_gen(task.coro(), Obj::NONE, Obj::NULL);
-            match result.return_kind {
-                VmReturnKind::Normal => {
-                    let mut ready = self.ready.borrow_mut();
-                    task.complete_with(result.obj);
-                    task.waiting_tasks()
-                        .iter()
-                        .for_each(|&w| ready.push_front(w));
-                }
-                VmReturnKind::Yield => {
-                    if let Some(sleep) = result.obj.try_to_obj::<Sleep>() {
-                        self.sleepers.borrow_mut().push(Sleeper {
-                            task: task_obj,
-                            deadline: sleep.deadline(),
-                        });
-                    } else if let Some(awaited_task) = result.obj.try_to_obj::<Task>() {
-                        awaited_task.add_waiting_task(task_obj);
-                    }
-                }
-                VmReturnKind::Exception => nlr::raise(token().unwrap(), result.obj),
-            }
+            self.tick_coro(task_obj, Obj::NULL);
         }
 
         unsafe { vexTasksRun() };

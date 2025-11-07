@@ -1,3 +1,4 @@
+mod competition;
 mod controller;
 mod motor;
 mod rotation_sensor;

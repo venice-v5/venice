@@ -83,3 +83,5 @@ Q(is_over_temperature)
 Q(set_voltage_limit)
 Q(set_current_limit)
 Q(set_profiled_velocity)
+
+Q(CompetitionRuntime)
