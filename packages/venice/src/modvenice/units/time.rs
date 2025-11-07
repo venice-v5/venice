@@ -50,13 +50,6 @@ impl TimeUnitObj {
         }
     }
 
-    pub const fn new_static(unit: TimeUnit) -> &'static Self {
-        match unit {
-            TimeUnit::Millis => &Self::MILLIS,
-            TimeUnit::Second => &Self::SECOND,
-        }
-    }
-
     pub const fn unit(&self) -> &TimeUnit {
         &self.unit
     }
