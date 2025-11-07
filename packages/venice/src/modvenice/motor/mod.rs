@@ -1,22 +1,22 @@
 pub mod brake;
 pub mod direction;
 pub mod gearset;
+pub mod motor_type;
+pub mod motor_tuning_constants;
 
 use micropython_rs::{
     const_dict,
     except::{raise_type_error, raise_value_error},
-    fun::{Fun1, Fun2},
+    fun::{Fun1, Fun2, FunVar},
     init::token,
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
-use vexide_devices::smart::motor::Motor;
+use vexide_devices::smart::motor::{Motor, MotorStatus};
 
 use crate::{
-    args::{ArgType, ArgValue, Args},
+    args::{ArgType, ArgValue, Args, ArgsReader},
     devices::{self, PortNumber},
-    modvenice::{
-        raise_device_error,
-    },
+    modvenice::raise_device_error,
     obj::alloc_obj,
     qstrgen::qstr,
     registry::RegistryGuard,
@@ -25,6 +25,8 @@ use crate::{
 use {
     brake::BrakeModeObj, direction::DirectionObj, gearset::GearsetObj
 };
+
+use crate::modvenice::units::rotation::RotationUnitObj;
 
 #[repr(C)]
 pub struct MotorObj {
@@ -40,6 +42,10 @@ static MOTOR_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(
         qstr!(brake) => Obj::from_static(&Fun2::new(motor_brake)),
         qstr!(set_gearset) => Obj::from_static(&Fun2::new(motor_set_gearset)),
         qstr!(gearset) => Obj::from_static(&Fun1::new(motor_gearset)),
+        qstr!(set_position_target) => Obj::from_static(&FunVar::new(motor_set_position_target)),
+        qstr!(is_exp) => Obj::from_static(&Fun1::new(motor_is_exp)),
+        qstr!(is_v5) => Obj::from_static(&Fun1::new(motor_is_v5)),
+        qstr!(max_voltage) => Obj::from_static(&Fun1::new(motor_max_voltage)),
     ]);
 
 unsafe impl ObjTrait for MotorObj {
@@ -180,6 +186,24 @@ extern "C" fn motor_set_gearset(self_in: Obj, gearset: Obj) -> Obj {
     Obj::NONE
 }
 
+extern "C" fn motor_is_exp(self_in: Obj) -> Obj {
+    let motor = self_in.try_to_obj::<MotorObj>().unwrap();
+    let is_exp = motor.guard.borrow().is_exp();
+    Obj::from_bool(is_exp)
+}
+
+extern "C" fn motor_is_v5(self_in: Obj) -> Obj {
+    let motor = self_in.try_to_obj::<MotorObj>().unwrap();
+    let is_v5 = motor.guard.borrow().is_v5();
+    Obj::from_bool(is_v5)
+}
+
+extern "C" fn motor_max_voltage(self_in: Obj) -> Obj {
+    let motor = self_in.try_to_obj::<MotorObj>().unwrap();
+    let max_volts = motor.guard.borrow().max_voltage();
+    Obj::from_float(max_volts as f32)
+}
+
 extern "C" fn motor_gearset(self_in: Obj) -> Obj {
     let motor = self_in.try_to_obj::<MotorObj>().unwrap();
     let gearset = motor
@@ -188,4 +212,29 @@ extern "C" fn motor_gearset(self_in: Obj) -> Obj {
         .gearset()
         .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
     Obj::from_static(GearsetObj::new_static(gearset))
+}
+
+extern "C" fn motor_set_position_target(n_args: usize, ptr: *const Obj) -> Obj {
+    let token = token().unwrap();
+    let mut reader = unsafe { Args::from_ptr(n_args, 0, ptr) }.reader(token);
+    // self, position, position units, velocity
+    reader.assert_npos(4, 4);
+    let motor = reader.next_positional(ArgType::Obj(MotorObj::OBJ_TYPE)).as_obj();
+    let motor = motor.try_to_obj::<MotorObj>().unwrap();
+
+    let position_val = reader.next_positional(ArgType::Float).as_float();
+
+    let unit_obj = reader.next_positional(ArgType::Obj(RotationUnitObj::OBJ_TYPE)).as_obj();
+    let unit_obj = unit_obj.try_to_obj::<RotationUnitObj>().unwrap();
+
+    let velocity_val = reader.next_positional(ArgType::Int).as_int();
+    let angle = unit_obj.unit().from_float(position_val);
+
+    motor
+        .guard
+        .borrow_mut()
+        .set_position_target(angle, velocity_val)
+        .unwrap_or_else(|e| raise_device_error(token, format!("{e}")));
+
+    Obj::NONE
 }

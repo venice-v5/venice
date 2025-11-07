@@ -28,6 +28,8 @@ Q(set_velocity)
 Q(brake)
 Q(set_gearset)
 Q(gearset)
+Q(set_position_target)
+
 
 Q(Controller)
 Q(read_state)
