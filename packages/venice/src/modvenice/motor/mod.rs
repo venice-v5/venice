@@ -13,14 +13,17 @@ use micropython_rs::{
     init::token,
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
-use vexide_devices::{math::Direction, smart::motor::{Motor, MotorStatus}};
+use vexide_devices::{math::Direction, smart::motor::Motor};
 
 use super::raise_device_error;
 use crate::{
-    args::{ArgType, ArgValue, Args, ArgsReader}, devices::{self, PortNumber}, modvenice::motor::motor_type::MotorTypeObj, obj::alloc_obj, qstrgen::qstr, registry::RegistryGuard
+    args::{ArgType, ArgValue, Args},
+    devices::{self, PortNumber},
+    modvenice::{motor::motor_type::MotorTypeObj, units::rotation::RotationUnitObj},
+    obj::alloc_obj,
+    qstrgen::qstr,
+    registry::RegistryGuard,
 };
-
-use crate::modvenice::units::rotation::RotationUnitObj;
 
 #[repr(C)]
 pub struct MotorObj {
@@ -238,12 +241,16 @@ extern "C" fn motor_set_position_target(n_args: usize, ptr: *const Obj) -> Obj {
     let mut reader = unsafe { Args::from_ptr(n_args, 0, ptr) }.reader(token);
     // self, position, position units, velocity
     reader.assert_npos(4, 4);
-    let motor = reader.next_positional(ArgType::Obj(MotorObj::OBJ_TYPE)).as_obj();
+    let motor = reader
+        .next_positional(ArgType::Obj(MotorObj::OBJ_TYPE))
+        .as_obj();
     let motor = motor.try_to_obj::<MotorObj>().unwrap();
 
     let position_val = reader.next_positional(ArgType::Float).as_float();
 
-    let unit_obj = reader.next_positional(ArgType::Obj(RotationUnitObj::OBJ_TYPE)).as_obj();
+    let unit_obj = reader
+        .next_positional(ArgType::Obj(RotationUnitObj::OBJ_TYPE))
+        .as_obj();
     let unit_obj = unit_obj.try_to_obj::<RotationUnitObj>().unwrap();
 
     let velocity_val = reader.next_positional(ArgType::Int).as_int();
@@ -260,61 +267,101 @@ extern "C" fn motor_set_position_target(n_args: usize, ptr: *const Obj) -> Obj {
 
 extern "C" fn motor_velocity(self_in: Obj) -> Obj {
     let motor = self_in.try_to_obj::<MotorObj>().unwrap();
-    let vel = motor.guard.borrow().velocity().unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
+    let vel = motor
+        .guard
+        .borrow()
+        .velocity()
+        .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
     Obj::from_float(vel as f32)
 }
 
 extern "C" fn motor_power(self_in: Obj) -> Obj {
     let motor = self_in.try_to_obj::<MotorObj>().unwrap();
-    let pwr = motor.guard.borrow().power().unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
+    let pwr = motor
+        .guard
+        .borrow()
+        .power()
+        .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
     Obj::from_float(pwr as f32)
 }
 
 extern "C" fn motor_torque(self_in: Obj) -> Obj {
     let motor = self_in.try_to_obj::<MotorObj>().unwrap();
-    let trq = motor.guard.borrow().torque().unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
+    let trq = motor
+        .guard
+        .borrow()
+        .torque()
+        .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
     Obj::from_float(trq as f32)
 }
 
 extern "C" fn motor_voltage(self_in: Obj) -> Obj {
     let motor = self_in.try_to_obj::<MotorObj>().unwrap();
-    let volt = motor.guard.borrow().voltage().unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
+    let volt = motor
+        .guard
+        .borrow()
+        .voltage()
+        .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
     Obj::from_float(volt as f32)
 }
 
 extern "C" fn motor_raw_position(self_in: Obj) -> Obj {
     let motor = self_in.try_to_obj::<MotorObj>().unwrap();
-    let pos = motor.guard.borrow().raw_position().unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
+    let pos = motor
+        .guard
+        .borrow()
+        .raw_position()
+        .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
     Obj::from_int(pos)
 }
 
 extern "C" fn motor_current(self_in: Obj) -> Obj {
     let motor = self_in.try_to_obj::<MotorObj>().unwrap();
-    let curr = motor.guard.borrow().current().unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
+    let curr = motor
+        .guard
+        .borrow()
+        .current()
+        .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
     Obj::from_float(curr as f32)
 }
 
 extern "C" fn motor_efficiency(self_in: Obj) -> Obj {
     let motor = self_in.try_to_obj::<MotorObj>().unwrap();
-    let eff = motor.guard.borrow().efficiency().unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
+    let eff = motor
+        .guard
+        .borrow()
+        .efficiency()
+        .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
     Obj::from_float(eff as f32)
 }
 
 extern "C" fn motor_current_limit(self_in: Obj) -> Obj {
     let motor = self_in.try_to_obj::<MotorObj>().unwrap();
-    let lim = motor.guard.borrow().current_limit().unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
+    let lim = motor
+        .guard
+        .borrow()
+        .current_limit()
+        .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
     Obj::from_float(lim as f32)
 }
 
 extern "C" fn motor_voltage_limit(self_in: Obj) -> Obj {
     let motor = self_in.try_to_obj::<MotorObj>().unwrap();
-    let lim = motor.guard.borrow().voltage_limit().unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
+    let lim = motor
+        .guard
+        .borrow()
+        .voltage_limit()
+        .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
     Obj::from_float(lim as f32)
 }
 
 extern "C" fn motor_temperature(self_in: Obj) -> Obj {
     let motor = self_in.try_to_obj::<MotorObj>().unwrap();
-    let temp = motor.guard.borrow().temperature().unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
+    let temp = motor
+        .guard
+        .borrow()
+        .temperature()
+        .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
     Obj::from_float(temp as f32)
 }
 
@@ -387,25 +434,41 @@ extern "C" fn motor_set_voltage_limit(self_in: Obj, limit: Obj) -> Obj {
 
 extern "C" fn motor_is_over_temperature(self_in: Obj) -> Obj {
     let motor = self_in.try_to_obj::<MotorObj>().unwrap();
-    let is_over = motor.guard.borrow().is_over_temperature().unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
+    let is_over = motor
+        .guard
+        .borrow()
+        .is_over_temperature()
+        .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
     Obj::from_bool(is_over)
 }
 
 extern "C" fn motor_is_over_current(self_in: Obj) -> Obj {
     let motor = self_in.try_to_obj::<MotorObj>().unwrap();
-    let is_over = motor.guard.borrow().is_over_current().unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
+    let is_over = motor
+        .guard
+        .borrow()
+        .is_over_current()
+        .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
     Obj::from_bool(is_over)
 }
 
 extern "C" fn motor_is_driver_fault(self_in: Obj) -> Obj {
     let motor = self_in.try_to_obj::<MotorObj>().unwrap();
-    let is_fault = motor.guard.borrow().is_driver_fault().unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
+    let is_fault = motor
+        .guard
+        .borrow()
+        .is_driver_fault()
+        .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
     Obj::from_bool(is_fault)
 }
 
 extern "C" fn motor_is_driver_over_current(self_in: Obj) -> Obj {
     let motor = self_in.try_to_obj::<MotorObj>().unwrap();
-    let is_over = motor.guard.borrow().is_driver_over_current().unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
+    let is_over = motor
+        .guard
+        .borrow()
+        .is_driver_over_current()
+        .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
     Obj::from_bool(is_over)
 }
 
@@ -449,17 +512,15 @@ extern "C" fn motor_set_position(self_in: Obj, position: Obj, unit: Obj) -> Obj 
             ),
         )
     });
-    let unit_obj = unit
-        .try_to_obj::<RotationUnitObj>()
-        .unwrap_or_else(|| {
-            raise_type_error(
-                token,
-                format!(
-                    "expected <RotationUnit> for argument #2, found <{}>",
-                    ArgType::of(&unit)
-                ),
-            )
-        });
+    let unit_obj = unit.try_to_obj::<RotationUnitObj>().unwrap_or_else(|| {
+        raise_type_error(
+            token,
+            format!(
+                "expected <RotationUnit> for argument #2, found <{}>",
+                ArgType::of(&unit)
+            ),
+        )
+    });
     let motor = self_in.try_to_obj::<MotorObj>().unwrap();
     let angle = unit_obj.unit().from_float(position_float);
     motor
@@ -495,7 +556,11 @@ extern "C" fn motor_set_direction(self_in: Obj, direction: Obj) -> Obj {
 
 extern "C" fn motor_direction(self_in: Obj) -> Obj {
     let motor = self_in.try_to_obj::<MotorObj>().unwrap();
-    let dir = motor.guard.borrow().direction().unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
+    let dir = motor
+        .guard
+        .borrow()
+        .direction()
+        .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
     match dir {
         Direction::Forward => Obj::from_static(&DirectionObj::FORWARD),
         Direction::Reverse => Obj::from_static(&DirectionObj::REVERSE),
@@ -504,12 +569,20 @@ extern "C" fn motor_direction(self_in: Obj) -> Obj {
 
 extern "C" fn motor_status(self_in: Obj) -> Obj {
     let motor = self_in.try_to_obj::<MotorObj>().unwrap();
-    let status = motor.guard.borrow().status().unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
+    let status = motor
+        .guard
+        .borrow()
+        .status()
+        .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
     Obj::from_int(status.bits() as i32)
 }
 
 extern "C" fn motor_faults(self_in: Obj) -> Obj {
     let motor = self_in.try_to_obj::<MotorObj>().unwrap();
-    let faults = motor.guard.borrow().faults().unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
+    let faults = motor
+        .guard
+        .borrow()
+        .faults()
+        .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
     Obj::from_int(faults.bits() as i32)
 }

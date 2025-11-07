@@ -11,8 +11,6 @@ use micropython_rs::{
     obj::{Obj, ObjFullType, ObjTrait},
 };
 
-use crate::{modvenice::motor::motor_type::MotorTypeObj, qstrgen::qstr};
-
 use self::{
     controller::{
         ControllerObj,
@@ -22,6 +20,7 @@ use self::{
     rotation_sensor::RotationSensorObj,
     units::{rotation::RotationUnitObj, time::TimeUnitObj},
 };
+use crate::{modvenice::motor::motor_type::MotorTypeObj, qstrgen::qstr};
 
 static DEVICE_ERROR_OBJ_TYPE: ObjFullType = new_exception_type(qstr!(DeviceError));
 

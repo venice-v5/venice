@@ -2,7 +2,7 @@ use micropython_rs::{
     const_dict,
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
-use vexide_devices::smart::motor::{Gearset, MotorType};
+use vexide_devices::smart::motor::MotorType;
 
 use crate::qstrgen::qstr;
 
