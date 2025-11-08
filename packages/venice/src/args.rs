@@ -275,9 +275,9 @@ impl<'a> ArgsReader<'a> {
 
     pub fn try_next_positional(&mut self, ty: ArgType) -> Result<ArgValue<'a>, ArgError> {
         if self.n < self.args.n_pos {
-            let arg = self.args.nth_with_type(self.n, ty).map(|arg| arg.value());
+            let arg = self.args.nth_with_type(self.n, ty).map(|arg| arg.value())?;
             self.n += 1;
-            arg
+            Ok(arg)
         } else {
             Err(ArgError::PositionalsExhuasted { n: self.n })
         }
