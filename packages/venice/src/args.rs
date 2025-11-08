@@ -350,7 +350,10 @@ impl<'a> ArgsReader<'a> {
     pub fn try_next_kw(&mut self, ty: ArgType) -> Result<KwArg<'a>, ArgError> {
         match self.args.nth_with_type(self.n, ty) {
             Ok(arg) => match arg {
-                Arg::Keyword(kw_arg) => Ok(kw_arg),
+                Arg::Keyword(kw_arg) => {
+                    self.n += 1;
+                    Ok(kw_arg)
+                }
                 Arg::Positional(_) => Err(ArgError::ExpectedKeyword),
             },
             Err(e) => Err(match e {
