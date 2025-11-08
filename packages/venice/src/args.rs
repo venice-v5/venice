@@ -273,6 +273,16 @@ impl<'a> ArgsReader<'a> {
         self
     }
 
+    pub fn try_next_positional_untyped(&mut self) -> Result<ArgValue<'a>, ArgError> {
+        if self.n < self.args.n_pos {
+            let arg = self.args.nth(self.n).map(|arg| arg.value())?;
+            self.n += 1;
+            Ok(arg)
+        } else {
+            Err(ArgError::PositionalsExhuasted { n: self.n })
+        }
+    }
+
     pub fn try_next_positional(&mut self, ty: ArgType) -> Result<ArgValue<'a>, ArgError> {
         if self.n < self.args.n_pos {
             let arg = self.args.nth_with_type(self.n, ty).map(|arg| arg.value())?;
