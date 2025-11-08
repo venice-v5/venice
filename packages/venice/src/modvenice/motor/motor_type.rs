@@ -39,8 +39,4 @@ impl MotorTypeObj {
             MotorType::Exp => &MotorTypeObj::EXP,
         }
     }
-
-    pub const fn motor_type(&self) -> MotorType {
-        self.motor_type
-    }
 }
