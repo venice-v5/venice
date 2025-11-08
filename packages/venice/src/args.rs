@@ -106,7 +106,7 @@ impl<'a> ArgValue<'a> {
         }
     }
 
-    fn ty(self) -> ArgType {
+    pub fn ty(self) -> ArgType {
         match self {
             Self::Int(_) => ArgType::Int,
             Self::Str(_) => ArgType::Str,
