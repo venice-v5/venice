@@ -2,13 +2,13 @@ use std::time::Duration;
 
 use cty::c_void;
 use micropython_rs::{
-    except::raise_stop_iteration,
+    except::{raise_stop_iteration, raise_type_error},
     init::token,
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
 
 use crate::{
-    args::{ArgType, Args},
+    args::{ArgType, ArgValue, Args},
     modvenice::units::time::TimeUnitObj,
     obj::alloc_obj,
     qstrgen::qstr,
@@ -48,7 +48,23 @@ extern "C" fn sleep_make_new(_: *const ObjType, n_pos: usize, n_kw: usize, ptr: 
     let mut args = unsafe { Args::from_ptr(n_pos, n_kw, ptr) }.reader(token);
     args.assert_npos(2, 2);
 
-    let interval_float = args.next_positional(ArgType::Float).as_float();
+    let interval_float = match args.try_next_positional_untyped() {
+        Ok(arg) => match arg {
+            ArgValue::Float(float) => float,
+            ArgValue::Int(int) => int as f32,
+            _ => raise_type_error(
+                token,
+                format!(
+                    "expected <float> or <int> for argument #1, found <{}>",
+                    arg.ty()
+                ),
+            ),
+        },
+        // only error possible is PositionalsExhuasted, but that isn't reachable because of the arg
+        // count assertion
+        Err(_) => unreachable!(),
+    };
+
     let unit_obj = args
         .next_positional(ArgType::Obj(TimeUnitObj::OBJ_TYPE))
         .as_obj();
