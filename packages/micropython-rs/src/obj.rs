@@ -195,16 +195,15 @@ pub mod repr_c {
                 0 => Ty::Qstr,
                 _ => Ty::Float,
             }),
-            0b1110 => Some(match obj * 0xff80_0000 {
+            0b1110 => Some(match obj & 0xff80_0000 {
                 0 => Ty::Immediate,
                 _ => Ty::Float,
             }),
             _ => match obj & 0b11 {
                 0b00 => Some(Ty::Ptr),
-                _ => match obj & 0b1 {
-                    0b1 => Some(Ty::Int),
-                    _ => None,
-                },
+                0b10 => Some(Ty::Float),
+                0b01 | 0b11 => Some(Ty::Int),
+                _ => unreachable!(),
             },
         }
     }
