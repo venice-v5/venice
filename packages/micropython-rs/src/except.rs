@@ -50,11 +50,13 @@ impl<'a> RomErrorText<'a> {
 }
 
 pub const fn new_exception_type(name: Qstr) -> ObjFullType {
-    ObjFullType::new(TypeFlags::empty(), name)
-        .set_slot_make_new(mp_obj_exception_make_new)
-        .set_slot_print(mp_obj_exception_print)
-        .set_slot_attr(mp_obj_exception_attr)
-        .set_slot_parent(&mp_type_BaseException)
+    unsafe {
+        ObjFullType::new(TypeFlags::empty(), name)
+            .set_slot_make_new(mp_obj_exception_make_new)
+            .set_slot_print(mp_obj_exception_print)
+            .set_slot_attr(mp_obj_exception_attr)
+            .set_slot_parent(&mp_type_BaseException)
+    }
 }
 
 pub fn raise_msg(_: InitToken, exc_type: &ObjType, msg: impl AsRef<str>) -> ! {

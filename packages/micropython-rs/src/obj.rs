@@ -318,20 +318,8 @@ impl ObjFullType {
         self
     }
 
-    pub const unsafe fn set_slot_locals_dict(self, value: *mut Dict) -> Self {
-        unsafe { self.set_slot(Slot::LocalsDict, value as *const c_void) }
-    }
-
     pub const fn set_slot_locals_dict_from_static(self, value: &'static Dict) -> Self {
         unsafe { self.set_slot(Slot::LocalsDict, value as *const Dict as *const c_void) }
-    }
-
-    pub const unsafe fn set_slot_protocol(self, value: *const c_void) -> Self {
-        unsafe { self.set_slot(Slot::Protocol, value) }
-    }
-
-    pub const unsafe fn set_slot_iter(self, value: *const c_void) -> Self {
-        unsafe { self.set_slot(Slot::Iter, value) }
     }
 
     pub const fn set_slot_parent(self, value: &'static ObjType) -> Self {
@@ -340,9 +328,21 @@ impl ObjFullType {
 }
 
 macro_rules! impl_slot_setter {
-    ($fn_name:ident, $slot:expr, $ty:ty) => {
+    ($(#[$attr:meta])* $fn_name:ident, $slot:expr, $ty:ty) => {
         impl ObjFullType {
+            $(#[$attr])*
             pub const fn $fn_name(mut self, value: $ty) -> Self {
+                *self.slot_index($slot) = $slot as u8;
+                self.slots[$slot as usize - 1] = value as *const c_void;
+                self
+            }
+        }
+    };
+
+    ($(#[$attr:meta])* unsafe $fn_name:ident, $slot:expr, $ty:ty) => {
+        impl ObjFullType {
+            $(#[$attr])*
+            pub const unsafe fn $fn_name(mut self, value: $ty) -> Self {
                 *self.slot_index($slot) = $slot as u8;
                 self.slots[$slot as usize - 1] = value as *const c_void;
                 self
@@ -351,12 +351,16 @@ macro_rules! impl_slot_setter {
     };
 }
 
-impl_slot_setter!(set_slot_make_new, Slot::MakeNew, MakeNewFn);
-impl_slot_setter!(set_slot_print, Slot::Print, PrintFn);
 impl_slot_setter!(set_slot_unary_op, Slot::UnaryOp, UnaryOpFn);
 impl_slot_setter!(set_slot_binary_op, Slot::BinaryOp, BinaryOpFn);
-impl_slot_setter!(set_slot_attr, Slot::Attr, AttrFn);
 impl_slot_setter!(set_slot_subscr, Slot::Subscr, SubscrFn);
+
+impl_slot_setter!(unsafe set_slot_make_new, Slot::MakeNew, MakeNewFn);
+impl_slot_setter!(unsafe set_slot_attr, Slot::Attr, AttrFn);
+impl_slot_setter!(unsafe set_slot_print, Slot::Print, PrintFn);
+impl_slot_setter!(unsafe set_slot_locals_dict, Slot::LocalsDict, *mut Dict);
+impl_slot_setter!(unsafe set_slot_protocol, Slot::Protocol, *const c_void);
+impl_slot_setter!(unsafe set_slot_iter, Slot::Iter, *const c_void);
 
 unsafe impl Sync for ObjFullType {}
 unsafe impl Sync for ObjBase<'_> {}

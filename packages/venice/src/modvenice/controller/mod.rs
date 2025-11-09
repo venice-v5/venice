@@ -17,12 +17,14 @@ pub struct ControllerObj {
     base: ObjBase<'static>,
 }
 
-static CONTROLLER_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(Controller))
-    .set_slot_make_new(controller_make_new)
-    .set_slot_locals_dict_from_static(&const_dict![
-        qstr!(read_state) => Obj::from_static(&Fun1::new(controller_read_state)),
-        qstr!(rumble) => Obj::from_static(&Fun2::new(controller_rumble)),
-    ]);
+static CONTROLLER_OBJ_TYPE: ObjFullType = unsafe {
+    ObjFullType::new(TypeFlags::empty(), qstr!(Controller))
+        .set_slot_make_new(controller_make_new)
+        .set_slot_locals_dict_from_static(&const_dict![
+            qstr!(read_state) => Obj::from_static(&Fun1::new(controller_read_state)),
+            qstr!(rumble) => Obj::from_static(&Fun2::new(controller_rumble)),
+        ])
+};
 
 unsafe impl ObjTrait for ControllerObj {
     const OBJ_TYPE: &ObjType = CONTROLLER_OBJ_TYPE.as_obj_type();

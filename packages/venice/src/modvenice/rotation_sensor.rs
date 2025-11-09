@@ -26,11 +26,10 @@ pub struct RotationSensorObj {
     guard: RegistryGuard<'static, RotationSensor>,
 }
 
-pub static ROTATION_SENSOR_OBJ_TYPE: ObjFullType = ObjFullType::new(
-    TypeFlags::empty(),
-    qstr!(RotationSensor),
-)
-.set_slot_make_new(rotation_sensor_make_new)
+pub static ROTATION_SENSOR_OBJ_TYPE: ObjFullType = unsafe {
+    ObjFullType::new(TypeFlags::empty(), qstr!(RotationSensor))
+        .set_slot_make_new(rotation_sensor_make_new)
+}
 .set_slot_locals_dict_from_static(&const_dict![
     qstr!(angle) => Obj::from_static(&Fun2::new(rotation_sensor_angle)),
     qstr!(position) => Obj::from_static(&Fun1::new(rotation_sensor_position)),
@@ -47,7 +46,7 @@ unsafe impl ObjTrait for RotationSensorObj {
     const OBJ_TYPE: &ObjType = ROTATION_SENSOR_OBJ_TYPE.as_obj_type();
 }
 
-extern "C" fn rotation_sensor_make_new(
+unsafe extern "C" fn rotation_sensor_make_new(
     _: *const ObjType,
     n_pos: usize,
     n_kw: usize,

@@ -43,7 +43,12 @@ impl Sleep {
     }
 }
 
-extern "C" fn sleep_make_new(_: *const ObjType, n_pos: usize, n_kw: usize, ptr: *const Obj) -> Obj {
+unsafe extern "C" fn sleep_make_new(
+    _: *const ObjType,
+    n_pos: usize,
+    n_kw: usize,
+    ptr: *const Obj,
+) -> Obj {
     let token = token().unwrap();
     let mut args = unsafe { Args::from_ptr(n_pos, n_kw, ptr) }.reader(token);
     args.assert_npos(2, 2);

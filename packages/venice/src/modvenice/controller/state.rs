@@ -24,15 +24,18 @@ pub struct JoystickStateObj {
     state: JoystickState,
 }
 
-static CONTROLLER_STATE_OBJ_TYPE: ObjFullType =
+static CONTROLLER_STATE_OBJ_TYPE: ObjFullType = unsafe {
     ObjFullType::new(TypeFlags::empty(), qstr!(ControllerState))
-        .set_slot_attr(controller_state_attr);
+        .set_slot_attr(controller_state_attr)
+};
 
-static BUTTON_STATE_OBJ_TYPE: ObjFullType =
-    ObjFullType::new(TypeFlags::empty(), qstr!(ButtonState)).set_slot_attr(button_state_attr);
+static BUTTON_STATE_OBJ_TYPE: ObjFullType = unsafe {
+    ObjFullType::new(TypeFlags::empty(), qstr!(ButtonState)).set_slot_attr(button_state_attr)
+};
 
-static JOYSTICK_STATE_OBJ_TYPE: ObjFullType =
-    ObjFullType::new(TypeFlags::empty(), qstr!(JoystickState)).set_slot_attr(joystick_state_attr);
+static JOYSTICK_STATE_OBJ_TYPE: ObjFullType = unsafe {
+    ObjFullType::new(TypeFlags::empty(), qstr!(JoystickState)).set_slot_attr(joystick_state_attr)
+};
 
 unsafe impl ObjTrait for ControllerStateObj {
     const OBJ_TYPE: &ObjType = CONTROLLER_STATE_OBJ_TYPE.as_obj_type();
