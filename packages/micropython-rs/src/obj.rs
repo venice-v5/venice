@@ -327,6 +327,26 @@ impl ObjFullType {
     }
 }
 
+pub type IterNextFn = extern "C" fn(self_in: Obj) -> Obj;
+
+// incomplete
+pub enum IterSlotValue {
+    IterNext(IterNextFn),
+}
+
+impl ObjFullType {
+    // named differently because this isn't simply setting a slot
+    pub const fn set_iter(mut self, iter: IterSlotValue) -> Self {
+        match iter {
+            IterSlotValue::IterNext(f) => {
+                self.flags |= TypeFlags::ITER_IS_GETITER.bits();
+                // SAFETY: f is safe to use as the iter slot value for the given iter type
+                unsafe { self.set_slot_iter(f as *const c_void) }
+            }
+        }
+    }
+}
+
 macro_rules! impl_slot_setter {
     ($(#[$attr:meta])* $fn_name:ident, $slot:expr, $ty:ty) => {
         impl ObjFullType {

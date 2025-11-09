@@ -1,18 +1,15 @@
 use std::cell::{Cell, Ref, RefCell};
 
-use cty::c_void;
 use micropython_rs::{
     except::{raise_stop_iteration, raise_type_error},
     init::token,
-    obj::{Obj, ObjBase, ObjFullType, ObjTrait, TypeFlags},
+    obj::{IterSlotValue, Obj, ObjBase, ObjFullType, ObjTrait, TypeFlags},
 };
 
 use crate::qstrgen::qstr;
 
-static TASK_OBJ_TYPE: ObjFullType = unsafe {
-    ObjFullType::new(TypeFlags::ITER_IS_ITERNEXT, qstr!(Task))
-        .set_slot_iter(task_iternext as *const c_void)
-};
+static TASK_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::ITER_IS_ITERNEXT, qstr!(Task))
+    .set_iter(IterSlotValue::IterNext(task_iternext));
 
 #[repr(C)]
 pub struct Task {

@@ -1,10 +1,9 @@
 use std::time::Duration;
 
-use cty::c_void;
 use micropython_rs::{
     except::{raise_stop_iteration, raise_type_error},
     init::token,
-    obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
+    obj::{IterSlotValue, Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
 
 use crate::{
@@ -21,10 +20,9 @@ pub struct Sleep {
 }
 
 pub static SLEEP_OBJ_TYPE: ObjFullType = unsafe {
-    ObjFullType::new(TypeFlags::ITER_IS_ITERNEXT, qstr!(Sleep))
-        .set_slot_iter(sleep_iternext as *const c_void)
-        .set_slot_make_new(sleep_make_new)
-};
+    ObjFullType::new(TypeFlags::ITER_IS_ITERNEXT, qstr!(Sleep)).set_slot_make_new(sleep_make_new)
+}
+.set_iter(IterSlotValue::IterNext(sleep_iternext));
 
 unsafe impl ObjTrait for Sleep {
     const OBJ_TYPE: &micropython_rs::obj::ObjType = SLEEP_OBJ_TYPE.as_obj_type();
