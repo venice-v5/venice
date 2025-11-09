@@ -21,6 +21,76 @@ pub struct ArgsReader<'a> {
     token: InitToken,
 }
 
+pub trait ArgTrait<'a>: Sized {
+    fn ty() -> ArgType<'a>;
+    fn from_arg_value(v: ArgValue<'a>) -> Option<Self>;
+}
+
+impl<'a> ArgTrait<'a> for i32 {
+    fn ty() -> ArgType<'a> {
+        ArgType::Int
+    }
+
+    fn from_arg_value(v: ArgValue<'a>) -> Option<Self> {
+        match v {
+            ArgValue::Int(i) => Some(i),
+            _ => None,
+        }
+    }
+}
+
+impl<'a> ArgTrait<'a> for &'a [u8] {
+    fn ty() -> ArgType<'static> {
+        ArgType::Str
+    }
+
+    fn from_arg_value(v: ArgValue<'a>) -> Option<Self> {
+        match v {
+            ArgValue::Str(s) => Some(s),
+            _ => None,
+        }
+    }
+}
+
+impl<'a> ArgTrait<'a> for bool {
+    fn ty() -> ArgType<'static> {
+        ArgType::Bool
+    }
+
+    fn from_arg_value(v: ArgValue<'a>) -> Option<Self> {
+        match v {
+            ArgValue::Bool(b) => Some(b),
+            _ => None,
+        }
+    }
+}
+
+impl<'a> ArgTrait<'a> for f32 {
+    fn ty() -> ArgType<'static> {
+        ArgType::Float
+    }
+
+    fn from_arg_value(v: ArgValue<'a>) -> Option<Self> {
+        match v {
+            ArgValue::Float(f) => Some(f),
+            _ => None,
+        }
+    }
+}
+
+impl<'a, O: ObjTrait> ArgTrait<'a> for &'a O {
+    fn ty() -> ArgType<'static> {
+        ArgType::Obj(O::OBJ_TYPE)
+    }
+
+    fn from_arg_value(v: ArgValue<'a>) -> Option<Self> {
+        match v {
+            ArgValue::Obj(o) => o.try_to_obj(),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum ArgType<'a> {
     Int,
@@ -45,6 +115,12 @@ pub enum ArgValue<'a> {
 pub struct KwArg<'a> {
     pub kw: &'a [u8],
     pub value: ArgValue<'a>,
+}
+
+#[derive(Clone, Copy)]
+pub struct GenericKwArg<'a, A: ArgTrait<'a>> {
+    pub kw: &'a [u8],
+    pub value: A,
 }
 
 #[derive(Clone, Copy)]
@@ -213,7 +289,7 @@ impl<'a> Args<'a> {
         }))
     }
 
-    pub fn nth_with_type(&self, n: usize, ty: ArgType<'a>) -> Result<Arg<'a>, ArgError<'a>> {
+    pub fn nth_of_type(&self, n: usize, ty: ArgType<'a>) -> Result<Arg<'a>, ArgError<'a>> {
         let arg = self.nth(n)?;
         let arg_ty = arg.value().ty();
         if ty == arg_ty {
@@ -283,22 +359,24 @@ impl<'a> ArgsReader<'a> {
         }
     }
 
-    pub fn try_next_positional(&mut self, ty: ArgType<'a>) -> Result<ArgValue<'a>, ArgError<'a>> {
+    pub fn try_next_positional<A: ArgTrait<'a>>(&mut self) -> Result<A, ArgError<'a>> {
         if self.n < self.args.n_pos {
-            let arg = self.args.nth_with_type(self.n, ty).map(|arg| arg.value())?;
+            let arg = self
+                .args
+                .nth_of_type(self.n, A::ty())
+                .map(|arg| arg.value())?;
             self.n += 1;
-            Ok(arg)
+            Ok(unsafe { ArgTrait::from_arg_value(arg).unwrap_unchecked() })
         } else {
             Err(ArgError::PositionalsExhuasted { n: self.n })
         }
     }
 
-    pub fn try_next_positional_or(
+    pub fn try_next_positional_or<A: ArgTrait<'a>>(
         &mut self,
-        ty: ArgType<'a>,
-        default: ArgValue<'a>,
-    ) -> Result<ArgValue<'a>, ArgError<'a>> {
-        match self.try_next_positional(ty) {
+        default: A,
+    ) -> Result<A, ArgError<'a>> {
+        match self.try_next_positional() {
             Ok(v) => Ok(v),
             Err(e) => match e {
                 ArgError::PositionalsExhuasted { .. } => Ok(default),
@@ -307,26 +385,26 @@ impl<'a> ArgsReader<'a> {
         }
     }
 
-    pub fn next_positional(&mut self, ty: ArgType<'a>) -> ArgValue<'a> {
+    pub fn next_positional<A: ArgTrait<'a>>(&mut self) -> A {
         // borrow checker moment
         let token = self.token;
-        self.try_next_positional(ty)
+        self.try_next_positional()
             .unwrap_or_else(|e| e.raise_positional(token))
     }
 
-    pub fn next_positional_or(&mut self, ty: ArgType<'a>, default: ArgValue<'a>) -> ArgValue<'a> {
+    pub fn next_positional_or<A: ArgTrait<'a>>(&mut self, default: A) -> A {
         let token = self.token;
-        self.try_next_positional_or(ty, default)
+        self.try_next_positional_or(default)
             .unwrap_or_else(|e| e.raise_positional(token))
     }
 
-    pub fn try_get_kw(&self, kw: &[u8], ty: ArgType) -> Result<ArgValue<'a>, ArgError<'a>> {
+    pub fn try_get_kw<A: ArgTrait<'a>>(&self, kw: &[u8]) -> Result<A, ArgError<'a>> {
         for i in 0..self.args.n_kw {
             let arg = self.args.nth(self.args.n_pos + i).unwrap();
             match arg {
                 Arg::Keyword(KwArg { kw: arg_kw, value }) => {
-                    if kw == arg_kw && ty == value.ty() {
-                        return Ok(value);
+                    if kw == arg_kw && A::ty() == value.ty() {
+                        return Ok(unsafe { A::from_arg_value(value).unwrap_unchecked() });
                     }
                 }
                 Arg::Positional(_) => unreachable!(),
@@ -335,13 +413,8 @@ impl<'a> ArgsReader<'a> {
         Err(ArgError::NotPresent)
     }
 
-    pub fn try_get_kw_or(
-        &self,
-        kw: &[u8],
-        ty: ArgType,
-        default: ArgValue<'a>,
-    ) -> Result<ArgValue<'a>, ArgError<'a>> {
-        match self.try_get_kw(kw, ty) {
+    pub fn try_get_kw_or<A: ArgTrait<'a>>(&self, kw: &[u8], default: A) -> Result<A, ArgError<'a>> {
+        match self.try_get_kw(kw) {
             Ok(arg) => Ok(arg),
             Err(err) => match err {
                 ArgError::NotPresent { .. } => Ok(default),
@@ -350,22 +423,25 @@ impl<'a> ArgsReader<'a> {
         }
     }
 
-    pub fn get_kw(&self, kw: &[u8], ty: ArgType) -> ArgValue<'a> {
-        self.try_get_kw(kw, ty)
+    pub fn get_kw<A: ArgTrait<'a>>(&self, kw: &[u8]) -> A {
+        self.try_get_kw(kw)
             .unwrap_or_else(|e| e.raise_kw(self.token, str::from_utf8(kw).unwrap()))
     }
 
-    pub fn get_kw_or(&self, kw: &[u8], ty: ArgType, default: ArgValue<'a>) -> ArgValue<'a> {
-        self.try_get_kw_or(kw, ty, default)
+    pub fn get_kw_or<A: ArgTrait<'a>>(&self, kw: &[u8], default: A) -> A {
+        self.try_get_kw_or(kw, default)
             .unwrap_or_else(|e| e.raise_kw(self.token, str::from_utf8(kw).unwrap()))
     }
 
-    pub fn try_next_kw(&mut self, ty: ArgType<'a>) -> Result<KwArg<'a>, ArgError<'a>> {
-        match self.args.nth_with_type(self.n, ty) {
+    pub fn try_next_kw<A: ArgTrait<'a>>(&mut self) -> Result<GenericKwArg<'a, A>, ArgError<'a>> {
+        match self.args.nth_of_type(self.n, A::ty()) {
             Ok(arg) => match arg {
                 Arg::Keyword(kw_arg) => {
                     self.n += 1;
-                    Ok(kw_arg)
+                    Ok(GenericKwArg {
+                        kw: kw_arg.kw,
+                        value: unsafe { A::from_arg_value(kw_arg.value).unwrap_unchecked() },
+                    })
                 }
                 Arg::Positional(_) => Err(ArgError::ExpectedKeyword),
             },
@@ -377,10 +453,9 @@ impl<'a> ArgsReader<'a> {
         }
     }
 
-    pub fn next_kw(&mut self, ty: ArgType<'a>) -> KwArg<'a> {
+    pub fn next_kw<A: ArgTrait<'a>>(&mut self) -> GenericKwArg<'a, A> {
         let token = self.token;
-        self.try_next_kw(ty)
-            .unwrap_or_else(|e| e.raise_kw(token, ""))
+        self.try_next_kw().unwrap_or_else(|e| e.raise_kw(token, ""))
     }
 }
 

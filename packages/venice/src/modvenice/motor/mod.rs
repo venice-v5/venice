@@ -17,7 +17,7 @@ use vexide_devices::{math::Direction, smart::motor::Motor};
 
 use super::raise_device_error;
 use crate::{
-    args::{ArgType, ArgValue, Args},
+    args::{ArgType, Args},
     devices::{self, PortNumber},
     modvenice::{motor::motor_type::MotorTypeObj, units::rotation::RotationUnitObj},
     obj::alloc_obj,
@@ -84,34 +84,18 @@ extern "C" fn motor_make_new(
 
     let mut args = unsafe { Args::from_ptr(n_pos, n_kw, arg_ptr) }.reader(token);
     args.assert_npos(2, 4).assert_nkw(0, 0);
-    let port = PortNumber::from_i32(args.next_positional(ArgType::Int).as_int())
+    let port = PortNumber::from_i32(args.next_positional())
         .unwrap_or_else(|_| raise_value_error(token, "port number must be between 1 and 21"));
 
-    let forward_obj = Obj::from_static(&DirectionObj::FORWARD);
-    let direction = args
-        .next_positional_or(
-            ArgType::Obj(DirectionObj::OBJ_TYPE),
-            ArgValue::Obj(&forward_obj),
-        )
-        .as_obj()
-        .try_to_obj::<DirectionObj>()
-        .unwrap()
-        .direction();
+    let direction = args.next_positional_or(&DirectionObj::FORWARD).direction();
 
-    let exp = args
-        .get_kw_or(b"exp", ArgType::Bool, ArgValue::Bool(false))
-        .as_bool();
+    let exp = args.get_kw_or(b"exp", false);
 
     let guard = devices::try_lock_port(port, |port| {
         if exp {
             Motor::new_exp(port, direction)
         } else {
-            let gearset = args
-                .next_positional(ArgType::Obj(GearsetObj::OBJ_TYPE))
-                .as_obj()
-                .try_to_obj::<GearsetObj>()
-                .unwrap()
-                .gearset();
+            let gearset = args.next_positional::<&GearsetObj>().gearset();
             Motor::new(port, gearset, direction)
         }
     })
@@ -242,19 +226,13 @@ extern "C" fn motor_set_position_target(n_args: usize, ptr: *const Obj) -> Obj {
     let mut reader = unsafe { Args::from_ptr(n_args, 0, ptr) }.reader(token);
     // self, position, position units, velocity
     reader.assert_npos(4, 4);
-    let motor = reader
-        .next_positional(ArgType::Obj(MotorObj::OBJ_TYPE))
-        .as_obj();
-    let motor = motor.try_to_obj::<MotorObj>().unwrap();
+    let motor = reader.next_positional::<&MotorObj>();
 
-    let position_val = reader.next_positional(ArgType::Float).as_float();
+    let position_val = reader.next_positional();
 
-    let unit_obj = reader
-        .next_positional(ArgType::Obj(RotationUnitObj::OBJ_TYPE))
-        .as_obj();
-    let unit_obj = unit_obj.try_to_obj::<RotationUnitObj>().unwrap();
+    let unit_obj = reader.next_positional::<&RotationUnitObj>();
 
-    let velocity_val = reader.next_positional(ArgType::Int).as_int();
+    let velocity_val = reader.next_positional();
     let angle = unit_obj.unit().from_float(position_val);
 
     motor

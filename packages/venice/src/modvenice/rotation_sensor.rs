@@ -8,7 +8,7 @@ use micropython_rs::{
 use vexide_devices::{math::Direction, smart::rotation::RotationSensor};
 
 use crate::{
-    args::{ArgType, ArgValue, Args},
+    args::{ArgType, Args},
     devices::{PortNumber, try_lock_port},
     modvenice::{
         motor::direction::DirectionObj,
@@ -56,18 +56,10 @@ extern "C" fn rotation_sensor_make_new(
     let token = token().unwrap();
     let mut args = unsafe { Args::from_ptr(n_pos, n_kw, ptr) }.reader(token);
 
-    let port = PortNumber::from_i32(args.next_positional(ArgType::Int).as_int())
+    let port = PortNumber::from_i32(args.next_positional())
         .unwrap_or_else(|_| raise_value_error(token, "port number must be between 1 and 21"));
 
-    let direction = args
-        .next_positional_or(
-            ArgType::Obj(DirectionObj::OBJ_TYPE),
-            ArgValue::Obj(&Obj::from_static(&DirectionObj::FORWARD)),
-        )
-        .as_obj()
-        .try_to_obj::<DirectionObj>()
-        .unwrap()
-        .direction();
+    let direction = args.next_positional_or(&DirectionObj::FORWARD).direction();
 
     let guard = try_lock_port(port, |port| RotationSensor::new(port, direction))
         .unwrap_or_else(|_| raise_device_error(token, "port is already in use"));

@@ -8,7 +8,7 @@ use micropython_rs::{
 };
 
 use crate::{
-    args::{ArgType, ArgValue, Args},
+    args::{ArgValue, Args},
     modvenice::units::time::TimeUnitObj,
     obj::alloc_obj,
     qstrgen::qstr,
@@ -65,14 +65,8 @@ extern "C" fn sleep_make_new(_: *const ObjType, n_pos: usize, n_kw: usize, ptr: 
         Err(_) => unreachable!(),
     };
 
-    let unit_obj = args
-        .next_positional(ArgType::Obj(TimeUnitObj::OBJ_TYPE))
-        .as_obj();
-    let duration = unit_obj
-        .try_to_obj::<TimeUnitObj>()
-        .unwrap()
-        .unit()
-        .from_float(interval_float);
+    let unit = args.next_positional::<&TimeUnitObj>().unit();
+    let duration = unit.from_float(interval_float);
     alloc_obj(Sleep::new(duration))
 }
 
