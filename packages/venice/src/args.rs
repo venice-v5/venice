@@ -196,7 +196,7 @@ impl<'a> Args<'a> {
         }
     }
 
-    pub fn nth(&self, n: usize) -> Result<Arg<'a>, ArgError> {
+    pub fn nth(&self, n: usize) -> Result<Arg<'a>, ArgError<'a>> {
         if n < self.n_pos {
             return Ok(Arg::Positional(ArgValue::from_obj(&self.args[n])));
         }
@@ -213,7 +213,7 @@ impl<'a> Args<'a> {
         }))
     }
 
-    pub fn nth_with_type(&self, n: usize, ty: ArgType<'a>) -> Result<Arg<'a>, ArgError> {
+    pub fn nth_with_type(&self, n: usize, ty: ArgType<'a>) -> Result<Arg<'a>, ArgError<'a>> {
         let arg = self.nth(n)?;
         let arg_ty = arg.value().ty();
         if ty == arg_ty {
@@ -273,7 +273,7 @@ impl<'a> ArgsReader<'a> {
         self
     }
 
-    pub fn try_next_positional_untyped(&mut self) -> Result<ArgValue<'a>, ArgError> {
+    pub fn try_next_positional_untyped(&mut self) -> Result<ArgValue<'a>, ArgError<'a>> {
         if self.n < self.args.n_pos {
             let arg = self.args.nth(self.n).map(|arg| arg.value())?;
             self.n += 1;
@@ -283,7 +283,7 @@ impl<'a> ArgsReader<'a> {
         }
     }
 
-    pub fn try_next_positional(&mut self, ty: ArgType<'a>) -> Result<ArgValue<'a>, ArgError> {
+    pub fn try_next_positional(&mut self, ty: ArgType<'a>) -> Result<ArgValue<'a>, ArgError<'a>> {
         if self.n < self.args.n_pos {
             let arg = self.args.nth_with_type(self.n, ty).map(|arg| arg.value())?;
             self.n += 1;
@@ -297,7 +297,7 @@ impl<'a> ArgsReader<'a> {
         &mut self,
         ty: ArgType<'a>,
         default: ArgValue<'a>,
-    ) -> Result<ArgValue<'a>, ArgError> {
+    ) -> Result<ArgValue<'a>, ArgError<'a>> {
         match self.try_next_positional(ty) {
             Ok(v) => Ok(v),
             Err(e) => match e {
@@ -320,7 +320,7 @@ impl<'a> ArgsReader<'a> {
             .unwrap_or_else(|e| e.raise_positional(token))
     }
 
-    pub fn try_get_kw(&self, kw: &[u8], ty: ArgType) -> Result<ArgValue<'a>, ArgError> {
+    pub fn try_get_kw(&self, kw: &[u8], ty: ArgType) -> Result<ArgValue<'a>, ArgError<'a>> {
         for i in 0..self.args.n_kw {
             let arg = self.args.nth(self.args.n_pos + i).unwrap();
             match arg {
@@ -340,7 +340,7 @@ impl<'a> ArgsReader<'a> {
         kw: &[u8],
         ty: ArgType,
         default: ArgValue<'a>,
-    ) -> Result<ArgValue<'a>, ArgError> {
+    ) -> Result<ArgValue<'a>, ArgError<'a>> {
         match self.try_get_kw(kw, ty) {
             Ok(arg) => Ok(arg),
             Err(err) => match err {
@@ -360,7 +360,7 @@ impl<'a> ArgsReader<'a> {
             .unwrap_or_else(|e| e.raise_kw(self.token, str::from_utf8(kw).unwrap()))
     }
 
-    pub fn try_next_kw(&mut self, ty: ArgType<'a>) -> Result<KwArg<'a>, ArgError> {
+    pub fn try_next_kw(&mut self, ty: ArgType<'a>) -> Result<KwArg<'a>, ArgError<'a>> {
         match self.args.nth_with_type(self.n, ty) {
             Ok(arg) => match arg {
                 Arg::Keyword(kw_arg) => {
