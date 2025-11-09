@@ -25,7 +25,7 @@ impl TimeUnit {
 
 #[repr(C)]
 pub struct TimeUnitObj {
-    base: ObjBase,
+    base: ObjBase<'static>,
     unit: TimeUnit,
 }
 

@@ -8,19 +8,19 @@ use crate::{obj::alloc_obj, qstrgen::qstr};
 
 #[repr(C)]
 pub struct ControllerStateObj {
-    base: ObjBase,
+    base: ObjBase<'static>,
     state: ControllerState,
 }
 
 #[repr(C)]
 pub struct ButtonStateObj {
-    base: ObjBase,
+    base: ObjBase<'static>,
     state: ButtonState,
 }
 
 #[repr(C)]
 pub struct JoystickStateObj {
-    base: ObjBase,
+    base: ObjBase<'static>,
     state: JoystickState,
 }
 

@@ -14,7 +14,7 @@ use crate::{args::ArgType, devices, obj::alloc_obj, qstrgen::qstr};
 
 #[repr(C)]
 pub struct ControllerObj {
-    base: ObjBase,
+    base: ObjBase<'static>,
 }
 
 static CONTROLLER_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(Controller))

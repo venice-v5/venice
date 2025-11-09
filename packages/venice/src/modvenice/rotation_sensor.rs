@@ -22,7 +22,7 @@ use crate::{
 
 #[repr(C)]
 pub struct RotationSensorObj {
-    base: ObjBase,
+    base: ObjBase<'static>,
     guard: RegistryGuard<'static, RotationSensor>,
 }
 
@@ -62,7 +62,7 @@ extern "C" fn rotation_sensor_make_new(
     let direction = args
         .next_positional_or(
             ArgType::Obj(DirectionObj::OBJ_TYPE),
-            ArgValue::Obj(Obj::from_static(&DirectionObj::FORWARD)),
+            ArgValue::Obj(&Obj::from_static(&DirectionObj::FORWARD)),
         )
         .as_obj()
         .try_to_obj::<DirectionObj>()

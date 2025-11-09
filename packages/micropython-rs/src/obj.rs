@@ -1,4 +1,4 @@
-use std::{ffi::c_void, ptr::NonNull};
+use std::{ffi::c_void, marker::PhantomData, ptr::NonNull};
 
 use bitflags::bitflags;
 use thiserror::Error;
@@ -16,7 +16,8 @@ use crate::{
 #[derive(Debug)]
 #[repr(C)]
 pub struct ObjType {
-    base: ObjBase,
+    // mp_type_type has a static lifetime
+    base: ObjBase<'static>,
 
     flags: u16,
     name: u16,
@@ -41,7 +42,8 @@ pub struct ObjType {
 #[derive(Debug)]
 #[repr(C)]
 pub struct ObjFullType {
-    base: ObjBase,
+    // mp_type_type has a static lifetime
+    base: ObjBase<'static>,
 
     flags: u16,
     name: u16,
@@ -81,9 +83,12 @@ pub enum Slot {
 /// From: `py/obj.h`
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
-pub struct ObjBase {
+pub struct ObjBase<'a> {
     r#type: *const ObjType,
+    _phantom: PhantomData<&'a ObjType>,
 }
+
+pub type StaticObjbase = ObjBase<'static>;
 
 /// MicroPython object
 ///
@@ -354,7 +359,7 @@ impl_slot_setter!(set_slot_attr, Slot::Attr, AttrFn);
 impl_slot_setter!(set_slot_subscr, Slot::Subscr, SubscrFn);
 
 unsafe impl Sync for ObjFullType {}
-unsafe impl Sync for ObjBase {}
+unsafe impl Sync for ObjBase<'_> {}
 // these are definitely not true but i dont car :)
 unsafe impl Sync for Obj {}
 unsafe impl Send for Obj {}
@@ -371,9 +376,12 @@ unsafe impl ObjTrait for ObjFullType {
     const OBJ_TYPE: &ObjType = unsafe { &mp_type_type };
 }
 
-impl ObjBase {
-    pub const fn new(ty: &'static ObjType) -> Self {
-        Self { r#type: ty }
+impl<'a> ObjBase<'a> {
+    pub const fn new(ty: &'a ObjType) -> Self {
+        Self {
+            r#type: ty,
+            _phantom: PhantomData,
+        }
     }
 }
 
@@ -563,7 +571,7 @@ impl Obj {
     }
 
     // TODO: is this really static?
-    pub fn obj_type(&self) -> Option<&'static ObjType> {
+    pub fn obj_type(&self) -> Option<&ObjType> {
         if self.is_ptr() && !self.is_null() {
             let ptr = self.0 as *const ObjBase;
             Some(unsafe { &*(*ptr).r#type })

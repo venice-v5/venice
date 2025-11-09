@@ -69,7 +69,7 @@ impl Phase {
 
 #[repr(C)]
 pub struct CompetitionRuntime {
-    base: ObjBase,
+    base: ObjBase<'static>,
 
     // Dragon Ball Reference (Cell)
     status: Cell<Status>,

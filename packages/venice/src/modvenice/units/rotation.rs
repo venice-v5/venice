@@ -15,7 +15,7 @@ pub enum RotationUnit {
 
 #[repr(C)]
 pub struct RotationUnitObj {
-    base: ObjBase,
+    base: ObjBase<'static>,
     unit: RotationUnit,
 }
 

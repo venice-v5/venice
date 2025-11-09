@@ -38,7 +38,7 @@ pub type ProtoFun = *const c_void;
 /// From: `py/obj.h`
 #[repr(C)]
 pub struct Module {
-    base: ObjBase,
+    base: ObjBase<'static>,
     globals: *mut Dict,
 }
 

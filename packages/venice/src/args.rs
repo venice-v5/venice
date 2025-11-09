@@ -22,13 +22,13 @@ pub struct ArgsReader<'a> {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum ArgType {
+pub enum ArgType<'a> {
     Int,
     Str,
     None,
     Bool,
     Float,
-    Obj(&'static ObjType),
+    Obj(&'a ObjType),
 }
 
 #[derive(Clone, Copy)]
@@ -38,7 +38,7 @@ pub enum ArgValue<'a> {
     None,
     Bool(bool),
     Float(f32),
-    Obj(Obj),
+    Obj(&'a Obj),
 }
 
 #[derive(Clone, Copy)]
@@ -54,12 +54,12 @@ pub enum Arg<'a> {
 }
 
 #[derive(Debug)]
-pub enum ArgError {
+pub enum ArgError<'a> {
     NotPresent,
     TypeMismatch {
         n: usize,
-        expected: ArgType,
-        found: ArgType,
+        expected: ArgType<'a>,
+        found: ArgType<'a>,
     },
     PositionalsExhuasted {
         n: usize,
@@ -68,8 +68,8 @@ pub enum ArgError {
     KeywordsExhuasted,
 }
 
-impl ArgType {
-    pub fn of(obj: &Obj) -> Self {
+impl<'a> ArgType<'a> {
+    pub fn of(obj: &'a Obj) -> Self {
         use repr_c::Ty;
         match obj.ty().unwrap() {
             Ty::Int => Self::Int,
@@ -102,11 +102,11 @@ impl<'a> ArgValue<'a> {
             ArgType::None => Self::None,
             ArgType::Bool => Self::Bool(obj.try_to_bool().unwrap()),
             ArgType::Float => Self::Float(obj.to_float()),
-            ArgType::Obj(_) => Self::Obj(*obj),
+            ArgType::Obj(_) => Self::Obj(obj),
         }
     }
 
-    pub fn ty(self) -> ArgType {
+    pub fn ty(self) -> ArgType<'a> {
         match self {
             Self::Int(_) => ArgType::Int,
             Self::Str(_) => ArgType::Str,
@@ -147,7 +147,7 @@ impl<'a> ArgValue<'a> {
 
     pub fn as_obj(self) -> Obj {
         match self {
-            Self::Obj(obj) => obj,
+            Self::Obj(obj) => *obj,
             _ => panic!(),
         }
     }
@@ -213,7 +213,7 @@ impl<'a> Args<'a> {
         }))
     }
 
-    pub fn nth_with_type(&self, n: usize, ty: ArgType) -> Result<Arg<'a>, ArgError> {
+    pub fn nth_with_type(&self, n: usize, ty: ArgType<'a>) -> Result<Arg<'a>, ArgError> {
         let arg = self.nth(n)?;
         let arg_ty = arg.value().ty();
         if ty == arg_ty {
@@ -283,7 +283,7 @@ impl<'a> ArgsReader<'a> {
         }
     }
 
-    pub fn try_next_positional(&mut self, ty: ArgType) -> Result<ArgValue<'a>, ArgError> {
+    pub fn try_next_positional(&mut self, ty: ArgType<'a>) -> Result<ArgValue<'a>, ArgError> {
         if self.n < self.args.n_pos {
             let arg = self.args.nth_with_type(self.n, ty).map(|arg| arg.value())?;
             self.n += 1;
@@ -295,7 +295,7 @@ impl<'a> ArgsReader<'a> {
 
     pub fn try_next_positional_or(
         &mut self,
-        ty: ArgType,
+        ty: ArgType<'a>,
         default: ArgValue<'a>,
     ) -> Result<ArgValue<'a>, ArgError> {
         match self.try_next_positional(ty) {
@@ -307,14 +307,17 @@ impl<'a> ArgsReader<'a> {
         }
     }
 
-    pub fn next_positional(&mut self, ty: ArgType) -> ArgValue<'a> {
+    pub fn next_positional(&mut self, ty: ArgType<'a>) -> ArgValue<'a> {
+        // borrow checker moment
+        let token = self.token;
         self.try_next_positional(ty)
-            .unwrap_or_else(|e| e.raise_positional(self.token))
+            .unwrap_or_else(|e| e.raise_positional(token))
     }
 
-    pub fn next_positional_or(&mut self, ty: ArgType, default: ArgValue<'a>) -> ArgValue<'a> {
+    pub fn next_positional_or(&mut self, ty: ArgType<'a>, default: ArgValue<'a>) -> ArgValue<'a> {
+        let token = self.token;
         self.try_next_positional_or(ty, default)
-            .unwrap_or_else(|e| e.raise_positional(self.token))
+            .unwrap_or_else(|e| e.raise_positional(token))
     }
 
     pub fn try_get_kw(&self, kw: &[u8], ty: ArgType) -> Result<ArgValue<'a>, ArgError> {
@@ -357,7 +360,7 @@ impl<'a> ArgsReader<'a> {
             .unwrap_or_else(|e| e.raise_kw(self.token, str::from_utf8(kw).unwrap()))
     }
 
-    pub fn try_next_kw(&mut self, ty: ArgType) -> Result<KwArg<'a>, ArgError> {
+    pub fn try_next_kw(&mut self, ty: ArgType<'a>) -> Result<KwArg<'a>, ArgError> {
         match self.args.nth_with_type(self.n, ty) {
             Ok(arg) => match arg {
                 Arg::Keyword(kw_arg) => {
@@ -374,13 +377,14 @@ impl<'a> ArgsReader<'a> {
         }
     }
 
-    pub fn next_kw(&mut self, ty: ArgType) -> KwArg<'a> {
+    pub fn next_kw(&mut self, ty: ArgType<'a>) -> KwArg<'a> {
+        let token = self.token;
         self.try_next_kw(ty)
-            .unwrap_or_else(|e| e.raise_kw(self.token, ""))
+            .unwrap_or_else(|e| e.raise_kw(token, ""))
     }
 }
 
-impl Display for ArgType {
+impl Display for ArgType<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Int => write!(f, "int"),
@@ -397,7 +401,7 @@ impl Display for ArgType {
     }
 }
 
-impl ArgError {
+impl ArgError<'_> {
     pub fn raise_positional(&self, token: InitToken) -> ! {
         match self {
             Self::PositionalsExhuasted { n } => raise_type_error(

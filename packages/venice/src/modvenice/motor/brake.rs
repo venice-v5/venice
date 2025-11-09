@@ -8,7 +8,7 @@ use crate::qstrgen::qstr;
 
 #[repr(C)]
 pub struct BrakeModeObj {
-    base: ObjBase,
+    base: ObjBase<'static>,
     mode: BrakeMode,
 }
 

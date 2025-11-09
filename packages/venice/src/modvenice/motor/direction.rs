@@ -14,7 +14,7 @@ static DIRECTION_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qs
 
 #[repr(C)]
 pub struct DirectionObj {
-    base: ObjBase,
+    base: ObjBase<'static>,
     direction: Direction,
 }
 

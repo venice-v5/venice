@@ -4,7 +4,7 @@ macro_rules! define_fun_type {
     ($name:ident, $fn_type:ty, $mp_type_name:ident) => {
         #[repr(C)]
         pub struct $name {
-            base: ObjBase,
+            base: ObjBase<'static>,
             fun: $fn_type,
         }
 

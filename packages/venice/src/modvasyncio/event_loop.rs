@@ -54,7 +54,7 @@ impl Ord for Sleeper {
 
 #[repr(C)]
 pub struct EventLoop {
-    base: ObjBase,
+    base: ObjBase<'static>,
     ready: RefCell<VecDeque<Obj>>,
     sleepers: RefCell<BinaryHeap<Sleeper>>,
     current_task: Cell<Obj>,

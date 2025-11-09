@@ -8,7 +8,7 @@ use crate::qstrgen::qstr;
 
 #[repr(C)]
 pub struct MotorTypeObj {
-    base: ObjBase,
+    base: ObjBase<'static>,
     motor_type: MotorType,
 }
 

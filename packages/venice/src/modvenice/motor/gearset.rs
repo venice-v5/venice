@@ -8,7 +8,7 @@ use crate::qstrgen::qstr;
 
 #[repr(C)]
 pub struct GearsetObj {
-    base: ObjBase,
+    base: ObjBase<'static>,
     gearset: Gearset,
 }
 

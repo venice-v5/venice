@@ -16,7 +16,7 @@ use crate::{
 
 #[repr(C)]
 pub struct Sleep {
-    base: ObjBase,
+    base: ObjBase<'static>,
     deadline: super::instant::Instant,
 }
 

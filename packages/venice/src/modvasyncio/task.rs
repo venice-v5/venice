@@ -16,7 +16,7 @@ static TASK_OBJ_TYPE: ObjFullType = unsafe {
 
 #[repr(C)]
 pub struct Task {
-    base: ObjBase,
+    base: ObjBase<'static>,
     // generator object
     coro: Obj,
     waiting_tasks: RefCell<Vec<Obj>>,

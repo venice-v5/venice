@@ -23,7 +23,7 @@ pub struct nlr_jump_callback_node_t {
 
 #[repr(C)]
 pub struct mp_obj_tuple_t {
-    pub base: ObjBase,
+    pub base: ObjBase<'static>,
     pub len: usize,
     // mp_obj_t items[];
     pub items: (),
@@ -31,7 +31,7 @@ pub struct mp_obj_tuple_t {
 
 #[repr(C)]
 pub struct mp_obj_exception_t {
-    pub base: ObjBase,
+    pub base: ObjBase<'static>,
     pub traceback_alloc: u16,
     pub traceback_len: u16,
     pub traceback_data: *mut usize,

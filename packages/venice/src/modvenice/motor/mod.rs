@@ -27,7 +27,7 @@ use crate::{
 
 #[repr(C)]
 pub struct MotorObj {
-    base: ObjBase,
+    base: ObjBase<'static>,
     guard: RegistryGuard<'static, Motor>,
 }
 
@@ -87,10 +87,11 @@ extern "C" fn motor_make_new(
     let port = PortNumber::from_i32(args.next_positional(ArgType::Int).as_int())
         .unwrap_or_else(|_| raise_value_error(token, "port number must be between 1 and 21"));
 
+    let forward_obj = Obj::from_static(&DirectionObj::FORWARD);
     let direction = args
         .next_positional_or(
             ArgType::Obj(DirectionObj::OBJ_TYPE),
-            ArgValue::Obj(Obj::from_static(&DirectionObj::FORWARD)),
+            ArgValue::Obj(&forward_obj),
         )
         .as_obj()
         .try_to_obj::<DirectionObj>()
