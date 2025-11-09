@@ -2,6 +2,7 @@ mod competition;
 mod controller;
 mod motor;
 mod rotation_sensor;
+mod distance_sensor;
 pub mod units;
 
 use micropython_rs::{
@@ -21,7 +22,7 @@ use self::{
     rotation_sensor::RotationSensorObj,
     units::{rotation::RotationUnitObj, time::TimeUnitObj},
 };
-use crate::{modvenice::motor::motor_type::MotorTypeObj, qstrgen::qstr};
+use crate::{modvenice::{distance_sensor::{DistanceSensorObj, distance_object::DistanceObjectObj}, motor::motor_type::MotorTypeObj}, qstrgen::qstr};
 
 static DEVICE_ERROR_OBJ_TYPE: ObjFullType = new_exception_type(qstr!(DeviceError));
 
@@ -45,7 +46,9 @@ static venice_globals: Dict = const_dict![
     qstr!(ControllerState) => Obj::from_static(ControllerStateObj::OBJ_TYPE),
     qstr!(ButtonState) => Obj::from_static(ButtonStateObj::OBJ_TYPE),
     qstr!(JoystickState) => Obj::from_static(JoystickStateObj::OBJ_TYPE),
-
+    // distance
+    qstr!(DistanceObject) => Obj::from_static(DistanceObjectObj::OBJ_TYPE),
+    qstr!(DistanceSensor) => Obj::from_static(DistanceSensorObj::OBJ_TYPE),
     // other devices
     qstr!(RotationSensor) => Obj::from_static(RotationSensorObj::OBJ_TYPE),
 

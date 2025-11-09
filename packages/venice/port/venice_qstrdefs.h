@@ -85,3 +85,6 @@ Q(set_current_limit)
 Q(set_profiled_velocity)
 
 Q(CompetitionRuntime)
+
+Q(DistanceSensor)
+Q(DistanceObject)
