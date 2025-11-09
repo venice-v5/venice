@@ -1,8 +1,8 @@
 mod competition;
 mod controller;
+mod distance_sensor;
 mod motor;
 mod rotation_sensor;
-mod distance_sensor;
 pub mod units;
 
 use micropython_rs::{
@@ -22,7 +22,13 @@ use self::{
     rotation_sensor::RotationSensorObj,
     units::{rotation::RotationUnitObj, time::TimeUnitObj},
 };
-use crate::{modvenice::{distance_sensor::{DistanceSensorObj, distance_object::DistanceObjectObj}, motor::motor_type::MotorTypeObj}, qstrgen::qstr};
+use crate::{
+    modvenice::{
+        distance_sensor::{DistanceSensorObj, distance_object::DistanceObjectObj},
+        motor::motor_type::MotorTypeObj,
+    },
+    qstrgen::qstr,
+};
 
 static DEVICE_ERROR_OBJ_TYPE: ObjFullType = new_exception_type(qstr!(DeviceError));
 

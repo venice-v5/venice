@@ -1,9 +1,22 @@
 pub mod distance_object;
 
-use micropython_rs::{const_dict, except::raise_value_error, fun::Fun1, init::token, obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags}};
+use micropython_rs::{
+    const_dict,
+    except::raise_value_error,
+    fun::Fun1,
+    init::token,
+    obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
+};
 use vexide_devices::smart::distance::DistanceSensor;
 
-use crate::{args::Args, devices::{PortNumber, try_lock_port}, modvenice::{distance_sensor::distance_object::DistanceObjectObj, raise_device_error}, obj::alloc_obj, qstrgen::qstr, registry::RegistryGuard};
+use crate::{
+    args::Args,
+    devices::{PortNumber, try_lock_port},
+    modvenice::{distance_sensor::distance_object::DistanceObjectObj, raise_device_error},
+    obj::alloc_obj,
+    qstrgen::qstr,
+    registry::RegistryGuard,
+};
 
 #[repr(C)]
 pub struct DistanceSensorObj {
@@ -64,6 +77,6 @@ extern "C" fn distance_sensor_object(self_in: Obj) -> Obj {
         .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
     match status {
         Some(state) => alloc_obj(DistanceObjectObj::new(state)),
-        None => Obj::NONE
+        None => Obj::NONE,
     }
 }
