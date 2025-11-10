@@ -251,6 +251,76 @@ pub type BinaryOpFn = extern "C" fn(op: BinaryOp, obj: Obj) -> Obj;
 pub type AttrFn = unsafe extern "C" fn(self_in: Obj, attr: Qstr, dest: *mut Obj);
 pub type SubscrFn = extern "C" fn(self_in: Obj, index: Obj, value: Obj) -> Obj;
 
+#[derive(Debug, Clone, Copy)]
+pub struct MakeNew {
+    f: MakeNewFn,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Attr {
+    f: AttrFn,
+}
+
+pub enum AttrOp<'a> {
+    Load { dest: &'a mut Obj },
+    Store { src: Obj },
+    Delete,
+}
+
+impl MakeNew {
+    pub const unsafe fn new(f: MakeNewFn) -> Self {
+        Self { f }
+    }
+}
+
+impl Attr {
+    pub const unsafe fn new(f: AttrFn) -> Self {
+        Self { f }
+    }
+}
+
+#[macro_export]
+macro_rules! make_new_from_fn {
+    ($f:expr) => {{
+        unsafe extern "C" fn trampoline(
+            ty: *const $crate::obj::ObjType,
+            n_pos: usize,
+            n_kw: usize,
+            ptr: *const $crate::obj::Obj,
+        ) -> Obj {
+            // TODO: safe?
+            let ty: &'static $crate::obj::ObjType = unsafe { &*ty };
+            let args = unsafe { ::std::slice::from_raw_parts(ptr, n_pos + (n_kw * 2)) };
+            $f(ty, n_pos, n_kw, args)
+        }
+
+        unsafe { $crate::obj::MakeNew::new(trampoline) }
+    }};
+}
+
+#[macro_export]
+macro_rules! attr_from_fn {
+    ($f:expr) => {{
+        unsafe extern "C" fn trampoline(self_in: Obj, attr: Qstr, dest: *mut Obj) {
+            let op = unsafe {
+                if (*dest).is_null() {
+                    $crate::obj::AttrOp::Load { dest: &mut *dest }
+                } else {
+                    let dest_1 = dest.add(1);
+                    if (*dest_1).is_null() {
+                        $crate::obj::AttrOp::Delete
+                    } else {
+                        $crate::obj::AttrOp::Store { src: *dest_1 }
+                    }
+                }
+            };
+            $f(self_in.try_to_obj().unwrap(), attr, op)
+        }
+
+        unsafe { $crate::obj::Attr::new(trampoline) }
+    }};
+}
+
 impl PartialEq for ObjType {
     fn eq(&self, other: &Self) -> bool {
         self as *const _ == other as *const _
@@ -344,6 +414,14 @@ impl ObjFullType {
                 unsafe { self.set_slot_iter(f as *const c_void) }
             }
         }
+    }
+
+    pub const fn set_make_new(self, make_new: MakeNew) -> Self {
+        unsafe { self.set_slot_make_new(make_new.f) }
+    }
+
+    pub const fn set_attr(self, attr: Attr) -> Self {
+        unsafe { self.set_slot_attr(attr.f) }
     }
 }
 

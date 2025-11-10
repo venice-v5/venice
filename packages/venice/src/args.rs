@@ -171,7 +171,7 @@ impl<'a> ArgType<'a> {
 }
 
 impl<'a> ArgValue<'a> {
-    fn from_obj(obj: &'a Obj) -> Self {
+    pub fn from_obj(obj: &'a Obj) -> Self {
         match ArgType::of(obj) {
             ArgType::Int => Self::Int(obj.to_int()),
             ArgType::Str => Self::Str(obj.get_str().unwrap()),
@@ -239,6 +239,10 @@ impl<'a> Arg<'a> {
 }
 
 impl<'a> Args<'a> {
+    pub const fn new(n_pos: usize, n_kw: usize, args: &'a [Obj]) -> Self {
+        Self { n_pos, n_kw, args }
+    }
+
     pub const unsafe fn from_ptr(n_pos: usize, n_kw: usize, ptr: *const Obj) -> Self {
         let len = n_pos + (n_kw * 2);
         Self {
