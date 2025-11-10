@@ -256,8 +256,25 @@ pub struct MakeNew {
     f: MakeNewFn,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct Attr {
+    f: AttrFn,
+}
+
+pub enum AttrOp<'a> {
+    Load { dest: &'a mut Obj },
+    Store { src: Obj },
+    Delete,
+}
+
 impl MakeNew {
     pub const unsafe fn new(f: MakeNewFn) -> Self {
+        Self { f }
+    }
+}
+
+impl Attr {
+    pub const unsafe fn new(f: AttrFn) -> Self {
         Self { f }
     }
 }
@@ -278,6 +295,29 @@ macro_rules! make_new_fn {
         }
 
         unsafe { $crate::obj::MakeNew::new(trampoline) }
+    }};
+}
+
+#[macro_export]
+macro_rules! attr_fn {
+    ($f:expr) => {{
+        unsafe extern "C" fn trampoline(self_in: Obj, attr: Qstr, dest: *mut Obj) {
+            let op = unsafe {
+                if (*dest).is_null() {
+                    $crate::obj::AttrOp::Load { dest: &mut *dest }
+                } else {
+                    let dest_1 = dest.add(1);
+                    if (*dest_1).is_null() {
+                        $crate::obj::AttrOp::Delete
+                    } else {
+                        $crate::obj::AttrOp::Store { src: *dest_1 }
+                    }
+                }
+            };
+            $f(self_in.try_to_obj().unwrap(), attr, op)
+        }
+
+        unsafe { $crate::obj::Attr::new(trampoline) }
     }};
 }
 
@@ -378,6 +418,10 @@ impl ObjFullType {
 
     pub const fn set_make_new(self, make_new: MakeNew) -> Self {
         unsafe { self.set_slot_make_new(make_new.f) }
+    }
+
+    pub const fn set_attr(self, attr: Attr) -> Self {
+        unsafe { self.set_slot_attr(attr.f) }
     }
 }
 
