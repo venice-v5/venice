@@ -4,7 +4,7 @@ macro_rules! fun1_from_fn {
         use $crate::args::{ArgTrait, ArgValue};
 
         extern "C" fn trampoline(a: Obj) -> Obj {
-            let a_value = ArgValue::identfrom_obj(&a);
+            let a_value = ArgValue::from_obj(&a);
 
             if a_value.ty() != <$a as ArgTrait>::ty() {
                 raise_type_error(
