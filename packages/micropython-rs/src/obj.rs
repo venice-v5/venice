@@ -280,7 +280,7 @@ impl Attr {
 }
 
 #[macro_export]
-macro_rules! make_new_fn {
+macro_rules! make_new_from_fn {
     ($f:expr) => {{
         unsafe extern "C" fn trampoline(
             ty: *const $crate::obj::ObjType,
@@ -299,7 +299,7 @@ macro_rules! make_new_fn {
 }
 
 #[macro_export]
-macro_rules! attr_fn {
+macro_rules! attr_from_fn {
     ($f:expr) => {{
         unsafe extern "C" fn trampoline(self_in: Obj, attr: Qstr, dest: *mut Obj) {
             let op = unsafe {
