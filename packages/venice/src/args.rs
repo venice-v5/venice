@@ -171,7 +171,7 @@ impl<'a> ArgType<'a> {
 }
 
 impl<'a> ArgValue<'a> {
-    fn from_obj(obj: &'a Obj) -> Self {
+    pub fn from_obj(obj: &'a Obj) -> Self {
         match ArgType::of(obj) {
             ArgType::Int => Self::Int(obj.to_int()),
             ArgType::Str => Self::Str(obj.get_str().unwrap()),
