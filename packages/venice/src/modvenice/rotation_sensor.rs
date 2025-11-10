@@ -1,6 +1,6 @@
 use micropython_rs::{
     const_dict,
-    except::{raise_type_error, raise_value_error},
+    except::raise_value_error,
     init::token,
     make_new_from_fn,
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
@@ -53,7 +53,9 @@ fn rotation_sensor_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, arg
     let port = PortNumber::from_i32(reader.next_positional())
         .unwrap_or_else(|_| raise_value_error(token, "port number must be between 1 and 21"));
 
-    let direction = reader.next_positional_or(&DirectionObj::FORWARD).direction();
+    let direction = reader
+        .next_positional_or(&DirectionObj::FORWARD)
+        .direction();
 
     let guard = devices::try_lock_port(port, |port| RotationSensor::new(port, direction))
         .unwrap_or_else(|_| panic!("port is already in use"));
@@ -82,10 +84,13 @@ fn rotation_sensor_position(this: &RotationSensorObj) -> Obj {
     Obj::from_float(position.as_radians() as f32)
 }
 
-fn rotation_sensor_set_position(this: &RotationSensorObj, position: f32, unit: &RotationUnitObj) -> Obj {
+fn rotation_sensor_set_position(
+    this: &RotationSensorObj,
+    position: f32,
+    unit: &RotationUnitObj,
+) -> Obj {
     let angle = unit.unit().from_float(position);
-    this
-        .guard
+    this.guard
         .borrow_mut()
         .set_position(angle)
         .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
@@ -102,8 +107,7 @@ fn rotation_sensor_velocity(this: &RotationSensorObj) -> Obj {
 }
 
 fn rotation_sensor_reset_position(this: &RotationSensorObj) -> Obj {
-    this
-        .guard
+    this.guard
         .borrow_mut()
         .reset_position()
         .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
@@ -111,8 +115,7 @@ fn rotation_sensor_reset_position(this: &RotationSensorObj) -> Obj {
 }
 
 fn rotation_sensor_set_direction(this: &RotationSensorObj, direction: &DirectionObj) -> Obj {
-    this
-        .guard
+    this.guard
         .borrow_mut()
         .set_direction(direction.direction())
         .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
@@ -136,9 +139,12 @@ fn rotation_sensor_status(this: &RotationSensorObj) -> Obj {
     Obj::from_int(status as i32)
 }
 
-fn rotation_sensor_set_data_interval(this: &RotationSensorObj, interval: f32, unit: &TimeUnitObj) -> Obj {
-    this
-        .guard
+fn rotation_sensor_set_data_interval(
+    this: &RotationSensorObj,
+    interval: f32,
+    unit: &TimeUnitObj,
+) -> Obj {
+    this.guard
         .borrow_mut()
         .set_data_interval(unit.unit().from_float(interval))
         .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));

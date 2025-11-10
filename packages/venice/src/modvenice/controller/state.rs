@@ -1,5 +1,7 @@
 use micropython_rs::{
-    attr_from_fn, obj::{AttrOp, Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags}, qstr::Qstr
+    attr_from_fn,
+    obj::{AttrOp, Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
+    qstr::Qstr,
 };
 use vexide_devices::controller::{ButtonState, ControllerState, JoystickState};
 
@@ -23,12 +25,17 @@ pub struct JoystickStateObj {
     state: JoystickState,
 }
 
-static CONTROLLER_STATE_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(ControllerState))
+static CONTROLLER_STATE_OBJ_TYPE: ObjFullType =
+    ObjFullType::new(TypeFlags::empty(), qstr!(ControllerState))
         .set_attr(attr_from_fn!(controller_state_attr));
 
-static BUTTON_STATE_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(ButtonState)).set_attr(attr_from_fn!(button_state_attr));
+static BUTTON_STATE_OBJ_TYPE: ObjFullType =
+    ObjFullType::new(TypeFlags::empty(), qstr!(ButtonState))
+        .set_attr(attr_from_fn!(button_state_attr));
 
-static JOYSTICK_STATE_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(JoystickState)).set_attr(attr_from_fn!(joystick_state_attr));
+static JOYSTICK_STATE_OBJ_TYPE: ObjFullType =
+    ObjFullType::new(TypeFlags::empty(), qstr!(JoystickState))
+        .set_attr(attr_from_fn!(joystick_state_attr));
 
 unsafe impl ObjTrait for ControllerStateObj {
     const OBJ_TYPE: &ObjType = CONTROLLER_STATE_OBJ_TYPE.as_obj_type();
@@ -92,7 +99,7 @@ fn controller_state_attr(this: &ControllerStateObj, attr: Qstr, op: AttrOp) {
                 state: button_state,
             });
         }
-        _ => return
+        _ => return,
     }
 }
 
@@ -107,8 +114,8 @@ fn button_state_attr(this: &ButtonStateObj, attr: Qstr, op: AttrOp) {
                 b"is_now_released" => state.is_now_released(),
                 _ => return,
             });
-        },
-        _ => return
+        }
+        _ => return,
     }
 }
 
@@ -122,7 +129,7 @@ fn joystick_state_attr(this: &JoystickStateObj, attr: Qstr, op: AttrOp) {
                 b"y_raw" => Obj::from_int(this.state.y_raw() as i32),
                 _ => return,
             };
-        },
-        _ => return
+        }
+        _ => return,
     }
 }

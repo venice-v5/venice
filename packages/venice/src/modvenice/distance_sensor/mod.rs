@@ -1,12 +1,22 @@
 pub mod distance_object;
 
 use micropython_rs::{
-    const_dict, except::raise_value_error, init::token, make_new_from_fn, obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags}
+    const_dict,
+    except::raise_value_error,
+    init::token,
+    make_new_from_fn,
+    obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
 use vexide_devices::smart::distance::DistanceSensor;
 
 use crate::{
-    args::Args, devices::{PortNumber, try_lock_port}, fun::fun1_from_fn, modvenice::{distance_sensor::distance_object::DistanceObjectObj, raise_device_error}, obj::alloc_obj, qstrgen::qstr, registry::RegistryGuard
+    args::Args,
+    devices::{PortNumber, try_lock_port},
+    fun::fun1_from_fn,
+    modvenice::{distance_sensor::distance_object::DistanceObjectObj, raise_device_error},
+    obj::alloc_obj,
+    qstrgen::qstr,
+    registry::RegistryGuard,
 };
 
 #[repr(C)]

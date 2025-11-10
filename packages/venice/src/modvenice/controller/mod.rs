@@ -3,17 +3,14 @@ pub mod state;
 use micropython_rs::{
     const_dict,
     except::raise_type_error,
-    fun::{Fun1, Fun2},
     init::token,
     make_new_from_fn,
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
-use vex_sdk::V5MotorControlMode;
 
 use self::state::ControllerStateObj;
 use super::raise_device_error;
 use crate::{
-    args::ArgType,
     devices,
     fun::{fun1_from_fn, fun2_from_fn},
     obj::alloc_obj,
