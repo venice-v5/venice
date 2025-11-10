@@ -4,7 +4,7 @@ macro_rules! fun1_from_fn {
         use $crate::args::{ArgTrait, ArgValue};
 
         extern "C" fn trampoline(a: Obj) -> Obj {
-            let a_value = ArgValue::from_obj(&a);
+            let a_value = ArgValue::identfrom_obj(&a);
 
             if a_value.ty() != <$a as ArgTrait>::ty() {
                 raise_type_error(
@@ -123,6 +123,20 @@ macro_rules! fun3_from_fn {
     }};
 }
 
+macro_rules! fun_var_from_fn {
+    ($f:expr) => {{
+        use ::micropython_rs::fun::FunVar;
+
+        unsafe extern "C" fn trampoline(n_args: usize, ptr: *const Obj) -> Obj {
+            let args = unsafe { ::std::slice::from_raw_parts(ptr, n_args) };
+            $f(args)
+        }
+
+        FunVar::new(trampoline)
+    }};
+}
+
+pub(crate) use fun_var_from_fn;
 pub(crate) use fun1_from_fn;
 pub(crate) use fun2_from_fn;
 pub(crate) use fun3_from_fn;
