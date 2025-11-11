@@ -16,25 +16,25 @@ static AI_VISION_OBJECT_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(AiVisionObject));
 
 static AI_VISION_COLOR_OBJECT_OBJ_TYPE: ObjFullType =
-    ObjFullType::new(TypeFlags::IS_SUBCLASSED, qstr!(AiVisionColorObject))
+    ObjFullType::new(TypeFlags::empty(), qstr!(AiVisionColorObject))
         .set_slot_parent(AI_VISION_OBJECT_OBJ_TYPE.as_obj_type())
         .set_slot_locals_dict_from_static(&AI_VISION_OBJECT_LOCAL_DICT)
         .set_attr(attr_from_fn!(ai_vision_object_state_attr));
 
 static AI_VISION_CODE_OBJECT_OBJ_TYPE: ObjFullType =
-    ObjFullType::new(TypeFlags::IS_SUBCLASSED, qstr!(AiVisionCodeObject))
+    ObjFullType::new(TypeFlags::empty(), qstr!(AiVisionCodeObject))
         .set_slot_parent(AI_VISION_OBJECT_OBJ_TYPE.as_obj_type())
         .set_slot_locals_dict_from_static(&AI_VISION_OBJECT_LOCAL_DICT)
         .set_attr(attr_from_fn!(ai_vision_object_state_attr));
 
 static AI_VISION_APRIL_TAG_OBJECT_OBJ_TYPE: ObjFullType =
-    ObjFullType::new(TypeFlags::IS_SUBCLASSED, qstr!(AiVisionAprilTagObject))
+    ObjFullType::new(TypeFlags::empty(), qstr!(AiVisionAprilTagObject))
         .set_slot_parent(AI_VISION_OBJECT_OBJ_TYPE.as_obj_type())
         .set_slot_locals_dict_from_static(&AI_VISION_OBJECT_LOCAL_DICT)
         .set_attr(attr_from_fn!(ai_vision_object_state_attr));
 
 static AI_VISION_MODEL_OBJECT_OBJ_TYPE: ObjFullType =
-    ObjFullType::new(TypeFlags::IS_SUBCLASSED, qstr!(AiVisionModelObject))
+    ObjFullType::new(TypeFlags::empty(), qstr!(AiVisionModelObject))
         .set_slot_parent(AI_VISION_OBJECT_OBJ_TYPE.as_obj_type())
         .set_slot_locals_dict_from_static(&AI_VISION_OBJECT_LOCAL_DICT)
         .set_attr(attr_from_fn!(ai_vision_object_state_attr));

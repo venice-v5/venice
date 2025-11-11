@@ -279,6 +279,21 @@ impl Attr {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct Subscr {
+    f: SubscrFn,
+}
+impl Subscr {
+    pub const unsafe fn new(f: SubscrFn) -> Self {
+        Self { f }
+    }
+}
+pub enum SubscrOp {
+    Load,
+    Store { src: Obj },
+    Delete,
+}
+
 #[macro_export]
 macro_rules! make_new_from_fn {
     ($f:expr) => {{
@@ -318,6 +333,27 @@ macro_rules! attr_from_fn {
         }
 
         unsafe { $crate::obj::Attr::new(trampoline) }
+    }};
+}
+
+#[macro_export]
+macro_rules! subscr_from_fn {
+    ($f:expr) => {{
+        extern "C" fn trampoline(self_in: Obj, index: Obj, value: Obj) -> Obj    {
+            let Some(index) = index.try_to_int() else { return Obj::NULL };
+
+            let op = if value.is_null() {
+                SubscrOp::Delete
+            } else if value.is_sentinel() {
+                SubscrOp::Load
+            } else {
+                SubscrOp::Store { src: value }
+            };
+
+            $f(self_in.try_to_obj().unwrap(), index, op)
+        }
+
+        unsafe { $crate::obj::Subscr::new(trampoline) }
     }};
 }
 
@@ -417,11 +453,15 @@ impl ObjFullType {
     }
 
     pub const fn set_make_new(self, make_new: MakeNew) -> Self {
-        unsafe { self.set_slot_make_new(make_new.f) }
+         unsafe { self.set_slot_make_new(make_new.f) }
     }
 
     pub const fn set_attr(self, attr: Attr) -> Self {
         unsafe { self.set_slot_attr(attr.f) }
+    }
+
+    pub const fn set_subscr(self, subscr: Subscr) -> Self {
+         self.set_slot_subscr(subscr.f)
     }
 }
 
