@@ -26,8 +26,8 @@ static CONTROLLER_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(Controller))
         .set_make_new(make_new_from_fn!(controller_make_new))
         .set_slot_locals_dict_from_static(&const_dict![
-            qstr!(read_state) => Obj::from_static(&fun1_from_fn!(fn controller_read_state(&ControllerObj))),
-            qstr!(rumble) => Obj::from_static(&fun2_from_fn!(fn controller_rumble(&ControllerObj, &[u8]))),
+            qstr!(read_state) => Obj::from_static(&fun1_from_fn!(controller_read_state, &ControllerObj)),
+            qstr!(rumble) => Obj::from_static(&fun2_from_fn!(controller_rumble, &ControllerObj, &[u8])),
         ]);
 
 unsafe impl ObjTrait for ControllerObj {

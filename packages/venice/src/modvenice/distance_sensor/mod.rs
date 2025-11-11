@@ -25,13 +25,15 @@ pub struct DistanceSensorObj {
     guard: RegistryGuard<'static, DistanceSensor>,
 }
 
-pub static DISTANCE_SENSOR_OBJ_TYPE: ObjFullType =
-    ObjFullType::new(TypeFlags::empty(), qstr!(DistanceSensor))
-        .set_make_new(make_new_from_fn!(distance_sensor_make_new))
-        .set_slot_locals_dict_from_static(&const_dict![
-            qstr!(object) => Obj::from_static(&fun1_from_fn!(fn distance_sensor_object(&DistanceSensorObj))),
-            qstr!(status) => Obj::from_static(&fun1_from_fn!(fn distance_sensor_status(&DistanceSensorObj))),
-        ]);
+pub static DISTANCE_SENSOR_OBJ_TYPE: ObjFullType = ObjFullType::new(
+    TypeFlags::empty(),
+    qstr!(DistanceSensor),
+)
+.set_make_new(make_new_from_fn!(distance_sensor_make_new))
+.set_slot_locals_dict_from_static(&const_dict![
+    qstr!(object) => Obj::from_static(&fun1_from_fn!(distance_sensor_object, &DistanceSensorObj)),
+    qstr!(status) => Obj::from_static(&fun1_from_fn!(distance_sensor_status, &DistanceSensorObj)),
+]);
 
 unsafe impl ObjTrait for DistanceSensorObj {
     const OBJ_TYPE: &ObjType = DISTANCE_SENSOR_OBJ_TYPE.as_obj_type();
