@@ -1,12 +1,12 @@
 use std::cell::Cell;
 
 use micropython_rs::{
-    const_dict, except::raise_type_error, init::token, make_new_from_fn, obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, SubscrOp, TypeFlags}, subscr_from_fn
+    init::token, make_new_from_fn, obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, SubscrOp, TypeFlags}, subscr_from_fn
 };
 use vexide_devices::smart::ai_vision::AiVisionColorCode;
 
 use crate::{
-    args::{ArgTrait, ArgValue, Args},
+    args::Args,
     obj::alloc_obj,
     qstrgen::qstr,
 };

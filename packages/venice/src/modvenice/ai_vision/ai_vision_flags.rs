@@ -1,9 +1,9 @@
 use micropython_rs::{
-    const_dict, except::raise_type_error, init::token, obj::{Obj, ObjBase, ObjFullType, ObjTrait, TypeFlags, repr_c::Ty}, ops::BinaryOp
+    const_dict, except::raise_type_error, init::token, obj::{Obj, ObjBase, ObjFullType, ObjTrait, TypeFlags}, ops::BinaryOp
 };
-use vexide_devices::{math::Direction, smart::ai_vision::AiVisionFlags};
+use vexide_devices::smart::ai_vision::AiVisionFlags;
 
-use crate::{args::{ArgTrait, ArgType, ArgValue}, obj::alloc_obj, qstrgen::qstr};
+use crate::{args::ArgType, obj::alloc_obj, qstrgen::qstr};
 
 static AI_VISION_FLAGS_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(AiVisionFlags))
     .set_slot_locals_dict_from_static(&const_dict![

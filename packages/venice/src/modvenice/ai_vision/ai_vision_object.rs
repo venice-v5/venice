@@ -49,7 +49,7 @@ unsafe impl ObjTrait for AiVisionObjectObj {
     const OBJ_TYPE: &ObjType = AI_VISION_OBJECT_OBJ_TYPE.as_obj_type();
 }
 impl AiVisionObjectObj {
-    fn create_obj(object: AiVisionObject) -> Obj {
+    pub fn create_obj(object: AiVisionObject) -> Obj {
         let ty = match object {
             AiVisionObject::AprilTag { .. } => AI_VISION_APRIL_TAG_OBJECT_OBJ_TYPE.as_obj_type(),
             AiVisionObject::Model { .. } => AI_VISION_MODEL_OBJECT_OBJ_TYPE.as_obj_type(),

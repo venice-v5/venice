@@ -1,13 +1,34 @@
-mod april_tag_family;
-mod ai_vision_object;
-mod ai_vision_flags;
-mod ai_vision_detection_mode;
-mod ai_vision_color;
-mod ai_vision_color_code;
-use micropython_rs::{const_dict, except::raise_value_error, init::token, make_new_from_fn, obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags}};
-use vexide_devices::smart::ai_vision::{AiVisionSensor};
+pub mod ai_vision_color;
+pub mod ai_vision_color_code;
+pub mod ai_vision_detection_mode;
+pub mod ai_vision_flags;
+pub mod ai_vision_object;
+pub mod april_tag_family;
+use micropython_rs::{
+    const_dict,
+    except::raise_value_error,
+    init::token,
+    make_new_from_fn,
+    obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
+};
+use vexide_devices::smart::ai_vision::AiVisionSensor;
 
-use crate::{args::Args, devices::{PortNumber, try_lock_port}, fun::{fun1_from_fn, fun2_from_fn, fun3_from_fn}, modvenice::{ai_vision::{ai_vision_color::AiVisionColorObj, ai_vision_color_code::AiVisionColorCodeObj, ai_vision_detection_mode::AiVisionDetectionModeObj, ai_vision_flags::AiVisionFlagsObj, april_tag_family::AprilTagFamilyObj}, raise_device_error}, obj::alloc_obj, qstrgen::qstr, registry::RegistryGuard};
+use crate::{
+    args::Args,
+    devices::{PortNumber, try_lock_port},
+    fun::{fun1_from_fn, fun2_from_fn, fun3_from_fn},
+    modvenice::{
+        ai_vision::{
+            ai_vision_color::AiVisionColorObj, ai_vision_color_code::AiVisionColorCodeObj,
+            ai_vision_detection_mode::AiVisionDetectionModeObj, ai_vision_flags::AiVisionFlagsObj,
+            ai_vision_object::AiVisionObjectObj, april_tag_family::AprilTagFamilyObj,
+        },
+        raise_device_error,
+    },
+    obj::alloc_obj,
+    qstrgen::qstr,
+    registry::RegistryGuard,
+};
 
 static AI_VISION_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(AiVisionSensor))
     .set_make_new(make_new_from_fn!(ai_vision_sensor_make_new))
@@ -32,6 +53,8 @@ static AI_VISION_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qs
         qstr!(enable_test) => Obj::from_static(&fun2_from_fn!(fn ai_vision_sensor_enable_test(&AiVisionSensorObj, i32))),
         qstr!(set_apriltag_family) => Obj::from_static(&fun2_from_fn!(fn ai_vision_sensor_set_apriltag_family(&AiVisionSensorObj, &AprilTagFamilyObj))),
         qstr!(object_count) => Obj::from_static(&fun1_from_fn!(fn ai_vision_sensor_object_count(&AiVisionSensorObj))),
+        qstr!(objects) => Obj::from_static(&fun1_from_fn!(fn ai_vision_sensor_objects(&AiVisionSensorObj))),
+        qstr!(color_codes) => Obj::from_static(&fun1_from_fn!(fn ai_vision_sensor_color_codes(&AiVisionSensorObj)))
     ]);
 
 #[repr(C)]
@@ -61,7 +84,6 @@ fn ai_vision_sensor_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, ar
     })
 }
 
-
 fn ai_vision_sensor_temperature(this: &AiVisionSensorObj) -> Obj {
     let temp = this
         .guard
@@ -71,9 +93,12 @@ fn ai_vision_sensor_temperature(this: &AiVisionSensorObj) -> Obj {
     Obj::from_float(temp as f32)
 }
 
-fn ai_vision_sensor_set_color_code(this: &AiVisionSensorObj, id: i32, code: &AiVisionColorCodeObj) -> Obj {
-    this
-        .guard
+fn ai_vision_sensor_set_color_code(
+    this: &AiVisionSensorObj,
+    id: i32,
+    code: &AiVisionColorCodeObj,
+) -> Obj {
+    this.guard
         .borrow_mut()
         .set_color_code(id as _, &code.code())
         .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
@@ -86,12 +111,15 @@ fn ai_vision_sensor_color_code(this: &AiVisionSensorObj, id: i32) -> Obj {
         .borrow()
         .color_code(id as _)
         .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
-    if let Some(code) = code { alloc_obj(AiVisionColorCodeObj::new(code)) } else { Obj::NONE }
+    if let Some(code) = code {
+        alloc_obj(AiVisionColorCodeObj::new(code))
+    } else {
+        Obj::NONE
+    }
 }
 
 fn ai_vision_sensor_set_color(this: &AiVisionSensorObj, id: i32, color: &AiVisionColorObj) -> Obj {
-    this
-        .guard
+    this.guard
         .borrow_mut()
         .set_color(id as _, color.color())
         .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
@@ -104,19 +132,23 @@ fn ai_vision_sensor_color(this: &AiVisionSensorObj, id: i32) -> Obj {
         .borrow()
         .color(id as _)
         .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
-    if let Some(color) = color { alloc_obj(AiVisionColorObj::new(color)) } else { Obj::NONE }
+    if let Some(color) = color {
+        alloc_obj(AiVisionColorObj::new(color))
+    } else {
+        Obj::NONE
+    }
 }
 
-fn ai_vision_sensor_set_detection_mode(this: &AiVisionSensorObj, mode: &AiVisionDetectionModeObj) -> Obj {
-    this
-        .guard
+fn ai_vision_sensor_set_detection_mode(
+    this: &AiVisionSensorObj,
+    mode: &AiVisionDetectionModeObj,
+) -> Obj {
+    this.guard
         .borrow_mut()
         .set_detection_mode(mode.mode())
         .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
     Obj::NONE
 }
-
-
 
 fn ai_vision_sensor_flags(this: &AiVisionSensorObj) -> Obj {
     let flags = this
@@ -128,8 +160,7 @@ fn ai_vision_sensor_flags(this: &AiVisionSensorObj) -> Obj {
 }
 
 fn ai_vision_sensor_set_flags(this: &AiVisionSensorObj, flags: &AiVisionFlagsObj) -> Obj {
-    this
-        .guard
+    this.guard
         .borrow_mut()
         .set_flags(flags.flags())
         .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
@@ -137,8 +168,7 @@ fn ai_vision_sensor_set_flags(this: &AiVisionSensorObj, flags: &AiVisionFlagsObj
 }
 
 fn ai_vision_sensor_start_awb(this: &AiVisionSensorObj) -> Obj {
-    this
-        .guard
+    this.guard
         .borrow_mut()
         .start_awb()
         .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
@@ -146,17 +176,18 @@ fn ai_vision_sensor_start_awb(this: &AiVisionSensorObj) -> Obj {
 }
 
 fn ai_vision_sensor_enable_test(this: &AiVisionSensorObj, test: i32) -> Obj {
-    this
-        .guard
+    this.guard
         .borrow_mut()
         .enable_test(test as u8)
         .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
     Obj::NONE
 }
 
-fn ai_vision_sensor_set_apriltag_family(this: &AiVisionSensorObj, family: &AprilTagFamilyObj) -> Obj {
-    this
-        .guard
+fn ai_vision_sensor_set_apriltag_family(
+    this: &AiVisionSensorObj,
+    family: &AprilTagFamilyObj,
+) -> Obj {
+    this.guard
         .borrow_mut()
         .set_apriltag_family(family.family())
         .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
@@ -170,4 +201,33 @@ fn ai_vision_sensor_object_count(this: &AiVisionSensorObj) -> Obj {
         .object_count()
         .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
     Obj::from_int(count as i32)
+}
+
+fn ai_vision_sensor_objects(this: &AiVisionSensorObj) -> Obj {
+    let objects = this
+        .guard
+        .borrow()
+        .objects()
+        .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
+    let objects = objects
+        .into_iter()
+        .map(|obj| AiVisionObjectObj::create_obj(obj))
+        .collect::<Vec<_>>();
+    Obj::from_list(objects)
+}
+
+fn ai_vision_sensor_color_codes(this: &AiVisionSensorObj) -> Obj {
+    let this = this.guard.borrow();
+    let codes = (0..7)
+        .map(|n| {
+            this.color_code(n)
+                .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")))
+        })
+        .map(|code| if let Some(code) = code {
+            alloc_obj(AiVisionColorCodeObj::new(code))
+        } else {
+            Obj::NONE
+        })
+        .collect::<Vec<_>>();
+    Obj::from_list(codes)
 }

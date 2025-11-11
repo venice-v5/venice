@@ -1,13 +1,11 @@
 use micropython_rs::{
-    attr_from_fn, const_dict, init::token, make_new_from_fn, map::Dict, obj::{AttrOp, Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags}, qstr::Qstr
+    attr_from_fn, init::token, make_new_from_fn, obj::{AttrOp, Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags}, qstr::Qstr
 };
 use rgb::Rgb;
 use vexide_devices::smart::ai_vision::AiVisionColor;
 
 use crate::{
-    args::{Args, ArgsReader},
-    fun::fun2_from_fn,
-    modvenice::units::rotation::RotationUnitObj,
+    args::Args,
     obj::alloc_obj,
     qstrgen::qstr,
 };
