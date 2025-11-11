@@ -1,5 +1,6 @@
 use std::{
     ffi::{c_uint, c_void},
+    mem::ManuallyDrop,
     ptr::null_mut,
 };
 
@@ -80,11 +81,13 @@ where
     F: FnOnce() -> R,
     C: FnOnce(),
 {
-    let mut node = NlrJumpCallbackNode {
+    let node = NlrJumpCallbackNode {
         prev: core::ptr::null(),
         fun: callback_trampoline::<C>,
         data: callback,
     };
+
+    let mut node = ManuallyDrop::new(node);
 
     unsafe {
         nlr_push_jump_callback(
