@@ -3,7 +3,7 @@ mod controller;
 mod distance_sensor;
 mod motor;
 mod rotation_sensor;
-// mod ai_vision;
+mod ai_vision;
 pub mod units;
 
 use micropython_rs::{
