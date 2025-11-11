@@ -32,16 +32,15 @@ pub static ROTATION_SENSOR_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::e
     .set_slot_locals_dict_from_static(&const_dict![
         qstr!(MIN_DATA_INTERVAL_MS) => Obj::from_int(5),
         qstr!(TICKS_PER_REVOLUTION) => Obj::from_int(36000),
-
-        qstr!(angle) => Obj::from_static(&fun2_from_fn!(fn rotation_sensor_angle(&RotationSensorObj, &RotationUnitObj))),
-        qstr!(position) => Obj::from_static(&fun1_from_fn!(fn rotation_sensor_position(&RotationSensorObj))),
-        qstr!(set_position) => Obj::from_static(&fun3_from_fn!(fn rotation_sensor_set_position(&RotationSensorObj, f32, &RotationUnitObj))),
-        qstr!(velocity) => Obj::from_static(&fun1_from_fn!(fn rotation_sensor_velocity(&RotationSensorObj))),
-        qstr!(reset_position) => Obj::from_static(&fun1_from_fn!(fn rotation_sensor_reset_position(&RotationSensorObj))),
-        qstr!(set_direction) => Obj::from_static(&fun2_from_fn!(fn rotation_sensor_set_direction(&RotationSensorObj, &DirectionObj))),
-        qstr!(direction) => Obj::from_static(&fun1_from_fn!(fn rotation_sensor_direction(&RotationSensorObj))),
-        qstr!(status) => Obj::from_static(&fun1_from_fn!(fn rotation_sensor_status(&RotationSensorObj))),
-        qstr!(set_data_interval) => Obj::from_static(&fun3_from_fn!(fn rotation_sensor_set_data_interval(&RotationSensorObj, f32, &TimeUnitObj))),
+        qstr!(angle) => Obj::from_static(&fun2_from_fn!(rotation_sensor_angle, &RotationSensorObj, &RotationUnitObj)),
+        qstr!(position) => Obj::from_static(&fun1_from_fn!(rotation_sensor_position, &RotationSensorObj)),
+        qstr!(set_position) => Obj::from_static(&fun3_from_fn!(rotation_sensor_set_position, &RotationSensorObj, f32, &RotationUnitObj)),
+        qstr!(velocity) => Obj::from_static(&fun1_from_fn!(rotation_sensor_velocity, &RotationSensorObj)),
+        qstr!(reset_position) => Obj::from_static(&fun1_from_fn!(rotation_sensor_reset_position,&RotationSensorObj)),
+        qstr!(set_direction) => Obj::from_static(&fun2_from_fn!(rotation_sensor_set_direction,&RotationSensorObj, &DirectionObj)),
+        qstr!(direction) => Obj::from_static(&fun1_from_fn!(rotation_sensor_direction,&RotationSensorObj)),
+        qstr!(status) => Obj::from_static(&fun1_from_fn!(rotation_sensor_status,&RotationSensorObj)),
+        qstr!(set_data_interval) => Obj::from_static(&fun3_from_fn!(rotation_sensor_set_data_interval,&RotationSensorObj, f32, &TimeUnitObj)),
     ]);
 
 unsafe impl ObjTrait for RotationSensorObj {

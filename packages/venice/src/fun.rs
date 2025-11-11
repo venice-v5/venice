@@ -1,5 +1,5 @@
 macro_rules! fun1_from_fn {
-    (fn $f:ident($a:ty)) => {{
+    ($f:expr, $a:ty) => {{
         use ::micropython_rs::{except::raise_type_error, fun::Fun1, init::token, obj::Obj};
         use $crate::args::{ArgTrait, ArgValue};
 
@@ -25,7 +25,7 @@ macro_rules! fun1_from_fn {
 }
 
 macro_rules! fun2_from_fn {
-    (fn $f:ident($a:ty, $b:ty)) => {{
+    ($f:expr, $a:ty, $b:ty) => {{
         use ::micropython_rs::{except::raise_type_error, fun::Fun2, init::token, obj::Obj};
         use $crate::args::{ArgTrait, ArgValue};
 
@@ -68,7 +68,7 @@ macro_rules! fun2_from_fn {
 }
 
 macro_rules! fun3_from_fn {
-    (fn $f:ident($a:ty, $b:ty, $c:ty)) => {{
+    ($f:expr, $a:ty, $b:ty, $c:ty) => {{
         use ::micropython_rs::{except::raise_type_error, fun::Fun3, init::token, obj::Obj};
         use $crate::args::{ArgTrait, ArgValue};
 

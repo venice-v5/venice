@@ -30,8 +30,8 @@ static CONTROLLER_OBJ_TYPE: ObjFullType =
             qstr!(MAX_COLUMNS) => Obj::from_int(19),
             qstr!(MAX_LINES) => Obj::from_int(3),
 
-            qstr!(read_state) => Obj::from_static(&fun1_from_fn!(fn controller_read_state(&ControllerObj))),
-            qstr!(rumble) => Obj::from_static(&fun2_from_fn!(fn controller_rumble(&ControllerObj, &[u8]))),
+            qstr!(read_state) => Obj::from_static(&fun1_from_fn!(controller_read_state, &ControllerObj)),
+            qstr!(rumble) => Obj::from_static(&fun2_from_fn!(controller_rumble, &ControllerObj, &[u8])),
         ]);
 
 unsafe impl ObjTrait for ControllerObj {
