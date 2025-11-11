@@ -3,8 +3,8 @@ pub mod distance_object;
 use micropython_rs::{
     const_dict,
     except::raise_value_error,
-    fun::Fun1,
     init::token,
+    make_new_from_fn,
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
 use vexide_devices::smart::distance::DistanceSensor;
@@ -12,6 +12,7 @@ use vexide_devices::smart::distance::DistanceSensor;
 use crate::{
     args::Args,
     devices::{PortNumber, try_lock_port},
+    fun::fun1_from_fn,
     modvenice::{distance_sensor::distance_object::DistanceObjectObj, raise_device_error},
     obj::alloc_obj,
     qstrgen::qstr,
@@ -24,29 +25,24 @@ pub struct DistanceSensorObj {
     guard: RegistryGuard<'static, DistanceSensor>,
 }
 
-pub static DISTANCE_SENSOR_OBJ_TYPE: ObjFullType = unsafe {
+pub static DISTANCE_SENSOR_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(DistanceSensor))
-        .set_slot_make_new(distance_sensor_make_new)
+        .set_make_new(make_new_from_fn!(distance_sensor_make_new))
         .set_slot_locals_dict_from_static(&const_dict![
-            qstr!(object) => Obj::from_static(&Fun1::new(distance_sensor_object)),
-            qstr!(status) => Obj::from_static(&Fun1::new(distance_sensor_status)),
-        ])
-};
+            qstr!(object) => Obj::from_static(&fun1_from_fn!(fn distance_sensor_object(&DistanceSensorObj))),
+            qstr!(status) => Obj::from_static(&fun1_from_fn!(fn distance_sensor_status(&DistanceSensorObj))),
+        ]);
 
 unsafe impl ObjTrait for DistanceSensorObj {
     const OBJ_TYPE: &ObjType = DISTANCE_SENSOR_OBJ_TYPE.as_obj_type();
 }
 
-unsafe extern "C" fn distance_sensor_make_new(
-    _: *const ObjType,
-    n_pos: usize,
-    n_kw: usize,
-    ptr: *const Obj,
-) -> Obj {
+fn distance_sensor_make_new(_: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Obj {
     let token = token().unwrap();
-    let mut args = unsafe { Args::from_ptr(n_pos, n_kw, ptr) }.reader(token);
+    let mut reader = Args::new(n_pos, n_kw, args).reader(token);
+    reader.assert_npos(1, 1).assert_nkw(0, 0);
 
-    let port = PortNumber::from_i32(args.next_positional())
+    let port = PortNumber::from_i32(reader.next_positional())
         .unwrap_or_else(|_| raise_value_error(token, "port number must be between 1 and 21"));
 
     let guard = try_lock_port(port, |port| DistanceSensor::new(port))
@@ -58,9 +54,8 @@ unsafe extern "C" fn distance_sensor_make_new(
     })
 }
 
-extern "C" fn distance_sensor_status(self_in: Obj) -> Obj {
-    let sensor = self_in.try_to_obj::<DistanceSensorObj>().unwrap();
-    let status = sensor
+fn distance_sensor_status(this: &DistanceSensorObj) -> Obj {
+    let status = this
         .guard
         .borrow()
         .status()
@@ -68,9 +63,8 @@ extern "C" fn distance_sensor_status(self_in: Obj) -> Obj {
     Obj::from_int(status as i32)
 }
 
-extern "C" fn distance_sensor_object(self_in: Obj) -> Obj {
-    let sensor = self_in.try_to_obj::<DistanceSensorObj>().unwrap();
-    let status = sensor
+fn distance_sensor_object(this: &DistanceSensorObj) -> Obj {
+    let status = this
         .guard
         .borrow()
         .object()

@@ -1,5 +1,6 @@
 use micropython_rs::{
-    obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
+    attr_from_fn,
+    obj::{AttrOp, Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
     qstr::Qstr,
 };
 use vexide_devices::controller::{ButtonState, ControllerState, JoystickState};
@@ -24,18 +25,17 @@ pub struct JoystickStateObj {
     state: JoystickState,
 }
 
-static CONTROLLER_STATE_OBJ_TYPE: ObjFullType = unsafe {
+static CONTROLLER_STATE_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(ControllerState))
-        .set_slot_attr(controller_state_attr)
-};
+        .set_attr(attr_from_fn!(controller_state_attr));
 
-static BUTTON_STATE_OBJ_TYPE: ObjFullType = unsafe {
-    ObjFullType::new(TypeFlags::empty(), qstr!(ButtonState)).set_slot_attr(button_state_attr)
-};
+static BUTTON_STATE_OBJ_TYPE: ObjFullType =
+    ObjFullType::new(TypeFlags::empty(), qstr!(ButtonState))
+        .set_attr(attr_from_fn!(button_state_attr));
 
-static JOYSTICK_STATE_OBJ_TYPE: ObjFullType = unsafe {
-    ObjFullType::new(TypeFlags::empty(), qstr!(JoystickState)).set_slot_attr(joystick_state_attr)
-};
+static JOYSTICK_STATE_OBJ_TYPE: ObjFullType =
+    ObjFullType::new(TypeFlags::empty(), qstr!(JoystickState))
+        .set_attr(attr_from_fn!(joystick_state_attr));
 
 unsafe impl ObjTrait for ControllerStateObj {
     const OBJ_TYPE: &ObjType = CONTROLLER_STATE_OBJ_TYPE.as_obj_type();
@@ -58,12 +58,9 @@ impl ControllerStateObj {
     }
 }
 
-unsafe extern "C" fn controller_state_attr(self_in: Obj, attr: Qstr, dest: *mut Obj) {
-    if unsafe { *dest }.is_sentinel() {
-        return;
-    }
-
-    let state = &self_in.try_to_obj::<ControllerStateObj>().unwrap().state;
+fn controller_state_attr(this: &ControllerStateObj, attr: Qstr, op: AttrOp) {
+    let AttrOp::Load { dest } = op else { return };
+    let state = this.state;
     let attr_bytes = attr.bytes();
     let button_state = match attr_bytes {
         b"button_a" => state.button_a,
@@ -87,54 +84,40 @@ unsafe extern "C" fn controller_state_attr(self_in: Obj, attr: Qstr, dest: *mut 
                 _ => return,
             };
 
-            let joystick_state_obj = alloc_obj(JoystickStateObj {
+            *dest = alloc_obj(JoystickStateObj {
                 base: ObjBase::new(JoystickStateObj::OBJ_TYPE),
                 state: joystick_state,
             });
 
-            unsafe { *dest = joystick_state_obj };
             return;
         }
     };
 
-    let button_state_obj = alloc_obj(ButtonStateObj {
+    *dest = alloc_obj(ButtonStateObj {
         base: ObjBase::new(ButtonStateObj::OBJ_TYPE),
         state: button_state,
     });
-
-    unsafe { *dest = button_state_obj };
 }
 
-unsafe extern "C" fn button_state_attr(self_in: Obj, attr: Qstr, dest: *mut Obj) {
-    if unsafe { *dest }.is_sentinel() {
-        return;
-    }
-
-    let state = &self_in.try_to_obj::<ButtonStateObj>().unwrap().state;
-    let ret = Obj::from_bool(match attr.bytes() {
+fn button_state_attr(this: &ButtonStateObj, attr: Qstr, op: AttrOp) {
+    let AttrOp::Load { dest } = op else { return };
+    let state = &this.state;
+    *dest = Obj::from_bool(match attr.bytes() {
         b"is_pressed" => state.is_pressed(),
         b"is_released" => state.is_released(),
         b"is_now_pressed" => state.is_now_pressed(),
         b"is_now_released" => state.is_now_released(),
         _ => return,
     });
-
-    unsafe { *dest = ret };
 }
 
-unsafe extern "C" fn joystick_state_attr(self_in: Obj, attr: Qstr, dest: *mut Obj) {
-    if unsafe { *dest }.is_sentinel() {
-        return;
-    }
-
-    let state = &self_in.try_to_obj::<JoystickStateObj>().unwrap().state;
-    let ret = match attr.bytes() {
-        b"x" => Obj::from_float(state.x() as f32),
-        b"y" => Obj::from_float(state.y() as f32),
-        b"x_raw" => Obj::from_int(state.x_raw() as i32),
-        b"y_raw" => Obj::from_int(state.y_raw() as i32),
+fn joystick_state_attr(this: &JoystickStateObj, attr: Qstr, op: AttrOp) {
+    let AttrOp::Load { dest } = op else { return };
+    *dest = match attr.bytes() {
+        b"x" => Obj::from_float(this.state.x() as f32),
+        b"y" => Obj::from_float(this.state.y() as f32),
+        b"x_raw" => Obj::from_int(this.state.x_raw() as i32),
+        b"y_raw" => Obj::from_int(this.state.y_raw() as i32),
         _ => return,
     };
-
-    unsafe { *dest = ret };
 }
