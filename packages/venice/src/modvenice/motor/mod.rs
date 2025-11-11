@@ -78,7 +78,9 @@ unsafe impl ObjTrait for MotorObj {
 fn motor_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Obj {
     let token = token().unwrap();
     let mut reader = Args::new(n_pos, n_kw, args).reader(token);
-    reader.assert_npos(2, 4).assert_nkw(0, 0);
+    // pos: port, direction, gearset (optional dependent on exp)
+    // kw: exp
+    reader.assert_npos(2, 3).assert_nkw(0, 1);
 
     let port = PortNumber::from_i32(reader.next_positional())
         .unwrap_or_else(|_| raise_value_error(token, "port number must be between 1 and 21"));
