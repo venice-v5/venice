@@ -247,7 +247,7 @@ pub type PrintFn = unsafe extern "C" fn(print: *const Print, o: Obj, kind: Print
 pub type CallFn =
     unsafe extern "C" fn(fun: Obj, n_args: usize, n_kw: usize, args: *const Obj) -> Obj;
 pub type UnaryOpFn = extern "C" fn(op: UnaryOp, obj: Obj) -> Obj;
-pub type BinaryOpFn = extern "C" fn(op: BinaryOp, obj: Obj) -> Obj;
+pub type BinaryOpFn = extern "C" fn(op: BinaryOp, obj_1: Obj, obj_2: Obj) -> Obj;
 pub type AttrFn = unsafe extern "C" fn(self_in: Obj, attr: Qstr, dest: *mut Obj);
 pub type SubscrFn = extern "C" fn(self_in: Obj, index: Obj, value: Obj) -> Obj;
 
