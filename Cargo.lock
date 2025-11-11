@@ -1106,6 +1106,7 @@ dependencies = [
  "micropython-rs",
  "paste",
  "regex",
+ "rgb",
  "venice-program-table",
  "vex-sdk",
  "vex-sdk-vexcode",

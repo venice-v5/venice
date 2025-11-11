@@ -145,7 +145,7 @@ pub mod repr_c {
     }
 
     pub const fn new_float(float: f32) -> *mut c_void {
-        (float.to_bits() - 0x8080_0000 & !0b11) as *mut c_void
+        (float.to_bits().wrapping_add(0x8080_0000) & !0b11) as *mut c_void
     }
 
     pub const fn new_ptr(ptr: *mut c_void) -> *mut c_void {
@@ -186,7 +186,7 @@ pub mod repr_c {
     }
 
     pub fn get_float(obj: *mut c_void) -> f32 {
-        f32::from_bits((obj as u32) - 0x8080_0000 & !0b11)
+        f32::from_bits((obj as u32).wrapping_sub(0x8080_0000) & !0b11)
     }
 
     pub const fn get_ptr(obj: *mut c_void) -> *mut c_void {

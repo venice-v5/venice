@@ -35,6 +35,10 @@ pub struct MotorObj {
 static MOTOR_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(Motor))
     .set_make_new(make_new_from_fn!(motor_make_new))
     .set_slot_locals_dict_from_static(&const_dict![
+        qstr!(WRITE_INTERVAL_MS) => Obj::from_int(5),
+        qstr!(EXP_MAX_VOLTAGE) => Obj::from_float(8.0),
+        qstr!(V5_MAX_VOLTAGE) => Obj::from_float(12.0),
+
         qstr!(set_voltage) => Obj::from_static(&fun2_from_fn!(fn motor_set_voltage(&MotorObj, f32))),
         qstr!(set_velocity) => Obj::from_static(&fun2_from_fn!(fn motor_set_velocity(&MotorObj, i32))),
         qstr!(brake) => Obj::from_static(&fun2_from_fn!(fn motor_brake(&MotorObj, &BrakeModeObj))),
