@@ -39,7 +39,7 @@ unsafe impl ObjTrait for DistanceSensorObj {
     const OBJ_TYPE: &ObjType = DISTANCE_SENSOR_OBJ_TYPE.as_obj_type();
 }
 
-fn distance_sensor_make_new(_: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Obj {
+fn distance_sensor_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Obj {
     let token = token().unwrap();
     let mut reader = Args::new(n_pos, n_kw, args).reader(token);
     reader.assert_npos(1, 1).assert_nkw(0, 0);
@@ -51,7 +51,7 @@ fn distance_sensor_make_new(_: &'static ObjType, n_pos: usize, n_kw: usize, args
         .unwrap_or_else(|_| raise_device_error(token, "port is already in use"));
 
     alloc_obj(DistanceSensorObj {
-        base: ObjBase::new(DISTANCE_SENSOR_OBJ_TYPE.as_obj_type()),
+        base: ObjBase::new(ty),
         guard,
     })
 }

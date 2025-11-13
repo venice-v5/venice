@@ -35,6 +35,10 @@ pub struct MotorObj {
 static MOTOR_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(Motor))
     .set_make_new(make_new_from_fn!(motor_make_new))
     .set_slot_locals_dict_from_static(&const_dict![
+        qstr!(WRITE_INTERVAL_MS) => Obj::from_int(5),
+        qstr!(EXP_MAX_VOLTAGE) => Obj::from_float(8.0),
+        qstr!(V5_MAX_VOLTAGE) => Obj::from_float(12.0),
+
         qstr!(set_voltage) => Obj::from_static(&fun2_from_fn!(motor_set_voltage,&MotorObj, f32)),
         qstr!(set_velocity) => Obj::from_static(&fun2_from_fn!(motor_set_velocity,&MotorObj, i32)),
         qstr!(brake) => Obj::from_static(&fun2_from_fn!(motor_brake,&MotorObj, &BrakeModeObj)),
@@ -78,7 +82,9 @@ unsafe impl ObjTrait for MotorObj {
 fn motor_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Obj {
     let token = token().unwrap();
     let mut reader = Args::new(n_pos, n_kw, args).reader(token);
-    reader.assert_npos(2, 4).assert_nkw(0, 0);
+    // pos: port, direction, gearset (optional dependent on exp)
+    // kw: exp
+    reader.assert_npos(2, 3).assert_nkw(0, 1);
 
     let port = PortNumber::from_i32(reader.next_positional())
         .unwrap_or_else(|_| raise_value_error(token, "port number must be between 1 and 21"));

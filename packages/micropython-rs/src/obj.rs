@@ -145,7 +145,7 @@ pub mod repr_c {
     }
 
     pub const fn new_float(float: f32) -> *mut c_void {
-        (float.to_bits() - 0x8080_0000 & !0b11) as *mut c_void
+        (float.to_bits().wrapping_add(0x8080_0000) & !0b11) as *mut c_void
     }
 
     pub const fn new_ptr(ptr: *mut c_void) -> *mut c_void {
@@ -186,7 +186,7 @@ pub mod repr_c {
     }
 
     pub fn get_float(obj: *mut c_void) -> f32 {
-        f32::from_bits((obj as u32) - 0x8080_0000 & !0b11)
+        f32::from_bits((obj as u32).wrapping_sub(0x8080_0000) & !0b11)
     }
 
     pub const fn get_ptr(obj: *mut c_void) -> *mut c_void {
@@ -247,7 +247,7 @@ pub type PrintFn = unsafe extern "C" fn(print: *const Print, o: Obj, kind: Print
 pub type CallFn =
     unsafe extern "C" fn(fun: Obj, n_args: usize, n_kw: usize, args: *const Obj) -> Obj;
 pub type UnaryOpFn = extern "C" fn(op: UnaryOp, obj: Obj) -> Obj;
-pub type BinaryOpFn = extern "C" fn(op: BinaryOp, obj: Obj) -> Obj;
+pub type BinaryOpFn = extern "C" fn(op: BinaryOp, obj_1: Obj, obj_2: Obj) -> Obj;
 pub type AttrFn = unsafe extern "C" fn(self_in: Obj, attr: Qstr, dest: *mut Obj);
 pub type SubscrFn = extern "C" fn(self_in: Obj, index: Obj, value: Obj) -> Obj;
 
@@ -277,6 +277,21 @@ impl Attr {
     pub const unsafe fn new(f: AttrFn) -> Self {
         Self { f }
     }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Subscr {
+    f: SubscrFn,
+}
+impl Subscr {
+    pub const unsafe fn new(f: SubscrFn) -> Self {
+        Self { f }
+    }
+}
+pub enum SubscrOp {
+    Load,
+    Store { src: Obj },
+    Delete,
 }
 
 #[macro_export]
@@ -318,6 +333,29 @@ macro_rules! attr_from_fn {
         }
 
         unsafe { $crate::obj::Attr::new(trampoline) }
+    }};
+}
+
+#[macro_export]
+macro_rules! subscr_from_fn {
+    ($f:expr) => {{
+        extern "C" fn trampoline(self_in: Obj, index: Obj, value: Obj) -> Obj {
+            let Some(index) = index.try_to_int() else {
+                return Obj::NULL;
+            };
+
+            let op = if value.is_null() {
+                SubscrOp::Delete
+            } else if value.is_sentinel() {
+                SubscrOp::Load
+            } else {
+                SubscrOp::Store { src: value }
+            };
+
+            $f(self_in.try_to_obj().unwrap(), index, op)
+        }
+
+        unsafe { $crate::obj::Subscr::new(trampoline) }
     }};
 }
 
@@ -422,6 +460,10 @@ impl ObjFullType {
 
     pub const fn set_attr(self, attr: Attr) -> Self {
         unsafe { self.set_slot_attr(attr.f) }
+    }
+
+    pub const fn set_subscr(self, subscr: Subscr) -> Self {
+        self.set_slot_subscr(subscr.f)
     }
 }
 

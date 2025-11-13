@@ -12,6 +12,7 @@ bitflags = "2.9.2"
 paste = "1.0.15"
 vex-sdk = "0.27.1"
 vexide-devices = { git = "https://github.com/vexide/vexide" }
+rgb = "0.8.52"
 
 [build-dependencies]
 format-bytes = "0.3.0"

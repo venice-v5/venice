@@ -1,9 +1,9 @@
+mod ai_vision;
 mod competition;
 mod controller;
 mod distance_sensor;
 mod motor;
 mod rotation_sensor;
-// mod ai_vision;
 pub mod units;
 
 use micropython_rs::{
@@ -25,6 +25,12 @@ use self::{
 };
 use crate::{
     modvenice::{
+        ai_vision::{
+            AiVisionSensorObj, ai_vision_color::AiVisionColorObj,
+            ai_vision_color_code::AiVisionColorCodeObj,
+            ai_vision_detection_mode::AiVisionDetectionModeObj, ai_vision_flags::AiVisionFlagsObj,
+            ai_vision_object::AiVisionObjectObj,
+        },
         distance_sensor::{DistanceSensorObj, distance_object::DistanceObjectObj},
         motor::motor_type::MotorTypeObj,
     },
@@ -56,6 +62,13 @@ static venice_globals: Dict = const_dict![
     // distance
     qstr!(DistanceObject) => Obj::from_static(DistanceObjectObj::OBJ_TYPE),
     qstr!(DistanceSensor) => Obj::from_static(DistanceSensorObj::OBJ_TYPE),
+    // ai vision sensor
+    qstr!(AiVisionColor) => Obj::from_static(AiVisionColorObj::OBJ_TYPE),
+    qstr!(AiVisionColorCode) => Obj::from_static(AiVisionColorCodeObj::OBJ_TYPE),
+    qstr!(AiVisionDetectionMode) => Obj::from_static(AiVisionDetectionModeObj::OBJ_TYPE),
+    qstr!(AiVisionFlags) => Obj::from_static(AiVisionFlagsObj::OBJ_TYPE),
+    qstr!(AiVisionObject) => Obj::from_static(AiVisionObjectObj::OBJ_TYPE),
+    qstr!(AiVisionSensor) => Obj::from_static(AiVisionSensorObj::OBJ_TYPE),
     // other devices
     qstr!(RotationSensor) => Obj::from_static(RotationSensorObj::OBJ_TYPE),
 
