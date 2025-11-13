@@ -142,3 +142,7 @@ Q(set_apriltag_family)
 Q(object_count)
 Q(objects)
 Q(color_codes)
+
+Q(MotorV5)
+Q(MAX_VOLTAGE)
+Q(MotorExp)
