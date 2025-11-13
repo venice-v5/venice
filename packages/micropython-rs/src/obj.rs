@@ -453,7 +453,7 @@ impl ObjFullType {
     }
 
     pub const fn set_make_new(self, make_new: MakeNew) -> Self {
-         unsafe { self.set_slot_make_new(make_new.f) }
+        unsafe { self.set_slot_make_new(make_new.f) }
     }
 
     pub const fn set_attr(self, attr: Attr) -> Self {

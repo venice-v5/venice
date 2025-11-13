@@ -4,8 +4,6 @@ unsafe extern "C" {
     fn mp_obj_new_list(n: usize, items: *const Obj) -> Obj;
 }
 
-impl Obj {
-    pub fn from_list(items: Vec<Obj>) -> Self {
-        unsafe { mp_obj_new_list(items.len(), items.as_ptr()) }
-    }
+pub fn new_list(items: &[Obj]) -> Obj {
+    unsafe { mp_obj_new_list(items.len(), items.as_ptr()) }
 }

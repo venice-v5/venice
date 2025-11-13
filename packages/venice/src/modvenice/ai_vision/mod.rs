@@ -5,11 +5,7 @@ pub mod ai_vision_flags;
 pub mod ai_vision_object;
 pub mod april_tag_family;
 use micropython_rs::{
-    const_dict,
-    except::raise_value_error,
-    init::token,
-    make_new_from_fn,
-    obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
+    const_dict, except::raise_value_error, init::token, list::new_list, make_new_from_fn, obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags}
 };
 use vexide_devices::smart::ai_vision::AiVisionSensor;
 
@@ -213,7 +209,7 @@ fn ai_vision_sensor_objects(this: &AiVisionSensorObj) -> Obj {
         .into_iter()
         .map(|obj| AiVisionObjectObj::create_obj(obj))
         .collect::<Vec<_>>();
-    Obj::from_list(objects)
+    new_list(&objects[..])
 }
 
 fn ai_vision_sensor_color_codes(this: &AiVisionSensorObj) -> Obj {
@@ -223,11 +219,13 @@ fn ai_vision_sensor_color_codes(this: &AiVisionSensorObj) -> Obj {
             this.color_code(n)
                 .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")))
         })
-        .map(|code| if let Some(code) = code {
-            alloc_obj(AiVisionColorCodeObj::new(code))
-        } else {
-            Obj::NONE
+        .map(|code| {
+            if let Some(code) = code {
+                alloc_obj(AiVisionColorCodeObj::new(code))
+            } else {
+                Obj::NONE
+            }
         })
         .collect::<Vec<_>>();
-    Obj::from_list(codes)
+    new_list(&codes[..])
 }
