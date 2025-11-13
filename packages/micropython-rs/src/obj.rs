@@ -339,8 +339,10 @@ macro_rules! attr_from_fn {
 #[macro_export]
 macro_rules! subscr_from_fn {
     ($f:expr) => {{
-        extern "C" fn trampoline(self_in: Obj, index: Obj, value: Obj) -> Obj    {
-            let Some(index) = index.try_to_int() else { return Obj::NULL };
+        extern "C" fn trampoline(self_in: Obj, index: Obj, value: Obj) -> Obj {
+            let Some(index) = index.try_to_int() else {
+                return Obj::NULL;
+            };
 
             let op = if value.is_null() {
                 SubscrOp::Delete
@@ -461,7 +463,7 @@ impl ObjFullType {
     }
 
     pub const fn set_subscr(self, subscr: Subscr) -> Self {
-         self.set_slot_subscr(subscr.f)
+        self.set_slot_subscr(subscr.f)
     }
 }
 

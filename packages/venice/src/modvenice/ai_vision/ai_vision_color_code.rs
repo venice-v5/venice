@@ -1,15 +1,14 @@
 use std::cell::Cell;
 
 use micropython_rs::{
-    init::token, make_new_from_fn, obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, SubscrOp, TypeFlags}, subscr_from_fn
+    init::token,
+    make_new_from_fn,
+    obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, SubscrOp, TypeFlags},
+    subscr_from_fn,
 };
 use vexide_devices::smart::ai_vision::AiVisionColorCode;
 
-use crate::{
-    args::Args,
-    obj::alloc_obj,
-    qstrgen::qstr,
-};
+use crate::{args::Args, obj::alloc_obj, qstrgen::qstr};
 
 static AI_VISION_COLOR_CODE_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(AiVisionColorCode))
@@ -41,12 +40,17 @@ impl AiVisionColorCodeObj {
         }
         Self {
             base: ObjBase::new(AI_VISION_COLOR_CODE_OBJ_TYPE.as_obj_type()),
-            code: Cell::new(codes)
+            code: Cell::new(codes),
         }
     }
 }
 
-fn ai_vision_color_code_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Obj {
+fn ai_vision_color_code_make_new(
+    ty: &'static ObjType,
+    n_pos: usize,
+    n_kw: usize,
+    args: &[Obj],
+) -> Obj {
     let mut reader = Args::new(n_pos, n_kw, args).reader(token().unwrap());
     reader.assert_npos(1, 7);
     let mut values = [None; 7];
@@ -60,7 +64,7 @@ fn ai_vision_color_code_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize
     }
     alloc_obj(AiVisionColorCodeObj {
         base: ObjBase::new(ty),
-        code: Cell::new(values)
+        code: Cell::new(values),
     })
 }
 
@@ -68,12 +72,24 @@ fn ai_vision_color_code_subscr(this: &AiVisionColorCodeObj, index: i32, op: Subs
     match op {
         SubscrOp::Delete => Obj::NULL,
         SubscrOp::Store { src } => {
-            let value = if let Some(v) = src.try_to_int() { Some(v as u8) } else if src.is_none() { None } else { return Obj::NULL };
+            let value = if let Some(v) = src.try_to_int() {
+                Some(v as u8)
+            } else if src.is_none() {
+                None
+            } else {
+                return Obj::NULL;
+            };
             let mut code = this.code.get();
             code[index as usize] = value;
             this.code.set(code);
             Obj::NONE
-        },
-        SubscrOp::Load => if let Some(v) = this.code.get()[index as usize] { Obj::from_int(v as _) } else { Obj::NONE }
+        }
+        SubscrOp::Load => {
+            if let Some(v) = this.code.get()[index as usize] {
+                Obj::from_int(v as _)
+            } else {
+                Obj::NONE
+            }
+        }
     }
 }

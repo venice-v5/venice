@@ -1,9 +1,9 @@
+mod ai_vision;
 mod competition;
 mod controller;
 mod distance_sensor;
 mod motor;
 mod rotation_sensor;
-mod ai_vision;
 pub mod units;
 
 use micropython_rs::{
@@ -25,7 +25,14 @@ use self::{
 };
 use crate::{
     modvenice::{
-        ai_vision::{AiVisionSensorObj, ai_vision_color::AiVisionColorObj, ai_vision_color_code::AiVisionColorCodeObj, ai_vision_detection_mode::AiVisionDetectionModeObj, ai_vision_flags::AiVisionFlagsObj, ai_vision_object::AiVisionObjectObj}, distance_sensor::{DistanceSensorObj, distance_object::DistanceObjectObj}, motor::motor_type::MotorTypeObj
+        ai_vision::{
+            AiVisionSensorObj, ai_vision_color::AiVisionColorObj,
+            ai_vision_color_code::AiVisionColorCodeObj,
+            ai_vision_detection_mode::AiVisionDetectionModeObj, ai_vision_flags::AiVisionFlagsObj,
+            ai_vision_object::AiVisionObjectObj,
+        },
+        distance_sensor::{DistanceSensorObj, distance_object::DistanceObjectObj},
+        motor::motor_type::MotorTypeObj,
     },
     qstrgen::qstr,
 };

@@ -5,7 +5,12 @@ pub mod ai_vision_flags;
 pub mod ai_vision_object;
 pub mod april_tag_family;
 use micropython_rs::{
-    const_dict, except::raise_value_error, init::token, list::new_list, make_new_from_fn, obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags}
+    const_dict,
+    except::raise_value_error,
+    init::token,
+    list::new_list,
+    make_new_from_fn,
+    obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
 use vexide_devices::smart::ai_vision::AiVisionSensor;
 

@@ -1,14 +1,14 @@
 use micropython_rs::{
-    attr_from_fn, init::token, make_new_from_fn, obj::{AttrOp, Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags}, qstr::Qstr
+    attr_from_fn,
+    init::token,
+    make_new_from_fn,
+    obj::{AttrOp, Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
+    qstr::Qstr,
 };
 use rgb::Rgb;
 use vexide_devices::smart::ai_vision::AiVisionColor;
 
-use crate::{
-    args::Args,
-    obj::alloc_obj,
-    qstrgen::qstr,
-};
+use crate::{args::Args, obj::alloc_obj, qstrgen::qstr};
 
 static AI_VISION_COLOR_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(AiVisionColor))
@@ -63,5 +63,8 @@ fn ai_vision_color_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, arg
         hue_range: reader.next_positional::<f32>(),
         saturation_range: reader.next_positional::<f32>(),
     };
-    alloc_obj(AiVisionColorObj { base: ObjBase::new(ty), color })
+    alloc_obj(AiVisionColorObj {
+        base: ObjBase::new(ty),
+        color,
+    })
 }
