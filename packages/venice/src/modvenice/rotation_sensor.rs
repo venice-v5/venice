@@ -33,7 +33,7 @@ pub static ROTATION_SENSOR_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::e
         qstr!(MIN_DATA_INTERVAL_MS) => Obj::from_int(5),
         qstr!(TICKS_PER_REVOLUTION) => Obj::from_int(36000),
         qstr!(angle) => Obj::from_static(&fun2_from_fn!(rotation_sensor_angle, &RotationSensorObj, &RotationUnitObj)),
-        qstr!(position) => Obj::from_static(&fun1_from_fn!(rotation_sensor_position, &RotationSensorObj)),
+        qstr!(position) => Obj::from_static(&fun2_from_fn!(rotation_sensor_position, &RotationSensorObj, &RotationUnitObj)),
         qstr!(set_position) => Obj::from_static(&fun3_from_fn!(rotation_sensor_set_position, &RotationSensorObj, f32, &RotationUnitObj)),
         qstr!(velocity) => Obj::from_static(&fun1_from_fn!(rotation_sensor_velocity, &RotationSensorObj)),
         qstr!(reset_position) => Obj::from_static(&fun1_from_fn!(rotation_sensor_reset_position,&RotationSensorObj)),
@@ -77,13 +77,13 @@ fn rotation_sensor_angle(this: &RotationSensorObj, unit: &RotationUnitObj) -> Ob
     Obj::from_float(unit.unit().in_angle(angle))
 }
 
-fn rotation_sensor_position(this: &RotationSensorObj) -> Obj {
+fn rotation_sensor_position(this: &RotationSensorObj, unit: &RotationUnitObj) -> Obj {
     let position = this
         .guard
         .borrow_mut()
         .position()
         .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
-    Obj::from_float(position.as_radians() as f32)
+    Obj::from_float(unit.unit().in_angle(position))
 }
 
 fn rotation_sensor_set_position(
