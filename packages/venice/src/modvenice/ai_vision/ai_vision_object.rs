@@ -1,5 +1,11 @@
 use micropython_rs::{
-    attr_from_fn, const_dict, except::raise_not_implemented_error, init::token, make_new_from_fn, map::Dict, obj::{AttrOp, Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags}, qstr::Qstr
+    attr_from_fn, const_dict,
+    except::raise_not_implemented_error,
+    init::token,
+    make_new_from_fn,
+    map::Dict,
+    obj::{AttrOp, Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
+    qstr::Qstr,
 };
 use vexide_devices::smart::ai_vision::AiVisionObject;
 
@@ -12,7 +18,8 @@ const AI_VISION_OBJECT_LOCAL_DICT: Dict = const_dict![
 ];
 
 static AI_VISION_OBJECT_OBJ_TYPE: ObjFullType =
-    ObjFullType::new(TypeFlags::empty(), qstr!(AiVisionObject)).set_make_new(make_new_from_fn!(ai_vision_object_make_new));
+    ObjFullType::new(TypeFlags::empty(), qstr!(AiVisionObject))
+        .set_make_new(make_new_from_fn!(ai_vision_object_make_new));
 
 pub(crate) static AI_VISION_COLOR_OBJECT_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(AiVisionColorObject))

@@ -34,7 +34,6 @@ use crate::{
             ai_vision_object::{
                 AI_VISION_APRIL_TAG_OBJECT_OBJ_TYPE, AI_VISION_CODE_OBJECT_OBJ_TYPE,
                 AI_VISION_COLOR_OBJECT_OBJ_TYPE, AI_VISION_MODEL_OBJECT_OBJ_TYPE,
-                AiVisionObjectObj,
             },
         },
         distance_sensor::{DistanceSensorObj, distance_object::DistanceObjectObj},
@@ -55,6 +54,7 @@ static venice_globals: Dict = const_dict![
     qstr!(__name__) => Obj::from_qstr(qstr!(__name__)),
 
     // motor
+    qstr!(AbstractMotor) => Obj::from_static(MotorObj::OBJ_TYPE),
     qstr!(MotorV5) => Obj::from_static(&MOTOR_V5_OBJ_TYPE),
     qstr!(MotorExp) => Obj::from_static(&MOTOR_EXP_OBJ_TYPE),
     qstr!(Gearset) => Obj::from_static(GearsetObj::OBJ_TYPE),
