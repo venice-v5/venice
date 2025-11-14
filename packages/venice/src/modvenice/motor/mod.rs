@@ -33,7 +33,6 @@ pub struct MotorObj {
 }
 
 pub(crate) static ABSTRACT_MOTOR_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(AbstractMotor))
-    .set_make_new(make_new_from_fn!(motor_make_new))
     .set_slot_locals_dict_from_static(&const_dict![
         qstr!(WRITE_INTERVAL_MS) => Obj::from_int(5),
 
@@ -112,6 +111,10 @@ fn motor_v5_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Ob
     })
     .unwrap_or_else(|_| panic!("port is already in use"));
 
+    if guard.borrow().is_exp() {
+        raise_device_error(token, "Invalid motor type, expected V5, found Exp")
+    }
+
     alloc_obj(MotorObj {
         base: ObjBase::new(ty),
         guard,
@@ -130,6 +133,10 @@ fn motor_exp_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[O
 
     let guard = devices::try_lock_port(port, |port| Motor::new_exp(port, direction.direction()))
         .unwrap_or_else(|_| panic!("port is already in use"));
+
+    if guard.borrow().is_v5() {
+        raise_device_error(token, "Invalid motor type, expected Exp, found V5")
+    }
 
     alloc_obj(MotorObj {
         base: ObjBase::new(ty),
