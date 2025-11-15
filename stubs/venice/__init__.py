@@ -16,7 +16,7 @@ vasyncio.run(main())
 ```
 """
 
-from typing import ClassVar
+from typing import ClassVar, Literal
 
 
 class RotationUnit:
@@ -550,7 +550,7 @@ class AbstractMotor:
 class V5Motor(AbstractMotor):
     """Represents an 11W (V5) Smart Motor. See `AbstractMotor`."""
 
-    MAX_VOLTAGE: float = 12.0
+    MAX_VOLTAGE: Literal[12] = 12
     """The maximum voltage value that can be sent to a `V5Motor`."""
 
     def __init__(self, port: int, direction: Direction, gearset: Gearset):
@@ -594,7 +594,7 @@ class V5Motor(AbstractMotor):
 class ExpMotor(AbstractMotor):
     """Represents an 5.5W (EXP) Smart Motor. See `AbstractMotor`."""
 
-    def __init__(self):
+    def __init__(self, port: int, direction: Direction):
         """Creates a new 5.5W (EXP) Smart Motor.
 
         See `V5Motor.__init__` to create a 11W (V5) Smart Motor.
@@ -606,5 +606,13 @@ class ExpMotor(AbstractMotor):
         """
         ...
 
-    MAX_VOLTAGE: float = 8.0
+    MAX_VOLTAGE: Literal[8] = 8
     """The maximum voltage value that can be sent to a `ExpMotor`."""
+
+
+# TODOs:
+# * controller
+# * vasyncio
+# * competition runtime
+# * distance sensor
+# * ai vision
