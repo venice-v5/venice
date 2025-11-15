@@ -8,7 +8,7 @@ use direction::DirectionObj;
 use gearset::GearsetObj;
 use micropython_rs::{
     const_dict,
-    except::raise_value_error,
+    except::{raise_not_implemented_error, raise_value_error},
     init::token,
     make_new_from_fn,
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
@@ -32,18 +32,13 @@ pub struct MotorObj {
     guard: RegistryGuard<'static, Motor>,
 }
 
-static MOTOR_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(Motor))
-    .set_make_new(make_new_from_fn!(motor_make_new))
+pub(crate) static ABSTRACT_MOTOR_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(AbstractMotor))
     .set_slot_locals_dict_from_static(&const_dict![
         qstr!(WRITE_INTERVAL_MS) => Obj::from_int(5),
-        qstr!(EXP_MAX_VOLTAGE) => Obj::from_float(8.0),
-        qstr!(V5_MAX_VOLTAGE) => Obj::from_float(12.0),
 
         qstr!(set_voltage) => Obj::from_static(&fun2_from_fn!(motor_set_voltage,&MotorObj, f32)),
         qstr!(set_velocity) => Obj::from_static(&fun2_from_fn!(motor_set_velocity,&MotorObj, i32)),
         qstr!(brake) => Obj::from_static(&fun2_from_fn!(motor_brake,&MotorObj, &BrakeModeObj)),
-        qstr!(set_gearset) => Obj::from_static(&fun2_from_fn!(motor_set_gearset,&MotorObj, &GearsetObj)),
-        qstr!(gearset) => Obj::from_static(&fun1_from_fn!(motor_gearset,&MotorObj)),
         qstr!(set_position_target) => Obj::from_static(&fun_var_from_fn!(motor_set_position_target)),
         qstr!(is_exp) => Obj::from_static(&fun1_from_fn!(motor_is_exp, &MotorObj)),
         qstr!(is_v5) => Obj::from_static(&fun1_from_fn!(motor_is_v5, &MotorObj)),
@@ -75,35 +70,69 @@ static MOTOR_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(
         qstr!(direction) => Obj::from_static(&fun1_from_fn!(motor_direction, &MotorObj)),
     ]);
 
+pub(crate) static MOTOR_V5_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(MotorV5))
+    .set_make_new(make_new_from_fn!(motor_v5_make_new))
+    .set_slot_parent(ABSTRACT_MOTOR_OBJ_TYPE.as_obj_type())
+    .set_slot_locals_dict_from_static(&const_dict![
+        qstr!(MAX_VOLTAGE) => Obj::from_float(12.0),
+        qstr!(set_gearset) => Obj::from_static(&fun2_from_fn!(motor_set_gearset,&MotorObj, &GearsetObj)),
+        qstr!(gearset) => Obj::from_static(&fun1_from_fn!(motor_gearset,&MotorObj)),
+    ]);
+
+pub(crate) static MOTOR_EXP_OBJ_TYPE: ObjFullType =
+    ObjFullType::new(TypeFlags::empty(), qstr!(MotorExp))
+        .set_make_new(make_new_from_fn!(motor_exp_make_new))
+        .set_slot_locals_dict_from_static(&const_dict![
+            qstr!(MAX_VOLTAGE) => Obj::from_float(8.0),
+        ]);
+
 unsafe impl ObjTrait for MotorObj {
-    const OBJ_TYPE: &micropython_rs::obj::ObjType = MOTOR_OBJ_TYPE.as_obj_type();
+    const OBJ_TYPE: &micropython_rs::obj::ObjType = ABSTRACT_MOTOR_OBJ_TYPE.as_obj_type();
 }
 
-fn motor_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Obj {
+fn motor_v5_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Obj {
     let token = token().unwrap();
     let mut reader = Args::new(n_pos, n_kw, args).reader(token);
-    // pos: port, direction, gearset (optional dependent on exp)
-    // kw: exp
-    reader.assert_npos(2, 3).assert_nkw(0, 1);
+    reader.assert_npos(3, 3);
 
     let port = PortNumber::from_i32(reader.next_positional())
         .unwrap_or_else(|_| raise_value_error(token, "port number must be between 1 and 21"));
 
-    let direction = reader
-        .next_positional_or(&DirectionObj::FORWARD)
-        .direction();
+    let direction: &DirectionObj = reader.next_positional();
 
-    let exp = reader.get_kw_or(b"exp", false);
+    let gearset: &GearsetObj = reader.next_positional();
 
     let guard = devices::try_lock_port(port, |port| {
-        if exp {
-            Motor::new_exp(port, direction)
-        } else {
-            let gearset = reader.next_positional::<&GearsetObj>().gearset();
-            Motor::new(port, gearset, direction)
-        }
+        Motor::new(port, gearset.gearset(), direction.direction())
     })
     .unwrap_or_else(|_| panic!("port is already in use"));
+
+    if guard.borrow().is_exp() {
+        raise_device_error(token, "Invalid motor type, expected V5, found Exp")
+    }
+
+    alloc_obj(MotorObj {
+        base: ObjBase::new(ty),
+        guard,
+    })
+}
+
+fn motor_exp_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Obj {
+    let token = token().unwrap();
+    let mut reader = Args::new(n_pos, n_kw, args).reader(token);
+    reader.assert_npos(2, 2);
+
+    let port = PortNumber::from_i32(reader.next_positional())
+        .unwrap_or_else(|_| raise_value_error(token, "port number must be between 1 and 21"));
+
+    let direction: &DirectionObj = reader.next_positional();
+
+    let guard = devices::try_lock_port(port, |port| Motor::new_exp(port, direction.direction()))
+        .unwrap_or_else(|_| panic!("port is already in use"));
+
+    if guard.borrow().is_v5() {
+        raise_device_error(token, "Invalid motor type, expected Exp, found V5")
+    }
 
     alloc_obj(MotorObj {
         base: ObjBase::new(ty),

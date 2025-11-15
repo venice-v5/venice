@@ -1,5 +1,8 @@
 use micropython_rs::{
     attr_from_fn, const_dict,
+    except::raise_not_implemented_error,
+    init::token,
+    make_new_from_fn,
     map::Dict,
     obj::{AttrOp, Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
     qstr::Qstr,
@@ -15,27 +18,28 @@ const AI_VISION_OBJECT_LOCAL_DICT: Dict = const_dict![
 ];
 
 static AI_VISION_OBJECT_OBJ_TYPE: ObjFullType =
-    ObjFullType::new(TypeFlags::empty(), qstr!(AiVisionObject));
+    ObjFullType::new(TypeFlags::empty(), qstr!(AiVisionObject))
+        .set_make_new(make_new_from_fn!(ai_vision_object_make_new));
 
-static AI_VISION_COLOR_OBJECT_OBJ_TYPE: ObjFullType =
+pub(crate) static AI_VISION_COLOR_OBJECT_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(AiVisionColorObject))
         .set_slot_parent(AI_VISION_OBJECT_OBJ_TYPE.as_obj_type())
         .set_slot_locals_dict_from_static(&AI_VISION_OBJECT_LOCAL_DICT)
         .set_attr(attr_from_fn!(ai_vision_object_state_attr));
 
-static AI_VISION_CODE_OBJECT_OBJ_TYPE: ObjFullType =
+pub(crate) static AI_VISION_CODE_OBJECT_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(AiVisionCodeObject))
         .set_slot_parent(AI_VISION_OBJECT_OBJ_TYPE.as_obj_type())
         .set_slot_locals_dict_from_static(&AI_VISION_OBJECT_LOCAL_DICT)
         .set_attr(attr_from_fn!(ai_vision_object_state_attr));
 
-static AI_VISION_APRIL_TAG_OBJECT_OBJ_TYPE: ObjFullType =
+pub(crate) static AI_VISION_APRIL_TAG_OBJECT_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(AiVisionAprilTagObject))
         .set_slot_parent(AI_VISION_OBJECT_OBJ_TYPE.as_obj_type())
         .set_slot_locals_dict_from_static(&AI_VISION_OBJECT_LOCAL_DICT)
         .set_attr(attr_from_fn!(ai_vision_object_state_attr));
 
-static AI_VISION_MODEL_OBJECT_OBJ_TYPE: ObjFullType =
+pub(crate) static AI_VISION_MODEL_OBJECT_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(AiVisionModelObject))
         .set_slot_parent(AI_VISION_OBJECT_OBJ_TYPE.as_obj_type())
         .set_slot_locals_dict_from_static(&AI_VISION_OBJECT_LOCAL_DICT)
@@ -62,6 +66,10 @@ impl AiVisionObjectObj {
             object,
         })
     }
+}
+
+fn ai_vision_object_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Obj {
+    raise_not_implemented_error(token().unwrap(), "inaccessible initializer")
 }
 
 fn ai_vision_object_state_attr(this: &AiVisionObjectObj, attr: Qstr, op: AttrOp) {

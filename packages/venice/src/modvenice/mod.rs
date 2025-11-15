@@ -26,13 +26,18 @@ use self::{
 use crate::{
     modvenice::{
         ai_vision::{
-            AiVisionSensorObj, ai_vision_color::AiVisionColorObj,
+            AiVisionSensorObj,
+            ai_vision_color::AiVisionColorObj,
             ai_vision_color_code::AiVisionColorCodeObj,
-            ai_vision_detection_mode::AiVisionDetectionModeObj, ai_vision_flags::AiVisionFlagsObj,
-            ai_vision_object::AiVisionObjectObj,
+            ai_vision_detection_mode::AiVisionDetectionModeObj,
+            ai_vision_flags::AiVisionFlagsObj,
+            ai_vision_object::{
+                AI_VISION_APRIL_TAG_OBJECT_OBJ_TYPE, AI_VISION_CODE_OBJECT_OBJ_TYPE,
+                AI_VISION_COLOR_OBJECT_OBJ_TYPE, AI_VISION_MODEL_OBJECT_OBJ_TYPE,
+            },
         },
         distance_sensor::{DistanceSensorObj, distance_object::DistanceObjectObj},
-        motor::motor_type::MotorTypeObj,
+        motor::{MOTOR_EXP_OBJ_TYPE, MOTOR_V5_OBJ_TYPE, motor_type::MotorTypeObj},
     },
     qstrgen::qstr,
 };
@@ -49,7 +54,9 @@ static venice_globals: Dict = const_dict![
     qstr!(__name__) => Obj::from_qstr(qstr!(__name__)),
 
     // motor
-    qstr!(Motor) => Obj::from_static(MotorObj::OBJ_TYPE),
+    qstr!(AbstractMotor) => Obj::from_static(MotorObj::OBJ_TYPE),
+    qstr!(MotorV5) => Obj::from_static(&MOTOR_V5_OBJ_TYPE),
+    qstr!(MotorExp) => Obj::from_static(&MOTOR_EXP_OBJ_TYPE),
     qstr!(Gearset) => Obj::from_static(GearsetObj::OBJ_TYPE),
     qstr!(BrakeMode) => Obj::from_static(BrakeModeObj::OBJ_TYPE),
     qstr!(Direction) => Obj::from_static(DirectionObj::OBJ_TYPE),
@@ -67,8 +74,11 @@ static venice_globals: Dict = const_dict![
     qstr!(AiVisionColorCode) => Obj::from_static(AiVisionColorCodeObj::OBJ_TYPE),
     qstr!(AiVisionDetectionMode) => Obj::from_static(AiVisionDetectionModeObj::OBJ_TYPE),
     qstr!(AiVisionFlags) => Obj::from_static(AiVisionFlagsObj::OBJ_TYPE),
-    qstr!(AiVisionObject) => Obj::from_static(AiVisionObjectObj::OBJ_TYPE),
     qstr!(AiVisionSensor) => Obj::from_static(AiVisionSensorObj::OBJ_TYPE),
+    qstr!(AiVisionColorObject) => Obj::from_static(&AI_VISION_COLOR_OBJECT_OBJ_TYPE),
+    qstr!(AiVisionCodeObject) => Obj::from_static(&AI_VISION_CODE_OBJECT_OBJ_TYPE),
+    qstr!(AiVisionAprilTagObject) => Obj::from_static(&AI_VISION_APRIL_TAG_OBJECT_OBJ_TYPE),
+    qstr!(AiVisionModelObject) => Obj::from_static(&AI_VISION_MODEL_OBJECT_OBJ_TYPE),
     // other devices
     qstr!(RotationSensor) => Obj::from_static(RotationSensorObj::OBJ_TYPE),
 
