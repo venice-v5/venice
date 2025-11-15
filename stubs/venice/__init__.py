@@ -8,39 +8,44 @@ import venice.vasyncio
 async def main():
     my_motor = Motor(
         1,
-	Direction.FORWARD,
-	Gearset.GREEN
+        Direction.FORWARD,
+        Gearset.GREEN
     )
     my_motor.set_voltage(10.0)
 vasyncio.run(main())
 ```
 """
+
 from typing import ClassVar
+
 
 class RotationUnit:
     """Represents a unit of rotation for angles."""
 
-    RADIANS: ClassVar['RotationUnit']
+    RADIANS: ClassVar["RotationUnit"]
     """The rotation unit representing radians."""
 
-    DEGREES: ClassVar['RotationUnit']
+    DEGREES: ClassVar["RotationUnit"]
     """The rotation unit representing degrees."""
 
-    TURNS: ClassVar['RotationUnit']
+    TURNS: ClassVar["RotationUnit"]
     """The rotation unit representing turns (revolutions)."""
+
 
 RotationUnit.RADIANS = RotationUnit()
 RotationUnit.DEGREES = RotationUnit()
 RotationUnit.TURNS = RotationUnit()
 
+
 class TimeUnit:
     """Represents a unit of time."""
 
-    MILLIS: ClassVar['TimeUnit']
+    MILLIS: ClassVar["TimeUnit"]
     """The time unit representing milliseconds."""
 
-    SECONDS: ClassVar['TimeUnit']
+    SECONDS: ClassVar["TimeUnit"]
     """The time unit representing seconds."""
+
 
 TimeUnit.MILLIS = TimeUnit()
 TimeUnit.SECONDS = TimeUnit()
@@ -49,57 +54,64 @@ TimeUnit.SECONDS = TimeUnit()
 class Direction:
     """A rotational direction."""
 
-    FORWARD: ClassVar['Direction']
+    FORWARD: ClassVar["Direction"]
     """Rotates in the forward direction."""
 
-    REVERSE: ClassVar['Direction']
+    REVERSE: ClassVar["Direction"]
     """Rotates in the reverse direction."""
+
 
 Direction.FORWARD = Direction()
 Direction.REVERSE = Direction()
 
+
 class Gearset:
     """Internal gearset used by VEX Smart motors."""
 
-    RED: ClassVar['Gearset']
+    RED: ClassVar["Gearset"]
     """36:1 gear ratio"""
 
-    GREEN: ClassVar['Gearset']
+    GREEN: ClassVar["Gearset"]
     """18:1 gear ratio"""
 
-    BLUE: ClassVar['Gearset']
+    BLUE: ClassVar["Gearset"]
     """6:1 gear ratio"""
+
 
 Gearset.RED = Gearset()
 Gearset.GREEN = Gearset()
 Gearset.BLUE = Gearset()
 
+
 class BrakeMode:
     """Determines the behavior a motor should use when braking with `AbstractMotor.brake`."""
 
-    COAST: ClassVar['BrakeMode']
+    COAST: ClassVar["BrakeMode"]
     """Motor never brakes."""
 
-    BRAKE: ClassVar['BrakeMode']
+    BRAKE: ClassVar["BrakeMode"]
     """Motor uses regenerative braking to slow down faster."""
 
-    HOLD: ClassVar['BrakeMode']
+    HOLD: ClassVar["BrakeMode"]
     """Motor exerts force holding itself in the same position."""
+
 
 BrakeMode.COAST = BrakeMode()
 BrakeMode.BRAKE = BrakeMode()
 BrakeMode.HOLD = BrakeMode()
+
 
 class MotorType:
     """Represents the type of a Smart motor.
 
     Either a 11W (V5) or 5.5W (EXP) motor."""
 
-    EXP: ClassVar['MotorType']
+    EXP: ClassVar["MotorType"]
     """A 5.5W Smart Motor"""
 
-    V5: ClassVar['MotorType']
+    V5: ClassVar["MotorType"]
     """An 11W Smart Motor"""
+
 
 class RotationSensor:
     """A rotation sensor plugged into a Smart Port.
@@ -288,8 +300,7 @@ class AbstractMotor:
     """The interval at which the Brain will send new packets to an `AbstractMotor`."""
 
     def set_voltage(self, voltage: float):
-        """
-        Sets the motor's output voltage.
+        """Sets the motor's output voltage.
 
         This voltage value spans from -12 (fully spinning reverse) to +12 (fully spinning forwards)
         volts, and controls the raw output of the motor.
@@ -301,8 +312,7 @@ class AbstractMotor:
         ...
 
     def set_velocity(self, rpm: int):
-        """
-        Spins the motor at a target velocity.
+        """Spins the motor at a target velocity.
 
         This velocity corresponds to different actual speeds in RPM depending on the gearset used
         for the motor. Velocity is held with an internal PID controller to ensure consistent
@@ -318,7 +328,9 @@ class AbstractMotor:
         """Sets the motor's target to a given `BrakeMode`."""
         ...
 
-    def set_position_target(self, position: float, position_unit: RotationUnit, velocity: int):
+    def set_position_target(
+        self, position: float, position_unit: RotationUnit, velocity: int
+    ):
         """Sets an absolute position target for the motor to attempt to reach using its internal
         PID control.
 
@@ -345,8 +357,7 @@ class AbstractMotor:
         ...
 
     def velocity(self) -> float:
-        """
-        Returns the motor's estimate of its angular velocity in rotations per minute (RPM).
+        """Returns the motor's estimate of its angular velocity in rotations per minute (RPM).
 
         # Accuracy
 
@@ -378,8 +389,7 @@ class AbstractMotor:
         ...
 
     def raw_position(self) -> int:
-        """
-        Returns the most recently recorded raw encoder tick data from the motor's IME.
+        """Returns the most recently recorded raw encoder tick data from the motor's IME.
 
         The motor's integrated encoder has a TPR of 4096. Gearset is not taken into consideration
         when dealing with the raw value, meaning this measurement will be taken relative to the
@@ -453,9 +463,7 @@ class AbstractMotor:
         ...
 
     def is_over_temperature(self) -> bool:
-        """
-        Returns `True` if the motor's over temperature flag is set.
-        """
+        """Returns `True` if the motor's over temperature flag is set."""
         ...
 
     def is_over_current(self):
@@ -516,8 +524,7 @@ class AbstractMotor:
         ...
 
     def set_direction(self, direction: Direction):
-        """
-        Sets the motor to operate in a given `Direction`.
+        """Sets the motor to operate in a given `Direction`.
 
         This determines which way the motor considers to be “forwards”. You can use the marking on
         the back of the motor as a reference:
@@ -539,11 +546,25 @@ class AbstractMotor:
         """Returns the `Direction` of this motor."""
         ...
 
+
 class V5Motor(AbstractMotor):
     """Represents an 11W (V5) Smart Motor. See `AbstractMotor`."""
 
     MAX_VOLTAGE: float = 12.0
     """The maximum voltage value that can be sent to a `V5Motor`."""
+
+    def __init__(self, port: int, direction: Direction, gearset: Gearset):
+        """Creates a new 11W (V5) Smart Motor.
+
+        See `ExpMotor.__init__` to create a 5.5W (EXP) Smart Motor.
+
+        Args:
+
+        - port: The smart port to initialize the motor on.
+        - direction: The direction to set the motor to.
+        - gearset: The gearset to set the motor to.
+        """
+        ...
 
     def set_gearset(self, gearset: Gearset):
         """Sets the gearset of an 11W motor.
@@ -572,6 +593,18 @@ class V5Motor(AbstractMotor):
 
 class ExpMotor(AbstractMotor):
     """Represents an 5.5W (EXP) Smart Motor. See `AbstractMotor`."""
+
+    def __init__(self):
+        """Creates a new 5.5W (EXP) Smart Motor.
+
+        See `V5Motor.__init__` to create a 11W (V5) Smart Motor.
+
+        Args:
+
+        - port: The smart port to initialize the motor on.
+        - direction: The direction to set the motor to.
+        """
+        ...
 
     MAX_VOLTAGE: float = 8.0
     """The maximum voltage value that can be sent to a `ExpMotor`."""

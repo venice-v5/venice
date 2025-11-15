@@ -90,10 +90,6 @@ unsafe impl ObjTrait for MotorObj {
     const OBJ_TYPE: &micropython_rs::obj::ObjType = ABSTRACT_MOTOR_OBJ_TYPE.as_obj_type();
 }
 
-fn motor_make_new(_ty: &'static ObjType, _n_pos: usize, _n_kw: usize, _args: &[Obj]) -> Obj {
-    raise_not_implemented_error(token().unwrap(), "inaccessible initializer")
-}
-
 fn motor_v5_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Obj {
     let token = token().unwrap();
     let mut reader = Args::new(n_pos, n_kw, args).reader(token);
