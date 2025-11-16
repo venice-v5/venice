@@ -16,7 +16,7 @@ vasyncio.run(main())
 ```
 """
 
-from typing import ClassVar, Literal
+from typing import ClassVar, Literal, Union
 
 
 class RotationUnit:
@@ -610,9 +610,83 @@ class ExpMotor(AbstractMotor):
     """The maximum voltage value that can be sent to a `ExpMotor`."""
 
 
+class DistanceObject:
+    """Readings from a physical object detected by a Distance Sensor."""
+
+    distance: int
+    "The distance of the object from the sensor (in millimeters)."
+
+    confidence: float
+    """The confidence in the distance measurement from 0.0 to 1.0."""
+
+    velocity: float
+    """Observed velocity of the object in m/s."""
+
+    relative_size: int
+    """A guess at the object's "relative size".
+
+    This is a value that has a range of 0 to 400. A 18" x 30" grey card will return a value of
+    approximately 75 in typical room lighting. If the sensor is not able to detect an object,
+    None is returned.
+
+    This sensor reading is unusual, as it is entirely unitless with the seemingly arbitrary
+    range of 0-400 existing due to VEXCode's
+    [`vex::sizeType`](https://api.vex.com/v5/home/python/Enums.html#object-size-types) enum
+    having four variants. It's unknown what the sensor is *actually* measuring here either,
+    so use this data with a grain of salt."""
+
+
+class DistanceSensor:
+    """A distance sensor plugged into a Smart Port.
+
+    The VEX V5 Distance Sensor uses a
+    Class 1 laser to measure the distance, object size classification, and relative velocity of a
+    single object.
+
+    # Hardware Overview
+
+    The sensor uses a narrow-beam Class 1 laser (similar to phone proximity sensors) for precise
+    detection. It measures distances from 20mm to 2000mm with varying accuracy (±15mm below 200mm,
+    ±5% above 200mm).
+
+    The sensor can classify detected objects by relative size, helping distinguish between walls and
+    field elements. It also measures the relative approach velocity between the sensor and target.
+
+    Due to the use of a laser, measurements are single-point and highly directional, meaning that
+    objects will only be detected when they are directly in front of the sensor's field of view.
+
+    Like all other Smart devices, VEXos will process sensor updates every 10mS.
+    """
+
+    def __init__(self, port: int):
+        """Creates a new distance sensor given the port.
+
+        Args:
+
+        - port: The port number of the sensor.
+        """
+        ...
+
+    def object(self) -> Union[DistanceObject, None]:
+        """Attempts to detect an object, returning `None` if no object could be found."""
+        ...
+
+    def status(self) -> int:
+        """Returns the internal status code of the distance sensor.
+
+        The status code of the signature can tell you if the sensor is still initializing or if it
+        is working correctly.
+
+        - If the distance sensor is still initializing, the status code will be 0x00.
+        - If it is done initializing and functioning correctly, the status code will be 0x82 or
+          0x86.
+        """
+        ...
+
+
+
 # TODOs:
 # * controller
 # * vasyncio
 # * competition runtime
-# * distance sensor
 # * ai vision
