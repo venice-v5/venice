@@ -16,7 +16,9 @@ vasyncio.run(main())
 ```
 """
 
-from typing import ClassVar, Literal, Union
+from __future__ import annotations
+
+from typing import ClassVar, List, Literal, Union
 
 
 class RotationUnit:
@@ -684,9 +686,489 @@ class DistanceSensor:
         ...
 
 
+class AiVisionColor:
+    """A color signature used by an AI Vision Sensor to detect color blobs."""
+
+    r: int
+    """The red component of the RGB color value."""
+
+    g: int
+    """The green component of the RGB color value."""
+
+    b: int
+    """The blue component of the RGB color value."""
+
+    hue_range: float
+    """The accepted hue range of the color. VEXcode limits this value to [0, 20]"""
+
+    saturation_range: float
+    """The accepted saturation range of the color."""
+
+    def __init__(
+        self, r: int, g: int, b: int, hue_range: float, saturation_range: float
+    ):
+        """Creates a new `AiVisionColor` from the provided args.
+
+        Args:
+
+        - r: The red component of the RGB color value.
+        - g: The green component of the RGB color value.
+        - b: The blue component of the RGB color value.
+        - hue_range: The accepted hue range of the color.
+        - saturation_range: The accepted saturation range of the color.
+        """
+        ...
+
+
+class AiVisionColorCode:
+    """A color code used by an AI Vision Sensor to detect groups of color blobs.
+
+    Color codes are effectively "groups" of color signatures. A color code associated multiple color
+    signatures on the sensor will be detected as a single object when all signatures are seen next
+    to each other.
+
+    Color codes can associate up to 7 color signatures and detections will be returned as
+    `AiVisionObject.Code` variants.
+    """
+
+    def __init__(
+        self,
+        first: Union[int, None],
+        second: Union[int, None],
+        third: Union[int, None],
+        fourth: Union[int, None],
+        fifth: Union[int, None],
+        sixth: Union[int, None],
+        seventh: Union[int, None],
+    ):
+        """Creates a new `AiVisionColorCode` from the provided args.
+
+        Args:
+
+        - first: the first color signature id.
+        - second: the second color signature id.
+        - third: the third color signature id.
+        - fourth: the fourth color signature id.
+        - fifth: the fifth color signature id.
+        - sixth: the sixth color signature id.
+        - seventh: the seventh color signature id.
+        """
+        ...
+
+    # we annotate the docstring as @public because pdoc otherqise doesn't
+    # document slot items
+    def __getitem__(self, item: int):
+        """@public Returns the color signature id at the given index.
+
+        Note that this does NOT support setting. For example, the following code works:
+        ```python
+        color_code_ids = [1, 2, 3, 4, 5, 6, 7]
+        my_color_code = AiVisionColorCode(*color_code_ids)
+        print(my_color_code[2]) # prints 3
+        ```
+        But this code doesn't:
+        ```python
+        color_code_ids = [1, 2, 3, 4, 5, 6, 7]
+        my_color_code = AiVisionColorCode(*color_code_ids)
+        my_color_code[6] = 9 # fails
+        ```
+        """
+        ...
+
+
+class AiVisionDetectionMode:
+    """Flags relating to the sensor's detection mode."""
+
+    APRILTAG: ClassVar["AiVisionDetectionMode"]
+    """Enable apriltag detection"""
+
+    COLOR: ClassVar["AiVisionDetectionMode"]
+    """Enable color detection"""
+
+    MODEL: ClassVar["AiVisionDetectionMode"]
+    """Enable model detection"""
+
+    COLOR_MERGE: ClassVar["AiVisionDetectionMode"]
+    """Merge color blobs?"""
+
+    def __or__(self, value) -> AiVisionDetectionMode:
+        """@public Bitwise OR is applied to the internal bitflags, "merging" the modes. The result is returned
+
+        ```python
+        sensor = AiVisionSensor(7)
+        # enable apriltag and color detection
+        sensor.set_detection_mode(AiVisionDetectionMode.APRILTAG | AiVisionDetectionMode.COLOR)
+        ```
+        """
+        ...
+
+    def __ior__(self, value):
+        """@public Bitwise OR is applied to the internal bitflags, "merging" the modes. `self` is set to the result.
+
+        ```python
+        sensor = AiVisionSensor(7)
+        # enable apriltag and color detection
+        mode = AiVisionDetectionMode.APRILTAG
+        mode |= AiVisionDetectionMode.COLOR
+        sensor.set_detection_mode(mode)
+        ```
+        """
+        ...
+
+
+AiVisionDetectionMode.APRILTAG = AiVisionDetectionMode()
+AiVisionDetectionMode.COLOR = AiVisionDetectionMode()
+AiVisionDetectionMode.MODEL = AiVisionDetectionMode()
+AiVisionDetectionMode.COLOR_MERGE = AiVisionDetectionMode()
+
+
+class AiVisionFlags:
+    """Represents the mode of the AI Vision sensor."""
+
+    DISABLE_APRILTAG: ClassVar["AiVisionFlags"]
+    """Disable apriltag detection"""
+
+    DISABLE_COLOR: ClassVar["AiVisionFlags"]
+    """Disable color detection"""
+
+    DISABLE_MODEL: ClassVar["AiVisionFlags"]
+    """Disable model detection"""
+
+    COLOR_MERGE: ClassVar["AiVisionFlags"]
+    """Merge color blobs?"""
+
+    DISABLE_STATUS_OVERLAY: ClassVar["AiVisionFlags"]
+    """Disable status overlay"""
+
+    DISABLE_USB_OVERLAY: ClassVar["AiVisionFlags"]
+    """Disable USB overlay"""
+
+    def __or__(self, value) -> AiVisionDetectionMode:
+        """@public Bitwise OR is applied to the internal bitflags, "merging" the modes. The result is returned
+
+        ```python
+        sensor = AiVisionSensor(7)
+        # disable status and usb overlays
+        sensor.set_flags(AiVisionFlags.DISABLE_STATUS_OVERLAY | AiVisionFlags.DISABLE_USB_OVERLAY)
+        ```
+        """
+        ...
+
+    def __ior__(self, value):
+        """@public Bitwise OR is applied to the internal bitflags, "merging" the modes. `self` is set to the result.
+
+        ```python
+        sensor = AiVisionSensor(7)
+        # disable status and usb overlays
+        mode = AiVisionFlags.DISABLE_STATUS_OVERLAY
+        mode |= AiVisionFlags.DISABLE_USB_OVERLAY
+        sensor.set_flags(mode)
+        ```
+        """
+        ...
+
+
+AiVisionFlags.DISABLE_APRILTAG = AiVisionFlags()
+AiVisionFlags.DISABLE_COLOR = AiVisionFlags()
+AiVisionFlags.DISABLE_MODEL = AiVisionFlags()
+AiVisionFlags.COLOR_MERGE = AiVisionFlags()
+AiVisionFlags.DISABLE_STATUS_OVERLAY = AiVisionFlags()
+AiVisionFlags.DISABLE_USB_OVERLAY = AiVisionFlags()
+
+
+class AiVisionColorObject:
+    """The data associated with an AI Vision object detected by color blob detection."""
+
+    id: int
+    """ID of the signature used to detect this object."""
+
+    position_x: int
+    """The x component of the top-left corner of the object."""
+
+    position_y: int
+    """The y component of the top-left corner of the object."""
+
+    width: int
+    """The width of the object."""
+
+    height: int
+    """The height of the object."""
+
+
+class AiVisionCodeObject:
+    """The data associated with an AI Vision object detected by color code detection."""
+
+    id: int
+    """ID of the code used to detect this object."""
+
+    position_x: int
+    """The x component of the position of the object."""
+
+    position_y: int
+    """The y component of the position of the object."""
+
+    width: int
+    """The width of the object."""
+
+    height: int
+    """The height of the object."""
+
+    def angle(self, unit: RotationUnit) -> float:
+        """The angle of the object's associated colors. Not always reliably available.
+
+        Args:
+
+        - units: The unit of measurement for the angle. This is the unit of
+        the returned `float`.
+        """
+        ...
+
+
+class AiVisionAprilTagObject:
+    """The data associated with an AI Vision object detected by apriltag detection."""
+
+    id: int
+    """The detected AprilTag(s) ID number"""
+
+    top_left_x: int
+    """x component of the position of the top-left corner of the tag"""
+
+    top_left_y: int
+    """y component of the position of the top-left corner of the tag"""
+
+    top_right_x: int
+    """x component of the position of the top-right corner of the tag"""
+
+    top_right_y: int
+    """y component of the position of the top-right corner of the tag"""
+
+    bottom_left_x: int
+    """x component of the position of the bottom-left corner of the tag"""
+
+    bottom_left_y: int
+    """y component of the position of the bottom-left corner of the tag"""
+
+    bottom_right_x: int
+    """x component of the position of the bottom-right corner of the tag"""
+
+    bottom_right_y: int
+    """y component of the position of the bottom-right corner of the tag"""
+
+
+class AiVisionModelObject:
+    """The data associated with an AI Vision object detected by an onboard model."""
+
+    id: int
+    """ID of the detected object."""
+
+    position_x: int
+    """The x component of the position of the object."""
+
+    position_y: int
+    """The y component of the position of the object."""
+
+    width: int
+    """The width of the object."""
+
+    height: int
+    """The height of the object."""
+
+    confidence: int
+    """The confidence reported by the model."""
+
+    classification: str
+    """A string describing the specific onboard model used to detect this object."""
+
+
+class AprilTagFamily:
+    """Possible april tag families to be detected by the `AiVisionSensor`."""
+
+    CIRCLE21H7: ClassVar["AprilTagFamily"]
+    """Circle21h7 family"""
+
+    TAG16H5: ClassVar["AprilTagFamily"]
+    """16h5 family"""
+
+    TAG36H11: ClassVar["AprilTagFamily"]
+    """36h11 family"""
+
+    TAG25H9: ClassVar["AprilTagFamily"]
+    """25h9 family"""
+
+
+AprilTagFamily.TAG36H11 = AprilTagFamily()
+AprilTagFamily.TAG25H9 = AprilTagFamily()
+AprilTagFamily.TAG16H5 = AprilTagFamily()
+AprilTagFamily.CIRCLE21H7 = AprilTagFamily()
+
+
+class AiVisionSensor:
+    """An AI Vision sensor.
+
+    The AI Vision sensor is
+    meant to be a direct upgrade from the Vision Sensor with a wider camera range
+    and AI model capabilities.
+
+    # Hardware overview
+
+    The AI Vision sensor has three detection modes that can all be enabled at the same time:
+    - [Color detection](AiVisionDetectionMode::COLOR)
+    - [Custom model detection](AiVisionDetectionMode::MODEL)
+    - [AprilTag detection](AiVisionDetectionMode::APRILTAG) (requires color detection to be enabled)
+
+    Currently there is no known way to upload custom models to the sensor and fields do not have
+    AprilTags. However, there are built-in models that can be used for detection.
+
+    See [VEX's documentation](https://kb.vex.com/hc/en-us/articles/30326315023892-Using-AI-Classifications-with-the-AI-Vision-Sensor) for more information.
+
+    The resolution of the AI Vision sensor is 320x240 pixels. It has a horizontal FOV of 74 degrees
+    and a vertical FOV of 63 degrees. Both of these values are a slight upgrade from the Vision
+    Sensor.
+
+    Unlike the Vision Sensor, the AI Vision sensor uses more human-readable color signatures that
+    may be created without the AI Vision utility, though uploading color signatures with VEX's AI
+    Vision Utility over USB is still an option.
+    """
+
+    MAX_OBJECTS: int = 24
+    """Maximum number of objects that can be detected at once."""
+
+    HORIZONTAL_RESOLUTION: int = 320
+    """The horizontal resolution of the AI Vision sensor."""
+
+    VERTICAL_RESOLUTION: int = 240
+    """The vertical resolution of the AI Vision sensor."""
+
+    HORIZONTAL_FOV: float = 74.0
+    """The horizontal FOV of the vision sensor in degrees."""
+
+    VERTICAL_FOV: float = 63.0
+    """The vertical FOV of the vision sensor in degrees."""
+
+    DIAGONAL_FOV: float = 87.0
+    """The diagonal FOV of the vision sensor in degrees."""
+
+    def temperature(self) -> float:
+        """Returns the current temperature of the sensor in degrees Celsius."""
+        ...
+
+    def set_color_code(self, id: int, code: AiVisionColorCode):
+        """
+        Registers a color code association on the sensor.
+
+        Color codes are effectively "groups" of color signatures. A color code associated multiple
+        color signatures on the sensor will be detected as a single object when all signatures are
+        seen next to each other.
+
+        Args:
+
+        - id: The ID of the color code to register. Must be in [1, 8].
+        - code: The `AiVisionColorCode` to register.
+        """
+
+    def color_code(self, id: int) -> Union[AiVisionColorCode, None]:
+        """Returns the color code set on the AI Vision sensor with the given ID if it exists.
+
+        Args:
+
+        - id: The ID of the color code to retrieve. Must be in [1, 8].
+
+        Returns:
+
+        - The color code associated with the given ID if it exists, or None if no color code is set.
+        """
+        ...
+
+    def color_codes(self) -> List[Union[AiVisionColorCode, None]]:
+        """Returns all color codes set on the AI Vision sensor as a list of 8 optional `AiVisionColorCode` objects."""
+        ...
+
+    def set_color(self, id: int, color: AiVisionColor) -> AiVisionColor:
+        """Sets a color signature for the AI Vision sensor.
+
+        Args:
+
+        - id: The ID of the color signature to register. Must be in [1, 7].
+        - color: The `AiVisionColor` to register.
+        """
+        ...
+
+    def color(self, id: int) -> Union[AiVisionColor, None]:
+        """Returns the color signature set on the AI Vision sensor with the given ID if it exists.
+
+        Args:
+
+        - id: The ID of the color signature to retrieve. Must be in [1, 7].
+        """
+        ...
+
+    def colors(self) -> List[Union[AiVisionColor, None]]:
+        """Returns all color signatures set on the AI Vision sensor as a list of 7 optional `AiVisionColor` objects."""
+        ...
+
+    def set_detection_mode(self, mode: AiVisionDetectionMode):
+        """Sets the detection mode of the AI Vision sensor.
+
+        Args:
+
+        - mode: The new `AiVisionDetectionMode` to set.
+        """
+        ...
+
+    def flags(self) -> AiVisionFlags:
+        """Returns the current flags of the AI Vision sensor including the detection mode flags set by `AiVisionSensor.set_detection_mode`."""
+        ...
+
+    def set_flags(self, mode: AiVisionFlags):
+        """Set the full flags of the AI Vision sensor, including the detection mode.
+
+        Args:
+
+        - mode: The new `AiVisionFlags` to set.
+        """
+        ...
+
+    def start_awb(self):
+        """Restarts the automatic white balance process."""
+        ...
+
+    def enable_test(self, test: int):
+        """Unknown use.
+
+        Args:
+
+        - test: unknown purpose.
+        """
+        ...
+
+    def set_apriltag_family(self, family: AprilTagFamily):
+        """Sets the AprilTag family that the sensor will try to detect.
+
+        Args:
+
+        - family: The `AprilTagFamily` for the sensor to try to detect.
+        """
+        ...
+
+    def object_count(self) -> int:
+        """Returns the number of objects currently detected by the AI Vision sensor."""
+        ...
+
+    def objects(
+        self,
+    ) -> List[
+        Union[
+            AiVisionColorObject,
+            AiVisionCodeObject,
+            AiVisionModelObject,
+            AiVisionAprilTagObject,
+        ]
+    ]:
+        """Returns all objects detected by the AI Vision sensor."""
+        ...
+
 
 # TODOs:
 # * controller
 # * vasyncio
 # * competition runtime
-# * ai vision

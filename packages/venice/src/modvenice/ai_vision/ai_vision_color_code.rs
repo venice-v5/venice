@@ -55,11 +55,8 @@ fn ai_vision_color_code_make_new(
     reader.assert_npos(1, 7);
     let mut values = [None; 7];
     for i in 0..7 {
-        let res = reader.try_next_positional::<i32>();
-        if let Ok(value) = res {
+        if let Ok(value) = reader.try_next_positional::<i32>() {
             values[i] = Some(value as _);
-        } else {
-            break;
         }
     }
     alloc_obj(AiVisionColorCodeObj {
