@@ -55,7 +55,8 @@ static AI_VISION_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qs
         qstr!(set_apriltag_family) => Obj::from_static(&fun2_from_fn!(ai_vision_sensor_set_apriltag_family, &AiVisionSensorObj, &AprilTagFamilyObj)),
         qstr!(object_count) => Obj::from_static(&fun1_from_fn!(ai_vision_sensor_object_count, &AiVisionSensorObj)),
         qstr!(objects) => Obj::from_static(&fun1_from_fn!(ai_vision_sensor_objects, &AiVisionSensorObj)),
-        qstr!(color_codes) => Obj::from_static(&fun1_from_fn!(ai_vision_sensor_color_codes, &AiVisionSensorObj))
+        qstr!(color_codes) => Obj::from_static(&fun1_from_fn!(ai_vision_sensor_color_codes, &AiVisionSensorObj)),
+        qstr!(colors) => Obj::from_static(&fun1_from_fn!(ai_vision_sensor_colors, &AiVisionSensorObj))
     ]);
 
 #[repr(C)]
@@ -227,6 +228,24 @@ fn ai_vision_sensor_color_codes(this: &AiVisionSensorObj) -> Obj {
         .map(|code| {
             if let Some(code) = code {
                 alloc_obj(AiVisionColorCodeObj::new(code))
+            } else {
+                Obj::NONE
+            }
+        })
+        .collect::<Vec<_>>();
+    new_list(&codes[..])
+}
+
+fn ai_vision_sensor_colors(this: &AiVisionSensorObj) -> Obj {
+    let this = this.guard.borrow();
+    let codes = (0..8)
+        .map(|n| {
+            this.color(n)
+                .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")))
+        })
+        .map(|code| {
+            if let Some(code) = code {
+                alloc_obj(AiVisionColorObj::new(code))
             } else {
                 Obj::NONE
             }
