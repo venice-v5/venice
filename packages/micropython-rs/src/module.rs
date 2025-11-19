@@ -1,4 +1,4 @@
-use std::{ffi::c_void, ptr::null};
+use std::{cell::RefCell, ffi::c_void, ptr::null, rc::Rc};
 
 use crate::{
     init::InitToken,
@@ -40,6 +40,19 @@ pub type ProtoFun = *const c_void;
 pub struct Module {
     base: ObjBase<'static>,
     globals: *mut Dict,
+}
+
+unsafe impl ObjTrait for Module {
+    const OBJ_TYPE: &ObjType = unsafe { &mp_type_module };
+}
+
+impl Module {
+    pub const fn new(dict: &'static Dict) -> Self {
+        Module {
+            base: ObjBase::new(unsafe { &mp_type_module }),
+            globals: dict as *const Dict as _,
+        }
+    }
 }
 
 /// From: `py/bc.h`

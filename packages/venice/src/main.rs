@@ -8,7 +8,6 @@ pub mod qstrgen;
 
 mod devices;
 mod exports;
-mod modvasyncio;
 mod modvenice;
 mod registry;
 mod stubs;

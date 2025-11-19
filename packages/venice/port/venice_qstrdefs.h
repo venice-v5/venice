@@ -4,6 +4,7 @@ Q(Task)
 Q(spawn)
 Q(run)
 Q(Sleep)
+Q(DeviceFuture)
 Q(get_running_loop)
 
 Q(DeviceError)

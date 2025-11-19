@@ -1,3 +1,4 @@
+pub mod device_future;
 pub mod event_loop;
 pub mod instant;
 pub mod sleep;
@@ -18,7 +19,7 @@ use crate::qstrgen::qstr;
 
 #[unsafe(no_mangle)]
 #[allow(non_upper_case_globals)]
-static vasyncio_globals: Dict = const_dict![
+pub static vasyncio_globals: Dict = const_dict![
     qstr!(__name__) => Obj::from_qstr(qstr!(vasyncio)),
     qstr!(EventLoop) => Obj::from_static(&EVENT_LOOP_OBJ_TYPE),
     qstr!(Sleep) => Obj::from_static(&SLEEP_OBJ_TYPE),

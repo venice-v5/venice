@@ -1,17 +1,15 @@
+mod device_future;
 mod ai_vision;
 mod competition;
 mod controller;
 mod distance_sensor;
 mod motor;
 mod rotation_sensor;
-pub mod units;
+mod modvasyncio;
+mod units;
 
 use micropython_rs::{
-    const_dict,
-    except::{new_exception_type, raise_msg},
-    init::InitToken,
-    map::Dict,
-    obj::{Obj, ObjFullType, ObjTrait},
+    const_dict, except::{new_exception_type, raise_msg}, init::InitToken, map::Dict, module::Module, obj::{Obj, ObjFullType, ObjTrait}
 };
 
 use self::{
@@ -38,8 +36,7 @@ use crate::{
         },
         distance_sensor::{DistanceSensorObj, distance_object::DistanceObjectObj},
         motor::{MOTOR_EXP_OBJ_TYPE, MOTOR_V5_OBJ_TYPE, motor_type::MotorTypeObj},
-    },
-    qstrgen::qstr,
+    }, qstrgen::qstr
 };
 
 static DEVICE_ERROR_OBJ_TYPE: ObjFullType = new_exception_type(qstr!(DeviceError));
@@ -51,7 +48,7 @@ fn raise_device_error(token: InitToken, msg: impl AsRef<str>) -> ! {
 #[unsafe(no_mangle)]
 #[allow(non_upper_case_globals)]
 static venice_globals: Dict = const_dict![
-    qstr!(__name__) => Obj::from_qstr(qstr!(__name__)),
+    qstr!(__name__) => Obj::from_qstr(qstr!(venice)),
 
     // motor
     qstr!(AbstractMotor) => Obj::from_static(MotorObj::OBJ_TYPE),
@@ -84,5 +81,7 @@ static venice_globals: Dict = const_dict![
 
     // units
     qstr!(RotationUnit) => Obj::from_static(RotationUnitObj::OBJ_TYPE),
-    qstr!(TimeUnit) => Obj::from_static(TimeUnitObj::OBJ_TYPE)
+    qstr!(TimeUnit) => Obj::from_static(TimeUnitObj::OBJ_TYPE),
+
+    qstr!(vasyncio) => Obj::from_static(&Module::new(&modvasyncio::vasyncio_globals))
 ];

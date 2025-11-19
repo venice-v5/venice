@@ -4,8 +4,9 @@ use bitflags::bitflags;
 use cty::c_void;
 use micropython_rs::obj::{Obj, ObjBase, ObjFullType, ObjTrait, TypeFlags};
 
+use super::modvasyncio::event_loop::{self, EventLoop};
+
 use crate::{
-    modvasyncio::event_loop::{self, EventLoop},
     qstrgen::qstr,
 };
 
@@ -137,7 +138,7 @@ impl CompetitionRuntime {
             let terminated = event_loop::get_running_loop()
                 .try_to_obj::<EventLoop>()
                 .unwrap()
-                .tick_coro(Obj::NULL, self.coro.get());
+                .tick_coro(Obj::NULL, self.coro.get(), Obj::NONE);
 
             if terminated {
                 match self.phase.get() {

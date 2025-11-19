@@ -1,6 +1,9 @@
 use std::{
     cell::{Cell, RefCell},
     collections::{binary_heap::BinaryHeap, vec_deque::VecDeque},
+    future::Future,
+    pin::Pin,
+    task::{Context, Poll, Waker},
 };
 
 use micropython_rs::{
@@ -14,7 +17,7 @@ use micropython_rs::{
 };
 use vex_sdk::vexTasksRun;
 
-use super::{sleep::Sleep, task::Task};
+use super::{device_future::{DeviceFuture, DEVICE_FUTURE_OBJ_TYPE}, sleep::Sleep, task::Task};
 use crate::{obj::alloc_obj, qstrgen::qstr};
 
 pub static EVENT_LOOP_OBJ_TYPE: ObjFullType = unsafe {
@@ -27,6 +30,11 @@ pub static EVENT_LOOP_OBJ_TYPE: ObjFullType = unsafe {
             ]
         })
 };
+
+struct DeviceFutureInstance {
+    task: Obj,
+    device_future: Obj,
+}
 
 struct Sleeper {
     task: Obj,
@@ -56,8 +64,9 @@ impl Ord for Sleeper {
 #[repr(C)]
 pub struct EventLoop {
     base: ObjBase<'static>,
-    ready: RefCell<VecDeque<Obj>>,
+    ready: RefCell<VecDeque<(Obj, Obj)>>, // (task, send_value)
     sleepers: RefCell<BinaryHeap<Sleeper>>,
+    device_futures: RefCell<VecDeque<DeviceFutureInstance>>,
     current_task: Cell<Obj>,
 }
 
@@ -75,18 +84,19 @@ impl EventLoop {
             base: ObjBase::new(Self::OBJ_TYPE),
             ready: RefCell::new(VecDeque::new()),
             sleepers: RefCell::new(BinaryHeap::new()),
+            device_futures: RefCell::new(VecDeque::new()),
             current_task: Cell::new(Obj::NULL),
         }
     }
 
     pub fn spawn(&self, coro: Obj) -> Obj {
         let task = alloc_obj(Task::new(coro));
-        self.ready.borrow_mut().push_back(task);
+        self.ready.borrow_mut().push_back((task, Obj::NONE));
         task
     }
 
     /// `task_obj` and `coro` are nullable
-    pub fn tick_coro(&self, mut task_obj: Obj, mut coro: Obj) -> bool {
+    pub fn tick_coro(&self, mut task_obj: Obj, mut coro: Obj, send_value: Obj) -> bool {
         if task_obj.is_null() {
             task_obj = self.current_task.get()
         }
@@ -98,14 +108,14 @@ impl EventLoop {
         assert!(coro.is(micropython_rs::generator::GEN_INSTANCE_TYPE));
 
         let prev_task_obj = self.current_task.replace(task_obj);
-        let result = resume_gen(coro, Obj::NONE, Obj::NULL);
+        let result = resume_gen(coro, send_value, Obj::NULL);
         let terminated = match result.return_kind {
             VmReturnKind::Normal => {
                 let mut ready = self.ready.borrow_mut();
                 task.complete_with(result.obj);
                 task.waiting_tasks()
                     .iter()
-                    .for_each(|&w| ready.push_front(w));
+                    .for_each(|&w| ready.push_front((w, result.obj)));
 
                 true
             }
@@ -114,6 +124,11 @@ impl EventLoop {
                     self.sleepers.borrow_mut().push(Sleeper {
                         task: task_obj,
                         deadline: sleep.deadline(),
+                    });
+                } else if result.obj.is(DEVICE_FUTURE_OBJ_TYPE.as_obj_type()) {
+                    self.device_futures.borrow_mut().push_back(DeviceFutureInstance {
+                        task: task_obj,
+                        device_future: result.obj,
                     });
                 } else if let Some(awaited_task) = result.obj.try_to_obj::<Task>() {
                     awaited_task.add_waiting_task(task_obj);
@@ -134,25 +149,44 @@ impl EventLoop {
     pub fn tick(&self) -> bool {
         let mut ready = self.ready.borrow_mut();
         let mut sleepers = self.sleepers.borrow_mut();
+        let mut device_futures = self.device_futures.borrow_mut();
 
         if let Some(sleeper) = sleepers.peek()
             && sleeper.deadline <= super::instant::Instant::now()
         {
             let sleeper = sleepers.pop().unwrap();
-            ready.push_back(sleeper.task);
+            ready.push_back((sleeper.task, Obj::NONE));
         }
 
-        let task_obj = ready.pop_front();
+        // Poll device futures
+        let mut i = 0;
+        while i < device_futures.len() {
+            let instance = &mut device_futures[i];
+            let device_future: &DeviceFuture = instance.device_future.try_to_obj().unwrap();
+            match device_future.poll() {
+                Some(val) => {
+                    let instance = device_futures.remove(i).unwrap();
+                    ready.push_back((instance.task, val));
+                    // don't increment i
+                }
+                None => {
+                    i += 1;
+                }
+            }
+        }
+
+        let (task_obj, send_value) = match ready.pop_front() {
+            Some((t, s)) => (t, s),
+            None => return self.sleepers.borrow().is_empty() && self.device_futures.borrow().is_empty(),
+        };
         // let the task access the event loop while it's running
         drop(ready);
         drop(sleepers);
+        drop(device_futures);
 
-        if let Some(task_obj) = task_obj {
-            self.tick_coro(task_obj, Obj::NULL);
-        }
+        self.tick_coro(task_obj, Obj::NULL, send_value);
 
-        unsafe { vexTasksRun() };
-        self.sleepers.borrow().is_empty() && self.ready.borrow().is_empty()
+        false
     }
 
     pub fn run(&self) {
