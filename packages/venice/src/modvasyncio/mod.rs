@@ -1,7 +1,7 @@
 pub mod event_loop;
-pub mod instant;
 pub mod sleep;
 pub mod task;
+pub mod time32;
 
 use micropython_rs::{
     const_dict,

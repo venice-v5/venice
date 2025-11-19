@@ -14,7 +14,7 @@ use micropython_rs::{
 };
 use vex_sdk::vexTasksRun;
 
-use super::{sleep::Sleep, task::Task};
+use super::{sleep::Sleep, task::Task, time32};
 use crate::{obj::alloc_obj, qstrgen::qstr};
 
 pub static EVENT_LOOP_OBJ_TYPE: ObjFullType = unsafe {
@@ -30,7 +30,7 @@ pub static EVENT_LOOP_OBJ_TYPE: ObjFullType = unsafe {
 
 struct Sleeper {
     task: Obj,
-    deadline: super::instant::Instant,
+    deadline: time32::Instant,
 }
 
 impl PartialEq for Sleeper {
@@ -113,7 +113,7 @@ impl EventLoop {
                 if let Some(sleep) = result.obj.try_to_obj::<Sleep>() {
                     self.sleepers.borrow_mut().push(Sleeper {
                         task: task_obj,
-                        deadline: sleep.deadline(),
+                        deadline: time32::Instant::now() + sleep.duration(),
                     });
                 } else if let Some(awaited_task) = result.obj.try_to_obj::<Task>() {
                     awaited_task.add_waiting_task(task_obj);
@@ -136,7 +136,7 @@ impl EventLoop {
         let mut sleepers = self.sleepers.borrow_mut();
 
         if let Some(sleeper) = sleepers.peek()
-            && sleeper.deadline <= super::instant::Instant::now()
+            && sleeper.deadline <= super::time32::Instant::now()
         {
             let sleeper = sleepers.pop().unwrap();
             ready.push_back(sleeper.task);

@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::cell::Cell;
 
 use micropython_rs::{
     except::{raise_stop_iteration, raise_type_error},
@@ -6,6 +6,7 @@ use micropython_rs::{
     obj::{IterSlotValue, Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
 
+use super::time32;
 use crate::{
     args::{ArgValue, Args},
     modvenice::units::time::TimeUnitObj,
@@ -16,7 +17,8 @@ use crate::{
 #[repr(C)]
 pub struct Sleep {
     base: ObjBase<'static>,
-    deadline: super::instant::Instant,
+    duration: time32::Duration,
+    complete: Cell<bool>,
 }
 
 pub static SLEEP_OBJ_TYPE: ObjFullType = unsafe {
@@ -29,15 +31,16 @@ unsafe impl ObjTrait for Sleep {
 }
 
 impl Sleep {
-    pub fn new(duration: Duration) -> Self {
+    pub fn new(duration: time32::Duration) -> Self {
         Self {
             base: ObjBase::new(Self::OBJ_TYPE),
-            deadline: super::instant::Instant::now() + duration,
+            duration,
+            complete: Cell::new(false),
         }
     }
 
-    pub fn deadline(&self) -> super::instant::Instant {
-        self.deadline
+    pub fn duration(&self) -> time32::Duration {
+        self.duration
     }
 }
 
@@ -69,13 +72,13 @@ unsafe extern "C" fn sleep_make_new(
     };
 
     let unit = args.next_positional::<&TimeUnitObj>().unit();
-    let duration = unit.from_float(interval_float);
+    let duration = time32::Duration::from_duration(unit.from_float(interval_float));
     alloc_obj(Sleep::new(duration))
 }
 
 extern "C" fn sleep_iternext(self_in: Obj) -> Obj {
     let sleep = self_in.try_to_obj::<Sleep>().unwrap();
-    if sleep.deadline <= super::instant::Instant::now() {
+    if sleep.complete.get() {
         raise_stop_iteration(token().unwrap(), Obj::NONE);
     } else {
         self_in
