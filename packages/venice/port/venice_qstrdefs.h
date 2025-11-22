@@ -148,3 +148,5 @@ Q(MotorV5)
 Q(MAX_VOLTAGE)
 Q(MotorExp)
 Q(AbstractMotor)
+
+Q(vasyncio)

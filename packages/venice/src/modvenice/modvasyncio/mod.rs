@@ -1,4 +1,3 @@
-pub mod device_future;
 pub mod event_loop;
 pub mod instant;
 pub mod sleep;

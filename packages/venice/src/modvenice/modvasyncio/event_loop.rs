@@ -17,8 +17,8 @@ use micropython_rs::{
 };
 use vex_sdk::vexTasksRun;
 
-use super::{device_future::{DeviceFuture, DEVICE_FUTURE_OBJ_TYPE}, sleep::Sleep, task::Task};
-use crate::{obj::alloc_obj, qstrgen::qstr};
+use super::{sleep::Sleep, task::Task};
+use crate::{modvenice::device_future::{DeviceFutureObj, DEVICE_FUTURE_OBJ_TYPE}, obj::alloc_obj, qstrgen::qstr};
 
 pub static EVENT_LOOP_OBJ_TYPE: ObjFullType = unsafe {
     ObjFullType::new(TypeFlags::empty(), qstr!(EventLoop))
@@ -125,7 +125,7 @@ impl EventLoop {
                         task: task_obj,
                         deadline: sleep.deadline(),
                     });
-                } else if result.obj.is(DEVICE_FUTURE_OBJ_TYPE.as_obj_type()) {
+                } else if let Some(device_future) = result.obj.try_to_obj::<DeviceFutureObj>() {
                     self.device_futures.borrow_mut().push_back(DeviceFutureInstance {
                         task: task_obj,
                         device_future: result.obj,
@@ -162,7 +162,7 @@ impl EventLoop {
         let mut i = 0;
         while i < device_futures.len() {
             let instance = &mut device_futures[i];
-            let device_future: &DeviceFuture = instance.device_future.try_to_obj().unwrap();
+            let device_future: &DeviceFutureObj = instance.device_future.try_to_obj().unwrap();
             match device_future.poll() {
                 Some(val) => {
                     let instance = device_futures.remove(i).unwrap();
