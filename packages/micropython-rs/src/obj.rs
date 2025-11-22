@@ -541,9 +541,13 @@ impl Obj {
     pub const TRUE: Self = Self::from_immediate(3);
     pub const FALSE: Self = Self::from_immediate(1);
 
-    pub fn new<T: ObjTrait + 'static>(o: T, alloc: &mut GcLock) -> Result<Self, GcError> {
+    pub fn new<T: ObjTrait + 'static>(
+        o: T,
+        alloc: &mut GcLock,
+        enable_finaliser: bool,
+    ) -> Result<Self, GcError> {
         unsafe {
-            let mem = alloc.alloc(size_of::<T>());
+            let mem = alloc.alloc(size_of::<T>(), enable_finaliser);
             if mem.is_null() {
                 return Err(GcError);
             }

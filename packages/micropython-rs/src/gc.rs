@@ -104,8 +104,9 @@ impl GcLock<'_> {
         }
     }
 
-    pub unsafe fn alloc(&mut self, size: usize) -> *mut u8 {
-        unsafe { gc_alloc(size, 0) as *mut u8 }
+    pub unsafe fn alloc(&mut self, size: usize, enable_finaliser: bool) -> *mut u8 {
+        const FINALISER_BIT: c_uint = 1;
+        unsafe { gc_alloc(size, if enable_finaliser { FINALISER_BIT } else { 0 }) as *mut u8 }
     }
 
     pub unsafe fn dealloc(&mut self, ptr: *mut u8) {
@@ -125,7 +126,7 @@ unsafe impl GlobalAlloc for Gc {
 
         self.lock()
             .as_mut()
-            .map(|gc| unsafe { gc.alloc(layout.size()) })
+            .map(|gc| unsafe { gc.alloc(layout.size(), false) })
             .unwrap_or(null_mut())
     }
 
