@@ -6,7 +6,7 @@ use std::{
     io::{Write, stdout},
 };
 
-use crate::GC;
+use crate::ALLOCATOR;
 
 #[unsafe(no_mangle)]
 unsafe extern "C" fn mp_hal_stdout_tx_strn_cooked(str: *const c_char, len: u32) {
@@ -16,7 +16,7 @@ unsafe extern "C" fn mp_hal_stdout_tx_strn_cooked(str: *const c_char, len: u32) 
 
 #[unsafe(no_mangle)]
 unsafe extern "C" fn gc_collect() {
-    GC.gc().unwrap().lock().unwrap().collect_garbage();
+    ALLOCATOR.collect_garbage().unwrap();
 }
 
 #[unsafe(no_mangle)]

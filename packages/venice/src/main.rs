@@ -8,9 +8,9 @@ pub mod qstrgen;
 
 mod devices;
 mod exports;
+mod gc_alloc;
 mod modvasyncio;
 mod modvenice;
-mod optional_gc;
 mod registry;
 mod stubs;
 
@@ -25,15 +25,16 @@ use micropython_rs::{
     nlr::push_nlr,
     qstr::Qstr,
 };
+use talc::Span;
 use venice_program_table::Vpt;
 
 use crate::{
+    gc_alloc::GcAlloc,
     module_map::{MODULE_MAP, init_module_map},
-    optional_gc::OptionalGc,
 };
 
 #[global_allocator]
-static GC: OptionalGc = OptionalGc::new(None);
+static ALLOCATOR: GcAlloc = GcAlloc::new();
 
 // TODO: pick another ID
 const VENDOR_ID: u32 = 0x11235813;
@@ -41,6 +42,9 @@ const VENDOR_ID: u32 = 0x11235813;
 unsafe extern "C" {
     static mut __bss_start: u32;
     static mut __bss_end: u32;
+
+    static mut __fallback_heap_start: u8;
+    static mut __fallback_heap_end: u8;
 
     static mut __heap_start: u8;
     static mut __heap_end: u8;
@@ -84,9 +88,19 @@ fn main() {
     // I/O relies on memory allocation. I/O functions called before the allocator is initialized
     // will fail.
     let token = unsafe {
-        let (token, gc) = init_mp(&raw mut __heap_start, &raw mut __heap_end).unwrap();
+        let token = init_mp(&raw mut __heap_start, &raw mut __heap_end).unwrap();
 
-        GC.set_gc(Some(gc));
+        ALLOCATOR.init(token).unwrap();
+        {
+            let fallback_heap_span =
+                Span::new(&raw mut __fallback_heap_start, &raw mut __fallback_heap_end);
+            ALLOCATOR
+                .fallback_alloc()
+                .lock()
+                .unwrap()
+                .claim(fallback_heap_span)
+                .unwrap();
+        }
         std::panic::set_hook(Box::new(panic_hook));
 
         let vpt = Vpt::from_ptr(&raw const __linked_file_start, VENDOR_ID)
@@ -97,6 +111,9 @@ fn main() {
     };
 
     init_main(token);
+    // for simulator
+    stdout().flush().unwrap();
+    stderr().flush().unwrap();
 }
 
 fn panic_hook(info: &PanicHookInfo) {

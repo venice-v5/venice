@@ -4,7 +4,8 @@ use bitflags::bitflags;
 use thiserror::Error;
 
 use crate::{
-    gc::GcLock,
+    gc::{self},
+    init::InitToken,
     map::Dict,
     ops::{BinaryOp, UnaryOp},
     print::{Print, PrintKind},
@@ -542,12 +543,12 @@ impl Obj {
     pub const FALSE: Self = Self::from_immediate(1);
 
     pub fn new<T: ObjTrait + 'static>(
+        token: InitToken,
         o: T,
-        alloc: &mut GcLock,
         enable_finaliser: bool,
     ) -> Result<Self, GcError> {
         unsafe {
-            let mem = alloc.alloc(size_of::<T>(), enable_finaliser);
+            let mem = gc::alloc(token, size_of::<T>(), enable_finaliser);
             if mem.is_null() {
                 return Err(GcError);
             }

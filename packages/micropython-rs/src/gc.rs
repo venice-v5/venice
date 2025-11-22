@@ -1,15 +1,9 @@
 use core::{
-    alloc::{GlobalAlloc, Layout},
     arch::naked_asm,
     ffi::{c_uint, c_void},
-    ptr::null_mut,
 };
-use std::marker::PhantomData;
 
-use crate::{
-    init::{InitToken, token},
-    state::{gc_lock_depth, set_gc_lock_depth, stack_top},
-};
+use crate::{init::InitToken, state::stack_top};
 
 unsafe extern "C" {
     /// From: `py/gc.h`
@@ -57,99 +51,29 @@ extern "C" fn collect_gc_regs(regs: &mut [u32; 10]) -> u32 {
     }
 }
 
-const GC_LOCK_DEPTH_SHIFT: u16 = 1;
-
-pub struct Gc {
-    token: InitToken,
+pub unsafe fn alloc(_: InitToken, size: usize, enable_finaliser: bool) -> *mut u8 {
+    const FINALISER_BIT: c_uint = 1;
+    unsafe { gc_alloc(size, if enable_finaliser { FINALISER_BIT } else { 0 }) as *mut u8 }
 }
 
-pub struct GcLock<'a> {
-    token: InitToken,
-    _phantom: PhantomData<&'a Gc>,
+pub unsafe fn dealloc(_: InitToken, ptr: *mut u8) {
+    unsafe { gc_free(ptr as *mut c_void) };
 }
 
-impl Gc {
-    pub(crate) unsafe fn new(token: InitToken) -> Self {
-        Self { token }
-    }
-
-    pub fn lock<'a>(&'a self) -> Result<GcLock<'a>, ()> {
-        let lock_depth = gc_lock_depth(self.token);
-        if lock_depth != 0 {
-            Err(())
-        } else {
-            unsafe {
-                set_gc_lock_depth(self.token, lock_depth + (1 << GC_LOCK_DEPTH_SHIFT));
-            }
-            Ok(GcLock {
-                token: self.token,
-                _phantom: PhantomData,
-            })
-        }
-    }
+pub unsafe fn realloc(_: InitToken, ptr: *mut u8, new_size: usize) -> *mut u8 {
+    unsafe { gc_realloc(ptr as *mut c_void, new_size, true) as *mut u8 }
 }
 
-impl GcLock<'_> {
-    pub fn collect_garbage(&mut self) {
-        let mut regs = [0; 10];
-        let sp = collect_gc_regs(&mut regs);
+pub fn collect_garbage(token: InitToken) {
+    let mut regs = [0; 10];
+    let sp = collect_gc_regs(&mut regs);
 
-        unsafe {
-            gc_collect_start();
-            gc_collect_root(
-                sp as *mut *mut c_void,
-                ((stack_top(token().unwrap()) as u32 - sp) / size_of::<usize>() as u32) as usize,
-            );
-            gc_collect_end();
-        }
-    }
-
-    pub unsafe fn alloc(&mut self, size: usize, enable_finaliser: bool) -> *mut u8 {
-        const FINALISER_BIT: c_uint = 1;
-        unsafe { gc_alloc(size, if enable_finaliser { FINALISER_BIT } else { 0 }) as *mut u8 }
-    }
-
-    pub unsafe fn dealloc(&mut self, ptr: *mut u8) {
-        unsafe { gc_free(ptr as *mut c_void) };
-    }
-
-    pub unsafe fn realloc(&mut self, ptr: *mut u8, new_size: usize) -> *mut u8 {
-        unsafe { gc_realloc(ptr as *mut c_void, new_size, true) as *mut u8 }
-    }
-}
-
-unsafe impl GlobalAlloc for Gc {
-    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        if layout.align() > 4 {
-            return null_mut();
-        }
-
-        self.lock()
-            .as_mut()
-            .map(|gc| unsafe { gc.alloc(layout.size(), false) })
-            .unwrap_or(null_mut())
-    }
-
-    unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
-        if let Ok(gc) = self.lock().as_mut() {
-            unsafe { gc.dealloc(ptr) };
-        }
-        // fix: silent fail
-    }
-
-    unsafe fn realloc(&self, ptr: *mut u8, _layout: Layout, new_size: usize) -> *mut u8 {
-        self.lock()
-            .as_mut()
-            .map(|gc| unsafe { gc.realloc(ptr, new_size) })
-            .unwrap_or(null_mut())
-    }
-}
-
-impl Drop for GcLock<'_> {
-    fn drop(&mut self) {
-        let lock_depth = gc_lock_depth(self.token);
-        unsafe {
-            set_gc_lock_depth(self.token, lock_depth - (1 << GC_LOCK_DEPTH_SHIFT));
-        }
+    unsafe {
+        gc_collect_start();
+        gc_collect_root(
+            sp as *mut *mut c_void,
+            ((stack_top(token) as u32 - sp) / size_of::<usize>() as u32) as usize,
+        );
+        gc_collect_end();
     }
 }
