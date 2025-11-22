@@ -5,13 +5,13 @@ pub mod fun;
 pub mod module_map;
 pub mod obj;
 pub mod qstrgen;
+pub mod registry;
 
 mod devices;
 mod exports;
 mod gc_alloc;
 mod modvasyncio;
 mod modvenice;
-mod registry;
 mod stubs;
 
 use std::{
