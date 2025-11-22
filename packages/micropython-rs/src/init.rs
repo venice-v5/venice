@@ -41,7 +41,8 @@ pub unsafe fn init_mp(
         gc_init(heap_start as *mut c_void, heap_end as *mut c_void);
         mp_init();
 
-        Ok((InitToken(()), Gc::new()))
+        let token = InitToken(());
+        Ok((token, Gc::new(token)))
     }
 }
 

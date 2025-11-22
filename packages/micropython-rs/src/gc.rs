@@ -4,11 +4,12 @@ use core::{
     ffi::{c_uint, c_void},
     ptr::null_mut,
 };
-use std::sync::{Mutex, MutexGuard};
+use std::marker::PhantomData;
 
-use thiserror::Error;
-
-use crate::{init::token, state::stack_top};
+use crate::{
+    init::{InitToken, token},
+    state::{gc_lock_depth, set_gc_lock_depth, stack_top},
+};
 
 unsafe extern "C" {
     /// From: `py/gc.h`
@@ -56,32 +57,40 @@ extern "C" fn collect_gc_regs(regs: &mut [u32; 10]) -> u32 {
     }
 }
 
-pub struct LockedGc {
-    gc: Mutex<Option<Gc>>,
+const GC_LOCK_DEPTH_SHIFT: u16 = 1;
+
+pub struct Gc {
+    token: InitToken,
 }
 
-pub struct Gc(());
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
-#[error("garbage collector not initialized")]
-pub struct NotInitialized;
-
-impl LockedGc {
-    pub const fn new(gc: Option<Gc>) -> Self {
-        Self { gc: Mutex::new(gc) }
-    }
-
-    pub fn lock<'a>(&'a self) -> MutexGuard<'a, Option<Gc>> {
-        self.gc.lock().unwrap()
-    }
+pub struct GcLock<'a> {
+    token: InitToken,
+    _phantom: PhantomData<&'a Gc>,
 }
 
 impl Gc {
-    pub(crate) unsafe fn new() -> Self {
-        Self(())
+    pub(crate) unsafe fn new(token: InitToken) -> Self {
+        Self { token }
     }
 
-    pub fn collect_garbage(&mut self) -> Result<(), NotInitialized> {
+    pub fn lock<'a>(&'a self) -> Result<GcLock<'a>, ()> {
+        let lock_depth = gc_lock_depth(self.token);
+        if lock_depth != 0 {
+            Err(())
+        } else {
+            unsafe {
+                set_gc_lock_depth(self.token, lock_depth + (1 << GC_LOCK_DEPTH_SHIFT));
+            }
+            Ok(GcLock {
+                token: self.token,
+                _phantom: PhantomData,
+            })
+        }
+    }
+}
+
+impl GcLock<'_> {
+    pub fn collect_garbage(&mut self) {
         let mut regs = [0; 10];
         let sp = collect_gc_regs(&mut regs);
 
@@ -93,8 +102,6 @@ impl Gc {
             );
             gc_collect_end();
         }
-
-        Ok(())
     }
 
     pub unsafe fn alloc(&mut self, size: usize) -> *mut u8 {
@@ -110,7 +117,7 @@ impl Gc {
     }
 }
 
-unsafe impl GlobalAlloc for LockedGc {
+unsafe impl GlobalAlloc for Gc {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         if layout.align() > 4 {
             return null_mut();
@@ -123,7 +130,7 @@ unsafe impl GlobalAlloc for LockedGc {
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
-        if let Some(gc) = self.lock().as_mut() {
+        if let Ok(gc) = self.lock().as_mut() {
             unsafe { gc.dealloc(ptr) };
         }
         // fix: silent fail
@@ -134,5 +141,14 @@ unsafe impl GlobalAlloc for LockedGc {
             .as_mut()
             .map(|gc| unsafe { gc.realloc(ptr, new_size) })
             .unwrap_or(null_mut())
+    }
+}
+
+impl Drop for GcLock<'_> {
+    fn drop(&mut self) {
+        let lock_depth = gc_lock_depth(self.token);
+        unsafe {
+            set_gc_lock_depth(self.token, lock_depth - (1 << GC_LOCK_DEPTH_SHIFT));
+        }
     }
 }

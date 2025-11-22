@@ -15,6 +15,10 @@ fn state_ctx_raw() -> *mut mp_state_ctx_t {
     &raw mut mp_state_ctx
 }
 
+pub(crate) fn gc_lock_depth(_: InitToken) -> u16 {
+    unsafe { (*state_ctx_raw()).thread.gc_lock_depth }
+}
+
 pub fn globals(_: InitToken) -> *mut Dict {
     unsafe { (*state_ctx_raw()).thread.dict_globals }
 }
@@ -28,6 +32,10 @@ pub fn loaded_modules(_: InitToken) -> *mut Dict {
 }
 
 // TODO: place safety invariants
+
+pub(crate) unsafe fn set_gc_lock_depth(_: InitToken, lock_depth: u16) {
+    unsafe { (*state_ctx_raw()).thread.gc_lock_depth = lock_depth }
+}
 
 pub unsafe fn set_globals(_: InitToken, dict: *mut Dict) {
     unsafe { (*state_ctx_raw()).thread.dict_globals = dict };

@@ -1,7 +1,9 @@
 use micropython_rs::obj::{Obj, ObjTrait};
 
-use crate::ALLOCATOR;
+use crate::GC;
 
 pub fn alloc_obj<T: ObjTrait + 'static>(o: T) -> Obj {
-    Obj::new(o, ALLOCATOR.lock().as_mut().unwrap()).unwrap()
+    let gc = GC.gc().unwrap();
+    let mut lock = gc.lock().unwrap();
+    Obj::new(o, &mut lock).unwrap()
 }

@@ -10,6 +10,7 @@ mod devices;
 mod exports;
 mod modvasyncio;
 mod modvenice;
+mod optional_gc;
 mod registry;
 mod stubs;
 
@@ -19,7 +20,6 @@ use std::{
 };
 
 use micropython_rs::{
-    gc::LockedGc,
     init::{InitToken, init_mp},
     module::exec_module,
     nlr::push_nlr,
@@ -27,10 +27,13 @@ use micropython_rs::{
 };
 use venice_program_table::Vpt;
 
-use crate::module_map::{MODULE_MAP, init_module_map};
+use crate::{
+    module_map::{MODULE_MAP, init_module_map},
+    optional_gc::OptionalGc,
+};
 
 #[global_allocator]
-static ALLOCATOR: LockedGc = LockedGc::new(None);
+static GC: OptionalGc = OptionalGc::new(None);
 
 // TODO: pick another ID
 const VENDOR_ID: u32 = 0x11235813;
@@ -82,7 +85,8 @@ fn main() {
     // will fail.
     let token = unsafe {
         let (token, gc) = init_mp(&raw mut __heap_start, &raw mut __heap_end).unwrap();
-        *ALLOCATOR.lock() = Some(gc);
+
+        GC.set_gc(Some(gc));
         std::panic::set_hook(Box::new(panic_hook));
 
         let vpt = Vpt::from_ptr(&raw const __linked_file_start, VENDOR_ID)
