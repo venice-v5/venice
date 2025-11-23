@@ -19,6 +19,8 @@
 #define MICROPY_LONGINT_IMPL MICROPY_LONGINT_IMPL_MPZ
 #define MICROPY_FLOAT_IMPL MICROPY_FLOAT_IMPL_FLOAT
 
+#define MICROPY_MODULE_BUILTIN_SUBPACKAGES (1)
+
 typedef int32_t mp_int_t; // must be pointer size
 typedef uint32_t mp_uint_t; // must be pointer size
 typedef long mp_off_t;

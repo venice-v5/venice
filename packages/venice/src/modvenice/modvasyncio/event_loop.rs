@@ -177,7 +177,7 @@ impl EventLoop {
 
         let (task_obj, send_value) = match ready.pop_front() {
             Some((t, s)) => (t, s),
-            None => return self.sleepers.borrow().is_empty() && self.device_futures.borrow().is_empty(),
+            None => return sleepers.is_empty() && device_futures.is_empty(),
         };
         // let the task access the event loop while it's running
         drop(ready);

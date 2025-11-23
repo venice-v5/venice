@@ -2,8 +2,9 @@ use std::task::{Context, Poll, Waker};
 use std::{cell::RefCell, future::Future};
 use std::pin::Pin;
 
+use micropython_rs::except::raise_stop_iteration;
 use micropython_rs::init::token;
-use micropython_rs::obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags};
+use micropython_rs::obj::{IterSlotValue, Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags};
 use vexide_devices::controller::ControllerScreenWriteFuture;
 
 use crate::modvenice::controller::ControllerScreenWriteAwaitable;
@@ -13,7 +14,16 @@ use crate::qstrgen::qstr;
 
 
 
-pub static DEVICE_FUTURE_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(DeviceFuture));
+pub static DEVICE_FUTURE_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(DeviceFuture)).set_iter(IterSlotValue::IterNext(device_future_iternext));
+
+extern "C" fn device_future_iternext(self_in: Obj) -> Obj {
+    let this = self_in.try_to_obj::<DeviceFutureObj>().unwrap();
+    if let Some(out) = this.poll() {
+        raise_stop_iteration(token().unwrap(), out);
+    } else {
+        self_in
+    }
+}
 
 pub enum DeviceFuture {
     ControllerScreenWrite(ControllerScreenWriteAwaitable)

@@ -34,12 +34,12 @@ use crate::{
                 AI_VISION_COLOR_OBJECT_OBJ_TYPE, AI_VISION_MODEL_OBJECT_OBJ_TYPE,
             },
         },
-        distance_sensor::{DistanceSensorObj, distance_object::DistanceObjectObj},
+eckpoi        distance_sensor::{DistanceSensorObj, distance_object::DistanceObjectObj},
         motor::{MOTOR_EXP_OBJ_TYPE, MOTOR_V5_OBJ_TYPE, motor_type::MotorTypeObj},
     }, qstrgen::qstr
 };
 
-static DEVICE_ERROR_OBJ_TYPE: ObjFullType = new_exception_type(qstr!(DeviceError));
+pub static DEVICE_ERROR_OBJ_TYPE: ObjFullType = new_exception_type(qstr!(DeviceError));
 
 fn raise_device_error(token: InitToken, msg: impl AsRef<str>) -> ! {
     raise_msg(token, DEVICE_ERROR_OBJ_TYPE.as_obj_type(), msg)
@@ -83,5 +83,6 @@ static venice_globals: Dict = const_dict![
     qstr!(RotationUnit) => Obj::from_static(RotationUnitObj::OBJ_TYPE),
     qstr!(TimeUnit) => Obj::from_static(TimeUnitObj::OBJ_TYPE),
 
-    qstr!(vasyncio) => Obj::from_static(&Module::new(&modvasyncio::vasyncio_globals))
+    qstr!(vasyncio) => Obj::from_static(&Module::new(&modvasyncio::vasyncio_globals)),
+    qstr!(DeviceError) => Obj::from_static(&DEVICE_ERROR_OBJ_TYPE)
 ];
