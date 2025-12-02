@@ -2,11 +2,12 @@ name: Test
 run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
 on: [push]
 jobs:
-  Explore-GitHub-Actions:
+  build-wheel:
     runs-on: ubuntu-latest
     steps:
       - name: build cargo project
-        uses: actions/checkout@v5
-      - run: cargo build --release
+      - uses: actions/checkout@v5
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build
       - run: tree target
       - run: echo "Done"
