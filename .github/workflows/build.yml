@@ -32,7 +32,7 @@ jobs:
         run: arm-none-eabi-objcopy -O binary target/armv7a-vex-v5/debug/venice venice/venice.bin
 
       - name: build-wheel
-        run: cd venice && uv build
+        run: cd venice && uv sync && uv build
 
       - name: upload-bin
         uses: actions/upload-artifact@v4
