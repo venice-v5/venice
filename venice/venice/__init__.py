@@ -1204,12 +1204,12 @@ try:
 except importlib.metadata.PackageNotFoundError:
     __version__ ="0.1.0"
 
-def _dangerous_DO_NOT_TOUCH_YOU_WILL_GET_ELECTROCUTED_get_binary_path():
+def _dangerous_DO_NOT_TOUCH_YOU_WILL_GET_ELECTROCUTED_get_binary_path():  # pyright: ignore[reportUnusedFunction]
     """DO NOT use this method in user programs that you are intending to run on the VEX V5.
 
     Internal function for use by the CLI."""
     return pkg_resources.files("venice").joinpath("venice.bin")
-def _dangerous_DO_NOT_TOUCH_YOU_WILL_GET_ELECTROCUTED_get_version():
+def _dangerous_DO_NOT_TOUCH_YOU_WILL_GET_ELECTROCUTED_get_version():  # pyright: ignore[reportUnusedFunction]
     """DO NOT use this method in user programs that you are intending to run on the VEX V5.
 
     Internal function for use by the CLI."""
