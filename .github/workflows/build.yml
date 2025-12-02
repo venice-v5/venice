@@ -11,9 +11,6 @@ jobs:
       - name: checkout
         uses: actions/checkout@v4
 
-      - name: setup-mp
-        run: git submodule update --init --recursive
-
       - name: setup-uv
         uses: astral-sh/setup-uv@v1
 
@@ -29,7 +26,8 @@ jobs:
           release: '14.2.Rel1'
 
       - name: build-rust
-        run: cargo build
+        # only clone mp if the build fails otherwise
+        run: cargo build || (git submodule update --init --recursive && cargo build)
 
       - name: generate-bin
         run: arm-none-eabi-objcopy -O binary target/armv7a-vex-v5/debug/venice venice/venice.bin
