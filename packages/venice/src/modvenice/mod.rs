@@ -34,7 +34,7 @@ use crate::{
                 AI_VISION_COLOR_OBJECT_OBJ_TYPE, AI_VISION_MODEL_OBJECT_OBJ_TYPE,
             },
         },
-eckpoi        distance_sensor::{DistanceSensorObj, distance_object::DistanceObjectObj},
+        distance_sensor::{DistanceSensorObj, distance_object::DistanceObjectObj},
         motor::{MOTOR_EXP_OBJ_TYPE, MOTOR_V5_OBJ_TYPE, motor_type::MotorTypeObj},
     }, qstrgen::qstr
 };

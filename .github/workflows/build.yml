@@ -24,6 +24,11 @@ jobs:
       - name: setup-rust
         uses: Swatinem/rust-cache@v2
 
+      - name: setup-arm-none-eabi-gcc
+        uses: carlosperate/arm-none-eabi-gcc-action@v1
+        with:
+          release: '14.2.Rel1'
+
       - name: build-rust
         run: cargo build
 
