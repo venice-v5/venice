@@ -11,6 +11,9 @@ jobs:
       - name: checkout
         uses: actions/checkout@v4
 
+      - name: setup-mp
+        run: git submodule update --init --recursive
+
       # - name: Set up Python
       #   uses: actions/setup-python@v5
       #   with:
