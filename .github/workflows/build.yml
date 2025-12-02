@@ -6,8 +6,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: build cargo project
-      - uses: actions/checkout@v5
-      - uses: Swatinem/rust-cache@v2
+        uses: actions/checkout@v5, Swatinem/rust-cache@v2
       - run: cargo build
       - run: tree target
       - run: echo "Done"
