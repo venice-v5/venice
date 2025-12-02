@@ -35,6 +35,9 @@ jobs:
       - name: build-rust
         run: cargo build
 
+      - name: generate-bin
+        run: arm-none-eabi-objcopy -O binary target/armv7a-vex-v5/debug/venice venice.bin
+
       # - name: Build wheel using maturin
       #   # This is the core step.
       #   # 1. We use `uv pip install` to install `maturin`.
@@ -46,10 +49,8 @@ jobs:
       #     uv pip install maturin
       #     maturin build --release --out dist
 
-      # - name: Upload wheel as artifact
-      #   # This step takes the wheel(s) built in the `dist/` directory
-      #   # and saves them as a downloadable artifact for this workflow run.
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: python-wheels
-      #     path: dist/
+      - name: upload-bin
+        uses: actions/upload-artifact@v4
+        with:
+          name: binary
+          path: venice.bin
