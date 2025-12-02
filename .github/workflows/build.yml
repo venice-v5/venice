@@ -13,9 +13,8 @@ jobs:
 
       - name: setup-uv
         uses: astral-sh/setup-uv@v1
-
-      - name: test
-        run: uv --version
+        with:
+          version: "0.7.3"
 
       - name: setup-rust
         uses: Swatinem/rust-cache@v2
