@@ -1,0 +1,21 @@
+[project]
+name = "venice"
+version = "0.1.0"
+description = "Venice, an open source Python runtime for VEX V5 robots"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.setuptools]
+packages = ["venice"]
+package-data = { "venice" = ["venice.bin"] }
+
+[tool.uv.workspace]
+members = [
+    "test",
+]
+
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"

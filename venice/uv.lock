@@ -1,0 +1,25 @@
+version = 1
+revision = 2
+requires-python = ">=3.11"
+
+[manifest]
+members = [
+    "test",
+    "venice",
+]
+
+[[package]]
+name = "test"
+version = "0.1.0"
+source = { virtual = "test" }
+dependencies = [
+    { name = "venice" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "venice", editable = "." }]
+
+[[package]]
+name = "venice"
+version = "0.1.0"
+source = { editable = "." }

@@ -14,15 +14,8 @@ jobs:
       - name: setup-mp
         run: git submodule update --init --recursive
 
-      # - name: Set up Python
-      #   uses: actions/setup-python@v5
-      #   with:
-      #     # Use a specific Python version or a range
-      #     python-version: '3.10'
-
-      # - name: Set up uv
-      #   # This action installs the `uv` package manager
-      #   uses: astral-sh/setup-uv@v1
+      - name: setup-uv
+        uses: astral-sh/setup-uv@v1
 
       - name: setup-rust
         uses: Swatinem/rust-cache@v2
@@ -36,21 +29,19 @@ jobs:
         run: cargo build
 
       - name: generate-bin
-        run: arm-none-eabi-objcopy -O binary target/armv7a-vex-v5/debug/venice venice.bin
+        run: arm-none-eabi-objcopy -O binary target/armv7a-vex-v5/debug/venice venice/venice.bin
 
-      # - name: Build wheel using maturin
-      #   # This is the core step.
-      #   # 1. We use `uv pip install` to install `maturin`.
-      #   # 2. We run `maturin build`. This command will automatically:
-      #   #    - Call `cargo build --release` (or similar) to build your Rust binary.
-      #   #    - `rust-cache` will intercept this call and use/save cached dependencies.
-      #   #    - Package the compiled binary into a .whl file in the `dist/` directory.
-      #   run: |
-      #     uv pip install maturin
-      #     maturin build --release --out dist
+      - name: build-wheel
+        run: cd venice && uv build
 
       - name: upload-bin
         uses: actions/upload-artifact@v4
         with:
           name: binary
-          path: venice.bin
+          path: venice/venice.bin
+
+      - name: upload-wheel
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels
+          path: venice/dist

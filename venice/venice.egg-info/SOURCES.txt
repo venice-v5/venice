@@ -1,0 +1,7 @@
+README.md
+pyproject.toml
+venice/__init__.py
+venice.egg-info/PKG-INFO
+venice.egg-info/SOURCES.txt
+venice.egg-info/dependency_links.txt
+venice.egg-info/top_level.txt
