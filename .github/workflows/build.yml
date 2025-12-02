@@ -1,12 +1,47 @@
-name: Test
-run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
+name: build
+
 on: [push]
+
 jobs:
-  build-wheel:
+  build_wheel:
+    name: build-wheel
     runs-on: ubuntu-latest
+
     steps:
-      - name: build cargo project
-        uses: actions/checkout@v5
-      - run: cargo build
-      - run: tree target
-      - run: echo "Done"
+      - name: checkout
+        uses: actions/checkout@v4
+
+      # - name: Set up Python
+      #   uses: actions/setup-python@v5
+      #   with:
+      #     # Use a specific Python version or a range
+      #     python-version: '3.10'
+
+      # - name: Set up uv
+      #   # This action installs the `uv` package manager
+      #   uses: astral-sh/setup-uv@v1
+
+      - name: setup-rust
+        uses: Swatinem/rust-cache@v2
+
+      - name: build-rust
+        run: cargo build
+
+      # - name: Build wheel using maturin
+      #   # This is the core step.
+      #   # 1. We use `uv pip install` to install `maturin`.
+      #   # 2. We run `maturin build`. This command will automatically:
+      #   #    - Call `cargo build --release` (or similar) to build your Rust binary.
+      #   #    - `rust-cache` will intercept this call and use/save cached dependencies.
+      #   #    - Package the compiled binary into a .whl file in the `dist/` directory.
+      #   run: |
+      #     uv pip install maturin
+      #     maturin build --release --out dist
+
+      # - name: Upload wheel as artifact
+      #   # This step takes the wheel(s) built in the `dist/` directory
+      #   # and saves them as a downloadable artifact for this workflow run.
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: python-wheels
+      #     path: dist/
