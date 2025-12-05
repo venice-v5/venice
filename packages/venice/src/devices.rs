@@ -1,11 +1,12 @@
 use std::sync::LazyLock;
 
-use vexide_devices::{peripherals::Peripherals, smart::SmartPort};
+use vexide_devices::{controller::ControllerId, peripherals::Peripherals, smart::SmartPort};
 
 use crate::registry::{ControllerGuard, ControllerRegistry, PortDevice, Registry, RegistryGuard};
 
 pub struct Devices {
-    pub controller: ControllerRegistry,
+    pub primary_controller: ControllerRegistry,
+    pub partner_controller: ControllerRegistry,
 
     pub port_1: Registry,
     pub port_2: Registry,
@@ -33,7 +34,8 @@ pub struct Devices {
 impl Devices {
     fn new() -> Option<Self> {
         Peripherals::take().map(|peris| Self {
-            controller: ControllerRegistry::new(peris.primary_controller),
+            primary_controller: ControllerRegistry::new(peris.primary_controller),
+            partner_controller: ControllerRegistry::new(peris.partner_controller),
 
             port_1: Registry::new(peris.port_1),
             port_2: Registry::new(peris.port_2),
@@ -121,6 +123,9 @@ where
     REGISTRIES.registry_by_port(port).lock(init)
 }
 
-pub fn lock_controller() -> ControllerGuard<'static> {
-    REGISTRIES.controller.lock()
+pub fn lock_controller(id: ControllerId) -> ControllerGuard<'static> {
+    match id {
+        ControllerId::Primary => REGISTRIES.primary_controller.lock(),
+        ControllerId::Partner => REGISTRIES.partner_controller.lock(),
+    }
 }

@@ -33,10 +33,15 @@ Q(set_position_target)
 
 Q(Controller)
 Q(read_state)
+Q(rumble)
+
+Q(ControllerId)
+Q(PRIMARY)
+Q(PARTNER)
+
 Q(ControllerState)
 Q(ButtonState)
 Q(JoystickState)
-Q(rumble)
 
 Q(RotationUnit)
 Q(RADIANS)

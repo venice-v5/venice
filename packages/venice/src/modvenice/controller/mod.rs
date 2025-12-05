@@ -1,8 +1,8 @@
+pub mod id;
 pub mod state;
 
 use micropython_rs::{
     const_dict,
-    except::raise_type_error,
     init::token,
     make_new_from_fn,
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
@@ -11,8 +11,10 @@ use micropython_rs::{
 use self::state::ControllerStateObj;
 use super::raise_device_error;
 use crate::{
+    args::Args,
     devices,
     fun::{fun1_from_fn, fun2_from_fn},
+    modvenice::controller::id::ControllerIdObj,
     obj::alloc_obj,
     qstrgen::qstr,
     registry::ControllerGuard,
@@ -41,14 +43,16 @@ unsafe impl ObjTrait for ControllerObj {
     const OBJ_TYPE: &ObjType = CONTROLLER_OBJ_TYPE.as_obj_type();
 }
 
-fn controller_make_new(_: &'static ObjType, n_pos: usize, n_kw: usize, _args: &[Obj]) -> Obj {
-    if n_pos != 0 || n_kw != 0 {
-        raise_type_error(token().unwrap(), "function does not accept arguments");
-    }
+fn controller_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Obj {
+    let token = token().unwrap();
+    let mut reader = Args::new(n_pos, n_kw, args).reader(token);
+    reader.assert_npos(0, 1).assert_nkw(0, 0);
 
-    let guard = devices::lock_controller();
+    let id_obj = reader.next_positional_or(&ControllerIdObj::PRIMARY);
+
+    let guard = devices::lock_controller(id_obj.id());
     alloc_obj(ControllerObj {
-        base: ObjBase::new(ControllerObj::OBJ_TYPE),
+        base: ObjBase::new(ty),
         guard,
     })
 }

@@ -36,6 +36,7 @@ use crate::{
                 AI_VISION_COLOR_OBJECT_OBJ_TYPE, AI_VISION_MODEL_OBJECT_OBJ_TYPE,
             },
         },
+        controller::id::ControllerIdObj,
         distance_sensor::{DistanceSensorObj, distance_object::DistanceObjectObj},
         motor::{MOTOR_EXP_OBJ_TYPE, MOTOR_V5_OBJ_TYPE, motor_type::MotorTypeObj},
     },
@@ -63,6 +64,7 @@ static venice_globals: Dict = const_dict![
     qstr!(MotorType) => Obj::from_static(MotorTypeObj::OBJ_TYPE),
     // controller
     qstr!(Controller) => Obj::from_static(ControllerObj::OBJ_TYPE),
+    qstr!(ControllerId) => Obj::from_static(ControllerIdObj::OBJ_TYPE),
     qstr!(ControllerState) => Obj::from_static(ControllerStateObj::OBJ_TYPE),
     qstr!(ButtonState) => Obj::from_static(ButtonStateObj::OBJ_TYPE),
     qstr!(JoystickState) => Obj::from_static(JoystickStateObj::OBJ_TYPE),
