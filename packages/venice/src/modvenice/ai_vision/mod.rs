@@ -16,7 +16,7 @@ use vexide_devices::smart::ai_vision::AiVisionSensor;
 
 use crate::{
     args::Args,
-    devices::{PortNumber, try_lock_port},
+    devices::{self, PortNumber},
     fun::{fun1_from_fn, fun2_from_fn, fun3_from_fn},
     modvenice::{
         ai_vision::{
@@ -76,8 +76,7 @@ fn ai_vision_sensor_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, ar
     let port = PortNumber::from_i32(reader.next_positional())
         .unwrap_or_else(|_| raise_value_error(token, "port number must be between 1 and 21"));
 
-    let guard = try_lock_port(port, |port| AiVisionSensor::new(port))
-        .unwrap_or_else(|_| raise_device_error(token, "port is already in use"));
+    let guard = devices::lock_port(port, |port| AiVisionSensor::new(port));
 
     alloc_obj(AiVisionSensorObj {
         base: ObjBase::new(ty),

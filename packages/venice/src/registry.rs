@@ -60,6 +60,15 @@ impl Registry {
             })
             .map_err(|_| ())
     }
+
+    pub fn lock<'a, D, I>(&'a self, init: I) -> RegistryGuard<'a, D>
+    where
+        D: PortDevice,
+        I: FnOnce(SmartPort) -> D,
+    {
+        self.try_lock(init)
+            .unwrap_or_else(|_| raise_value_error(token().unwrap(), "port occupied"))
+    }
 }
 
 impl<'a, D: PortDevice> RegistryGuard<'a, D> {

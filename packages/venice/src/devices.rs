@@ -113,12 +113,12 @@ impl PortNumber {
 
 static REGISTRIES: LazyLock<Devices> = LazyLock::new(|| Devices::new().unwrap());
 
-pub fn try_lock_port<D, I>(port: PortNumber, init: I) -> Result<RegistryGuard<'static, D>, ()>
+pub fn lock_port<D, I>(port: PortNumber, init: I) -> RegistryGuard<'static, D>
 where
     D: PortDevice,
     I: FnOnce(SmartPort) -> D,
 {
-    REGISTRIES.registry_by_port(port).try_lock(init)
+    REGISTRIES.registry_by_port(port).lock(init)
 }
 
 pub fn try_lock_controller() -> Result<MutexGuard<'static, Controller>, ()> {

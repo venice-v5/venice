@@ -102,10 +102,9 @@ fn motor_v5_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Ob
 
     let gearset: &GearsetObj = reader.next_positional();
 
-    let guard = devices::try_lock_port(port, |port| {
+    let guard = devices::lock_port(port, |port| {
         Motor::new(port, gearset.gearset(), direction.direction())
-    })
-    .unwrap_or_else(|_| panic!("port is already in use"));
+    });
 
     if guard.borrow().is_exp() {
         raise_device_error(token, "Invalid motor type, expected V5, found Exp")
@@ -127,8 +126,7 @@ fn motor_exp_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[O
 
     let direction: &DirectionObj = reader.next_positional();
 
-    let guard = devices::try_lock_port(port, |port| Motor::new_exp(port, direction.direction()))
-        .unwrap_or_else(|_| panic!("port is already in use"));
+    let guard = devices::lock_port(port, |port| Motor::new_exp(port, direction.direction()));
 
     if guard.borrow().is_v5() {
         raise_device_error(token, "Invalid motor type, expected Exp, found V5")

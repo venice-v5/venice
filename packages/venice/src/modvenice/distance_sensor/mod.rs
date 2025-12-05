@@ -11,7 +11,7 @@ use vexide_devices::smart::distance::DistanceSensor;
 
 use crate::{
     args::Args,
-    devices::{PortNumber, try_lock_port},
+    devices::{self, PortNumber},
     fun::fun1_from_fn,
     modvenice::{distance_sensor::distance_object::DistanceObjectObj, raise_device_error},
     obj::alloc_obj,
@@ -47,8 +47,7 @@ fn distance_sensor_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, arg
     let port = PortNumber::from_i32(reader.next_positional())
         .unwrap_or_else(|_| raise_value_error(token, "port number must be between 1 and 21"));
 
-    let guard = try_lock_port(port, |port| DistanceSensor::new(port))
-        .unwrap_or_else(|_| raise_device_error(token, "port is already in use"));
+    let guard = devices::lock_port(port, |port| DistanceSensor::new(port));
 
     alloc_obj(DistanceSensorObj {
         base: ObjBase::new(ty),

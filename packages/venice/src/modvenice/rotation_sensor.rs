@@ -59,8 +59,7 @@ fn rotation_sensor_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, arg
         .next_positional_or(&DirectionObj::FORWARD)
         .direction();
 
-    let guard = devices::try_lock_port(port, |port| RotationSensor::new(port, direction))
-        .unwrap_or_else(|_| panic!("port is already in use"));
+    let guard = devices::lock_port(port, |port| RotationSensor::new(port, direction));
 
     alloc_obj(RotationSensorObj {
         base: ObjBase::new(ty),
