@@ -1,17 +1,18 @@
 use std::{
     cell::{Ref, RefCell, RefMut},
+    ops::{Deref, DerefMut},
     sync::{Mutex, MutexGuard},
 };
 
 use micropython_rs::{except::raise_value_error, init::token};
-use vexide_devices::smart::SmartPort;
+use vexide_devices::{controller::Controller, smart::SmartPort};
 
 pub trait PortDevice {
     fn take_port(self) -> SmartPort;
 }
 
 enum RegistryDevice {
-    Port(SmartPort),
+    Available(SmartPort),
     Occupied,
 }
 
@@ -38,7 +39,7 @@ impl RegistryDevice {
 impl Registry {
     pub const fn new(port: SmartPort) -> Self {
         Self {
-            device: Mutex::new(RegistryDevice::Port(port)),
+            device: Mutex::new(RegistryDevice::Available(port)),
         }
     }
 
@@ -50,7 +51,7 @@ impl Registry {
         self.device
             .try_lock()
             .map(|mut registry_device| match registry_device.take() {
-                RegistryDevice::Port(port) => RegistryGuard {
+                RegistryDevice::Available(port) => RegistryGuard {
                     guard: RefCell::new(Some(ActiveRegistryGuard {
                         device: init(port),
                         guard: registry_device,
@@ -102,7 +103,7 @@ impl<'a, D: PortDevice> RegistryGuard<'a, D> {
         let guard = self.guard.replace(None);
         match guard {
             Some(mut guard) => {
-                *guard.guard = RegistryDevice::Port(guard.device.take_port());
+                *guard.guard = RegistryDevice::Available(guard.device.take_port());
                 Ok(())
             }
             None => Err(()),
@@ -119,7 +120,7 @@ impl<'a, D: PortDevice> Drop for RegistryGuard<'a, D> {
     fn drop(&mut self) {
         let guard = std::mem::replace(self.guard.get_mut(), None);
         if let Some(mut guard) = guard {
-            *guard.guard = RegistryDevice::Port(guard.device.take_port());
+            *guard.guard = RegistryDevice::Available(guard.device.take_port());
         }
     }
 }
@@ -163,4 +164,112 @@ mod impls {
         SerialPort,
         OpticalSensor
     );
+}
+
+pub struct ControllerRegistry {
+    controller: Mutex<Controller>,
+}
+
+struct ActiveControllerGuard<'a> {
+    guard: MutexGuard<'a, Controller>,
+}
+
+pub struct ControllerGuard<'a> {
+    guard: RefCell<Option<ActiveControllerGuard<'a>>>,
+}
+
+pub struct ControllerRef<'a, 'b> {
+    r: Ref<'b, MutexGuard<'a, Controller>>,
+}
+
+pub struct ControllerRefMut<'a, 'b> {
+    r: RefMut<'b, MutexGuard<'a, Controller>>,
+}
+
+impl ControllerRegistry {
+    pub const fn new(controller: Controller) -> Self {
+        Self {
+            controller: Mutex::new(controller),
+        }
+    }
+
+    pub fn try_lock<'a>(&'a self) -> Result<ControllerGuard<'a>, ()> {
+        self.controller
+            .try_lock()
+            .map(|controller| ControllerGuard {
+                guard: RefCell::new(Some(ActiveControllerGuard { guard: controller })),
+            })
+            .map_err(|_| ())
+    }
+
+    pub fn lock<'a>(&'a self) -> ControllerGuard<'a> {
+        self.try_lock()
+            .unwrap_or_else(|_| raise_value_error(token().unwrap(), "controller already occupied"))
+    }
+}
+
+impl<'a> ControllerGuard<'a> {
+    pub fn try_borrow<'b>(&'b self) -> Result<ControllerRef<'a, 'b>, ()> {
+        Ref::filter_map(self.guard.borrow(), |guard| {
+            guard.as_ref().map(|guard| &guard.guard)
+        })
+        .map(|r| ControllerRef { r })
+        .map_err(|_| ())
+    }
+
+    pub fn try_borrow_mut<'b>(&'b self) -> Result<ControllerRefMut<'a, 'b>, ()> {
+        RefMut::filter_map(self.guard.borrow_mut(), |guard| {
+            guard.as_mut().map(|guard| &mut guard.guard)
+        })
+        .map(|r| ControllerRefMut { r })
+        .map_err(|_| ())
+    }
+
+    pub fn borrow<'b>(&'b self) -> ControllerRef<'a, 'b> {
+        self.try_borrow().unwrap_or_else(|_| {
+            raise_value_error(token().unwrap(), "attempt to use controller after free")
+        })
+    }
+
+    pub fn borrow_mut<'b>(&'b self) -> ControllerRefMut<'a, 'b> {
+        self.try_borrow_mut().unwrap_or_else(|_| {
+            raise_value_error(token().unwrap(), "attempt to use controller after free")
+        })
+    }
+
+    pub fn free(&self) -> Result<(), ()> {
+        // guard will be dropped at the end of this function, calling MutexGuard::drop and releasing the lock
+        match self.guard.replace(None) {
+            Some(_) => Ok(()),
+            None => Err(()),
+        }
+    }
+
+    pub fn free_or_raise(&self) {
+        self.free().unwrap_or_else(|_| {
+            raise_value_error(token().unwrap(), "attempt to free controller twice")
+        })
+    }
+}
+
+impl<'a, 'b> Deref for ControllerRef<'a, 'b> {
+    type Target = Controller;
+
+    fn deref(&self) -> &Self::Target {
+        &self.r
+    }
+}
+
+impl<'a, 'b> Deref for ControllerRefMut<'a, 'b> {
+    type Target = Controller;
+
+    fn deref(&self) -> &Self::Target {
+        &self.r
+    }
+}
+
+impl<'a, 'b> DerefMut for ControllerRefMut<'a, 'b> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.r
+    }
 }
