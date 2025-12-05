@@ -33,6 +33,7 @@ pub static DISTANCE_SENSOR_OBJ_TYPE: ObjFullType = ObjFullType::new(
 .set_slot_locals_dict_from_static(&const_dict![
     qstr!(object) => Obj::from_static(&fun1_from_fn!(distance_sensor_object, &DistanceSensorObj)),
     qstr!(status) => Obj::from_static(&fun1_from_fn!(distance_sensor_status, &DistanceSensorObj)),
+    qstr!(free) => Obj::from_static(&fun1_from_fn!(distance_sensor_free, &DistanceSensorObj)),
 ]);
 
 unsafe impl ObjTrait for DistanceSensorObj {
@@ -74,4 +75,9 @@ fn distance_sensor_object(this: &DistanceSensorObj) -> Obj {
         Some(state) => alloc_obj(DistanceObjectObj::new(state)),
         None => Obj::NONE,
     }
+}
+
+fn distance_sensor_free(this: &DistanceSensorObj) -> Obj {
+    this.guard.free_or_raise();
+    Obj::NONE
 }

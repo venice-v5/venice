@@ -68,6 +68,7 @@ pub(crate) static ABSTRACT_MOTOR_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFl
         qstr!(set_position) => Obj::from_static(&fun3_from_fn!(motor_set_position, &MotorObj, f32, &RotationUnitObj)),
         qstr!(set_direction) => Obj::from_static(&fun2_from_fn!(motor_set_direction, &MotorObj, &DirectionObj)),
         qstr!(direction) => Obj::from_static(&fun1_from_fn!(motor_direction, &MotorObj)),
+        qstr!(free) => Obj::from_static(&fun1_from_fn!(motor_free, &MotorObj)),
     ]);
 
 pub(crate) static MOTOR_V5_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(MotorV5))
@@ -431,4 +432,9 @@ fn motor_faults(this: &MotorObj) -> Obj {
         .faults()
         .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
     Obj::from_int(faults.bits() as i32)
+}
+
+fn motor_free(this: &MotorObj) -> Obj {
+    this.guard.free_or_raise();
+    Obj::NONE
 }

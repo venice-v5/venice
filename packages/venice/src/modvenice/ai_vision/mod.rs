@@ -55,7 +55,8 @@ static AI_VISION_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qs
         qstr!(set_apriltag_family) => Obj::from_static(&fun2_from_fn!(ai_vision_sensor_set_apriltag_family, &AiVisionSensorObj, &AprilTagFamilyObj)),
         qstr!(object_count) => Obj::from_static(&fun1_from_fn!(ai_vision_sensor_object_count, &AiVisionSensorObj)),
         qstr!(objects) => Obj::from_static(&fun1_from_fn!(ai_vision_sensor_objects, &AiVisionSensorObj)),
-        qstr!(color_codes) => Obj::from_static(&fun1_from_fn!(ai_vision_sensor_color_codes, &AiVisionSensorObj))
+        qstr!(color_codes) => Obj::from_static(&fun1_from_fn!(ai_vision_sensor_color_codes, &AiVisionSensorObj)),
+        qstr!(free) => Obj::from_static(&fun1_from_fn!(ai_vision_sensor_free, &AiVisionSensorObj)),
     ]);
 
 #[repr(C)]
@@ -232,4 +233,9 @@ fn ai_vision_sensor_color_codes(this: &AiVisionSensorObj) -> Obj {
         })
         .collect::<Vec<_>>();
     new_list(&codes[..])
+}
+
+fn ai_vision_sensor_free(this: &AiVisionSensorObj) -> Obj {
+    this.guard.free_or_raise();
+    Obj::NONE
 }

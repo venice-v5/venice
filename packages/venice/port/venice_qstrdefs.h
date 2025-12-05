@@ -7,6 +7,7 @@ Q(Sleep)
 Q(get_running_loop)
 
 Q(DeviceError)
+Q(free)
 
 Q(Gearset)
 Q(RED)

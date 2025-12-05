@@ -41,6 +41,7 @@ pub static ROTATION_SENSOR_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::e
         qstr!(direction) => Obj::from_static(&fun1_from_fn!(rotation_sensor_direction,&RotationSensorObj)),
         qstr!(status) => Obj::from_static(&fun1_from_fn!(rotation_sensor_status,&RotationSensorObj)),
         qstr!(set_data_interval) => Obj::from_static(&fun3_from_fn!(rotation_sensor_set_data_interval,&RotationSensorObj, f32, &TimeUnitObj)),
+        qstr!(free) => Obj::from_static(&fun1_from_fn!(rotation_sensor_free, &RotationSensorObj)),
     ]);
 
 unsafe impl ObjTrait for RotationSensorObj {
@@ -149,5 +150,10 @@ fn rotation_sensor_set_data_interval(
         .borrow_mut()
         .set_data_interval(unit.unit().from_float(interval))
         .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
+    Obj::NONE
+}
+
+fn rotation_sensor_free(this: &RotationSensorObj) -> Obj {
+    this.guard.free_or_raise();
     Obj::NONE
 }
