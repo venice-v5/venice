@@ -34,12 +34,12 @@ use crate::{
 static AI_VISION_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(AiVisionSensor))
     .set_make_new(make_new_from_fn!(ai_vision_sensor_make_new))
     .set_locals_dict(const_dict![
-        qstr!(MAX_OBJECTS) => Obj::from_int(24),
-        qstr!(HORIZONTAL_RESOLUTION) => Obj::from_int(320),
-        qstr!(VERTICAL_RESOLUTION) => Obj::from_int(240),
-        qstr!(HORIZONTAL_FOV) => Obj::from_float(74.0),
-        qstr!(VERTICAL_FOV) => Obj::from_float(63.0),
-        qstr!(DIAGONAL_FOV) => Obj::from_float(87.0),
+        qstr!(MAX_OBJECTS) => Obj::from_int(AiVisionSensor::MAX_OBJECTS as i32),
+        qstr!(HORIZONTAL_RESOLUTION) => Obj::from_int(AiVisionSensor::HORIZONTAL_RESOLUTION as i32),
+        qstr!(VERTICAL_RESOLUTION) => Obj::from_int(AiVisionSensor::VERTICAL_RESOLUTION as i32),
+        qstr!(HORIZONTAL_FOV) => Obj::from_float(AiVisionSensor::HORIZONTAL_FOV),
+        qstr!(VERTICAL_FOV) => Obj::from_float(AiVisionSensor::VERTICAL_FOV),
+        qstr!(DIAGONAL_FOV) => Obj::from_float(AiVisionSensor::DIAGONAL_FOV),
 
         qstr!(temperature) => Obj::from_static(&fun1!(ai_vision_sensor_temperature, &AiVisionSensorObj)),
         qstr!(set_color_code) => Obj::from_static(&fun3!(ai_vision_sensor_set_color_code, &AiVisionSensorObj, i32, &AiVisionColorCodeObj)),

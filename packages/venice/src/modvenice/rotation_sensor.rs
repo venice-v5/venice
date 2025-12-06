@@ -30,8 +30,9 @@ pub struct RotationSensorObj {
 pub static ROTATION_SENSOR_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(RotationSensor))
     .set_make_new(make_new_from_fn!(rotation_sensor_make_new))
     .set_locals_dict(const_dict![
-        qstr!(MIN_DATA_INTERVAL_MS) => Obj::from_int(5),
-        qstr!(TICKS_PER_REVOLUTION) => Obj::from_int(36000),
+        qstr!(MIN_DATA_INTERVAL_MS) => Obj::from_int(RotationSensor::MIN_DATA_INTERVAL.as_millis() as i32),
+        qstr!(TICKS_PER_REVOLUTION) => Obj::from_int(RotationSensor::TICKS_PER_REVOLUTION as i32),
+
         qstr!(angle) => Obj::from_static(&fun2!(rotation_sensor_angle, &RotationSensorObj, &RotationUnitObj)),
         qstr!(position) => Obj::from_static(&fun2!(rotation_sensor_position, &RotationSensorObj, &RotationUnitObj)),
         qstr!(set_position) => Obj::from_static(&fun3!(rotation_sensor_set_position, &RotationSensorObj, f32, &RotationUnitObj)),

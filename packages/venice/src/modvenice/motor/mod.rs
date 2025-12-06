@@ -34,7 +34,7 @@ pub struct MotorObj {
 
 pub(crate) static ABSTRACT_MOTOR_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(AbstractMotor))
     .set_locals_dict(const_dict![
-        qstr!(WRITE_INTERVAL_MS) => Obj::from_int(5),
+        qstr!(WRITE_INTERVAL_MS) => Obj::from_int(Motor::WRITE_INTERVAL.as_millis() as i32),
 
         qstr!(set_voltage) => Obj::from_static(&fun2!(motor_set_voltage,&MotorObj, f32)),
         qstr!(set_velocity) => Obj::from_static(&fun2!(motor_set_velocity,&MotorObj, i32)),
