@@ -9,6 +9,7 @@ use micropython_rs::{
     fun::{Fun1, Fun2},
     generator::{GEN_INSTANCE_TYPE, VmReturnKind, resume_gen},
     init::token,
+    make_new_from_fn,
     nlr::{self, push_nlr_callback},
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
@@ -17,16 +18,15 @@ use vex_sdk::vexTasksRun;
 use super::{sleep::Sleep, task::Task, time32};
 use crate::{obj::alloc_obj, qstrgen::qstr};
 
-pub static EVENT_LOOP_OBJ_TYPE: ObjFullType = unsafe {
+pub static EVENT_LOOP_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(EventLoop))
-        .set_slot_make_new(event_loop_new)
-        .set_slot_locals_dict_from_static({
+        .set_make_new(make_new_from_fn!(event_loop_new))
+        .set_locals_dict({
             const_dict![
                 qstr!(spawn) => Obj::from_static(&Fun2::new(event_loop_spawn)),
                 qstr!(run) => Obj::from_static(&Fun1::new(event_loop_run)),
             ]
-        })
-};
+        });
 
 struct Sleeper {
     task: Obj,
@@ -160,7 +160,7 @@ impl EventLoop {
     }
 }
 
-extern "C" fn event_loop_new(_: *const ObjType, n_args: usize, n_kw: usize, _: *const Obj) -> Obj {
+fn event_loop_new(_: &ObjType, n_args: usize, n_kw: usize, _args: &[Obj]) -> Obj {
     if n_args != 0 || n_kw != 0 {
         raise_type_error(token().unwrap(), "function does not accept any arguments");
     }
@@ -168,6 +168,8 @@ extern "C" fn event_loop_new(_: *const ObjType, n_args: usize, n_kw: usize, _: *
     alloc_obj(EventLoop::new())
 }
 
+// this function can't use a Fun generator because a Generator struct would be needed to write out
+// its type signature, and that struct does not exist
 extern "C" fn event_loop_spawn(self_in: Obj, coro: Obj) -> Obj {
     if !coro.is(GEN_INSTANCE_TYPE) {
         raise_type_error(token().unwrap(), "expected coroutine");
@@ -176,6 +178,8 @@ extern "C" fn event_loop_spawn(self_in: Obj, coro: Obj) -> Obj {
     self_in.try_to_obj::<EventLoop>().unwrap().spawn(coro)
 }
 
+// this function can't use a Fun generator because it needs the EventLoop in Obj form, not as a
+// reference, in order to properly replace the static variable
 extern "C" fn event_loop_run(self_in: Obj) -> Obj {
     let prev_loop = RUNNING_LOOP.replace(self_in);
     push_nlr_callback(
@@ -201,6 +205,8 @@ pub extern "C" fn vasyncio_run(coro: Obj) -> Obj {
     event_loop_run(alloc_obj(eloop))
 }
 
+// this function can't use a Fun generator because a Generator struct would be needed to write out
+// its type signature, and that struct does not exist
 pub extern "C" fn vasyncio_spawn(coro: Obj) -> Obj {
     let eloop = get_running_loop();
     if eloop.is_none() {

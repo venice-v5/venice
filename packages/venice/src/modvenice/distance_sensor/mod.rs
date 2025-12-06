@@ -30,7 +30,7 @@ pub static DISTANCE_SENSOR_OBJ_TYPE: ObjFullType = ObjFullType::new(
     qstr!(DistanceSensor),
 )
 .set_make_new(make_new_from_fn!(distance_sensor_make_new))
-.set_slot_locals_dict_from_static(const_dict![
+.set_locals_dict(const_dict![
     qstr!(object) => Obj::from_static(&fun1_from_fn!(distance_sensor_object, &DistanceSensorObj)),
     qstr!(status) => Obj::from_static(&fun1_from_fn!(distance_sensor_status, &DistanceSensorObj)),
     qstr!(free) => Obj::from_static(&fun1_from_fn!(distance_sensor_free, &DistanceSensorObj)),

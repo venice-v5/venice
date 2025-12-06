@@ -13,7 +13,7 @@ static AI_VISION_FLAGS_OBJ_TYPE: ObjFullType = ObjFullType::new(
     TypeFlags::empty(),
     qstr!(AiVisionFlags),
 )
-.set_slot_locals_dict_from_static(const_dict![
+.set_locals_dict(const_dict![
     qstr!(DISABLE_APRILTAG) => Obj::from_static(&AiVisionFlagsObj::DISABLE_APRILTAG),
     qstr!(DISABLE_COLOR) => Obj::from_static(&AiVisionFlagsObj::DISABLE_COLOR),
     qstr!(DISABLE_MODEL) => Obj::from_static(&AiVisionFlagsObj::DISABLE_MODEL),
@@ -21,7 +21,7 @@ static AI_VISION_FLAGS_OBJ_TYPE: ObjFullType = ObjFullType::new(
     qstr!(DISABLE_STATUS_OVERLAY) => Obj::from_static(&AiVisionFlagsObj::DISABLE_STATUS_OVERLAY),
     qstr!(DISABLE_USB_OVERLAY) => Obj::from_static(&AiVisionFlagsObj::DISABLE_USB_OVERLAY)
 ])
-.set_slot_binary_op(ai_vision_flags_binary_op);
+.set_binary_op_raw(ai_vision_flags_binary_op);
 
 #[repr(C)]
 pub struct AiVisionFlagsObj {

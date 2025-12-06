@@ -3,7 +3,8 @@ use std::cell::Cell;
 use micropython_rs::{
     except::{raise_stop_iteration, raise_type_error},
     init::token,
-    obj::{IterSlotValue, Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
+    make_new_from_fn,
+    obj::{IterType, Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
 
 use super::time32;
@@ -21,10 +22,10 @@ pub struct Sleep {
     complete: Cell<bool>,
 }
 
-pub static SLEEP_OBJ_TYPE: ObjFullType = unsafe {
-    ObjFullType::new(TypeFlags::ITER_IS_ITERNEXT, qstr!(Sleep)).set_slot_make_new(sleep_make_new)
-}
-.set_iter(IterSlotValue::IterNext(sleep_iternext));
+pub static SLEEP_OBJ_TYPE: ObjFullType =
+    ObjFullType::new(TypeFlags::ITER_IS_ITERNEXT, qstr!(Sleep))
+        .set_make_new(make_new_from_fn!(sleep_make_new))
+        .set_iter(IterType::IterNext(sleep_iternext));
 
 unsafe impl ObjTrait for Sleep {
     const OBJ_TYPE: &micropython_rs::obj::ObjType = SLEEP_OBJ_TYPE.as_obj_type();
@@ -44,14 +45,9 @@ impl Sleep {
     }
 }
 
-unsafe extern "C" fn sleep_make_new(
-    _: *const ObjType,
-    n_pos: usize,
-    n_kw: usize,
-    ptr: *const Obj,
-) -> Obj {
+fn sleep_make_new(_: &ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Obj {
     let token = token().unwrap();
-    let mut args = unsafe { Args::from_ptr(n_pos, n_kw, ptr) }.reader(token);
+    let mut args = Args::new(n_pos, n_kw, args).reader(token);
     args.assert_npos(2, 2);
 
     let interval_float = match args.try_next_positional_untyped() {

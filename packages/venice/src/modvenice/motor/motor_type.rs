@@ -13,7 +13,7 @@ pub struct MotorTypeObj {
 }
 
 static MOTOR_TYPE_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(Gearset))
-    .set_slot_locals_dict_from_static(const_dict![
+    .set_locals_dict(const_dict![
         qstr!(EXP) => Obj::from_static(&MotorTypeObj::EXP),
         qstr!(V5) => Obj::from_static(&MotorTypeObj::V5),
     ]);

@@ -427,11 +427,11 @@ impl ObjFullType {
         self
     }
 
-    pub const fn set_slot_locals_dict_from_static(self, value: &'static Dict) -> Self {
-        unsafe { self.set_slot(Slot::LocalsDict, value as *const Dict as *const c_void) }
+    pub const fn set_locals_dict(self, value: &'static Dict) -> Self {
+        unsafe { self.set_locals_dict_raw(value as *const Dict as *mut Dict) }
     }
 
-    pub const fn set_slot_parent(self, value: &'static ObjType) -> Self {
+    pub const fn set_parent(self, value: &'static ObjType) -> Self {
         unsafe { self.set_slot(Slot::Parent, value as *const ObjType as *const c_void) }
     }
 }
@@ -439,32 +439,31 @@ impl ObjFullType {
 pub type IterNextFn = extern "C" fn(self_in: Obj) -> Obj;
 
 // incomplete
-pub enum IterSlotValue {
+pub enum IterType {
     IterNext(IterNextFn),
 }
 
 impl ObjFullType {
-    // named differently because this isn't simply setting a slot
-    pub const fn set_iter(mut self, iter: IterSlotValue) -> Self {
+    pub const fn set_iter(mut self, iter: IterType) -> Self {
         match iter {
-            IterSlotValue::IterNext(f) => {
+            IterType::IterNext(f) => {
                 self.flags |= TypeFlags::ITER_IS_GETITER.bits();
                 // SAFETY: f is safe to use as the iter slot value for the given iter type
-                unsafe { self.set_slot_iter(f as *const c_void) }
+                unsafe { self.set_iter_raw(f as *const c_void) }
             }
         }
     }
 
     pub const fn set_make_new(self, make_new: MakeNew) -> Self {
-        unsafe { self.set_slot_make_new(make_new.f) }
+        unsafe { self.set_make_new_raw(make_new.f) }
     }
 
     pub const fn set_attr(self, attr: Attr) -> Self {
-        unsafe { self.set_slot_attr(attr.f) }
+        unsafe { self.set_attr_raw(attr.f) }
     }
 
     pub const fn set_subscr(self, subscr: Subscr) -> Self {
-        self.set_slot_subscr(subscr.f)
+        self.set_subscr_raw(subscr.f)
     }
 }
 
@@ -492,16 +491,16 @@ macro_rules! impl_slot_setter {
     };
 }
 
-impl_slot_setter!(set_slot_unary_op, Slot::UnaryOp, UnaryOpFn);
-impl_slot_setter!(set_slot_binary_op, Slot::BinaryOp, BinaryOpFn);
-impl_slot_setter!(set_slot_subscr, Slot::Subscr, SubscrFn);
+impl_slot_setter!(set_unary_op_raw, Slot::UnaryOp, UnaryOpFn);
+impl_slot_setter!(set_binary_op_raw, Slot::BinaryOp, BinaryOpFn);
+impl_slot_setter!(set_subscr_raw, Slot::Subscr, SubscrFn);
 
-impl_slot_setter!(unsafe set_slot_make_new, Slot::MakeNew, MakeNewFn);
-impl_slot_setter!(unsafe set_slot_attr, Slot::Attr, AttrFn);
-impl_slot_setter!(unsafe set_slot_print, Slot::Print, PrintFn);
-impl_slot_setter!(unsafe set_slot_locals_dict, Slot::LocalsDict, *mut Dict);
-impl_slot_setter!(unsafe set_slot_protocol, Slot::Protocol, *const c_void);
-impl_slot_setter!(unsafe set_slot_iter, Slot::Iter, *const c_void);
+impl_slot_setter!(unsafe set_make_new_raw, Slot::MakeNew, MakeNewFn);
+impl_slot_setter!(unsafe set_attr_raw, Slot::Attr, AttrFn);
+impl_slot_setter!(unsafe set_print_raw, Slot::Print, PrintFn);
+impl_slot_setter!(unsafe set_locals_dict_raw, Slot::LocalsDict, *mut Dict);
+impl_slot_setter!(unsafe set_protocol_raw, Slot::Protocol, *const c_void);
+impl_slot_setter!(unsafe set_iter_raw, Slot::Iter, *const c_void);
 
 unsafe impl Sync for ObjFullType {}
 unsafe impl Sync for ObjBase<'_> {}
