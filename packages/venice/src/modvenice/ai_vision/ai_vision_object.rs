@@ -10,11 +10,11 @@ use micropython_rs::{
 use vexide_devices::smart::ai_vision::AiVisionObject;
 
 use crate::{
-    fun::fun2_from_fn, modvenice::units::rotation::RotationUnitObj, obj::alloc_obj, qstrgen::qstr,
+    fun::fun2, modvenice::units::rotation::RotationUnitObj, obj::alloc_obj, qstrgen::qstr,
 };
 
 const AI_VISION_OBJECT_LOCAL_DICT: &Dict = const_dict![
-    qstr!(angle) => Obj::from_static(&fun2_from_fn!(ai_vision_object_angle, &AiVisionObjectObj, &RotationUnitObj)),
+    qstr!(angle) => Obj::from_static(&fun2!(ai_vision_object_angle, &AiVisionObjectObj, &RotationUnitObj)),
 ];
 
 static AI_VISION_OBJECT_OBJ_TYPE: ObjFullType =

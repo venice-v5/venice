@@ -13,7 +13,7 @@ use super::raise_device_error;
 use crate::{
     args::Args,
     devices,
-    fun::{fun1_from_fn, fun2_from_fn},
+    fun::{fun1, fun2},
     modvenice::controller::id::ControllerIdObj,
     obj::alloc_obj,
     qstrgen::qstr,
@@ -26,18 +26,17 @@ pub struct ControllerObj {
     guard: ControllerGuard<'static>,
 }
 
-static CONTROLLER_OBJ_TYPE: ObjFullType =
-    ObjFullType::new(TypeFlags::empty(), qstr!(Controller))
-        .set_make_new(make_new_from_fn!(controller_make_new))
-        .set_locals_dict(const_dict![
-            qstr!(UPDATE_INTERVAL_MS) => Obj::from_int(25),
-            qstr!(MAX_COLUMNS) => Obj::from_int(19),
-            qstr!(MAX_LINES) => Obj::from_int(3),
+static CONTROLLER_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(Controller))
+    .set_make_new(make_new_from_fn!(controller_make_new))
+    .set_locals_dict(const_dict![
+        qstr!(UPDATE_INTERVAL_MS) => Obj::from_int(25),
+        qstr!(MAX_COLUMNS) => Obj::from_int(19),
+        qstr!(MAX_LINES) => Obj::from_int(3),
 
-            qstr!(read_state) => Obj::from_static(&fun1_from_fn!(controller_read_state, &ControllerObj)),
-            qstr!(rumble) => Obj::from_static(&fun2_from_fn!(controller_rumble, &ControllerObj, &[u8])),
-            qstr!(free) => Obj::from_static(&fun1_from_fn!(controller_free, &ControllerObj))
-        ]);
+        qstr!(read_state) => Obj::from_static(&fun1!(controller_read_state, &ControllerObj)),
+        qstr!(rumble) => Obj::from_static(&fun2!(controller_rumble, &ControllerObj, &[u8])),
+        qstr!(free) => Obj::from_static(&fun1!(controller_free, &ControllerObj))
+    ]);
 
 unsafe impl ObjTrait for ControllerObj {
     const OBJ_TYPE: &ObjType = CONTROLLER_OBJ_TYPE.as_obj_type();

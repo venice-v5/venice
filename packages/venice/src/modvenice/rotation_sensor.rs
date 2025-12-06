@@ -10,7 +10,7 @@ use vexide_devices::{math::Direction, smart::rotation::RotationSensor};
 use crate::{
     args::Args,
     devices::{self, PortNumber},
-    fun::{fun1_from_fn, fun2_from_fn, fun3_from_fn},
+    fun::{fun1, fun2, fun3},
     modvenice::{
         motor::direction::DirectionObj,
         raise_device_error,
@@ -32,16 +32,16 @@ pub static ROTATION_SENSOR_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::e
     .set_locals_dict(const_dict![
         qstr!(MIN_DATA_INTERVAL_MS) => Obj::from_int(5),
         qstr!(TICKS_PER_REVOLUTION) => Obj::from_int(36000),
-        qstr!(angle) => Obj::from_static(&fun2_from_fn!(rotation_sensor_angle, &RotationSensorObj, &RotationUnitObj)),
-        qstr!(position) => Obj::from_static(&fun2_from_fn!(rotation_sensor_position, &RotationSensorObj, &RotationUnitObj)),
-        qstr!(set_position) => Obj::from_static(&fun3_from_fn!(rotation_sensor_set_position, &RotationSensorObj, f32, &RotationUnitObj)),
-        qstr!(velocity) => Obj::from_static(&fun1_from_fn!(rotation_sensor_velocity, &RotationSensorObj)),
-        qstr!(reset_position) => Obj::from_static(&fun1_from_fn!(rotation_sensor_reset_position,&RotationSensorObj)),
-        qstr!(set_direction) => Obj::from_static(&fun2_from_fn!(rotation_sensor_set_direction,&RotationSensorObj, &DirectionObj)),
-        qstr!(direction) => Obj::from_static(&fun1_from_fn!(rotation_sensor_direction,&RotationSensorObj)),
-        qstr!(status) => Obj::from_static(&fun1_from_fn!(rotation_sensor_status,&RotationSensorObj)),
-        qstr!(set_data_interval) => Obj::from_static(&fun3_from_fn!(rotation_sensor_set_data_interval,&RotationSensorObj, f32, &TimeUnitObj)),
-        qstr!(free) => Obj::from_static(&fun1_from_fn!(rotation_sensor_free, &RotationSensorObj)),
+        qstr!(angle) => Obj::from_static(&fun2!(rotation_sensor_angle, &RotationSensorObj, &RotationUnitObj)),
+        qstr!(position) => Obj::from_static(&fun2!(rotation_sensor_position, &RotationSensorObj, &RotationUnitObj)),
+        qstr!(set_position) => Obj::from_static(&fun3!(rotation_sensor_set_position, &RotationSensorObj, f32, &RotationUnitObj)),
+        qstr!(velocity) => Obj::from_static(&fun1!(rotation_sensor_velocity, &RotationSensorObj)),
+        qstr!(reset_position) => Obj::from_static(&fun1!(rotation_sensor_reset_position,&RotationSensorObj)),
+        qstr!(set_direction) => Obj::from_static(&fun2!(rotation_sensor_set_direction,&RotationSensorObj, &DirectionObj)),
+        qstr!(direction) => Obj::from_static(&fun1!(rotation_sensor_direction,&RotationSensorObj)),
+        qstr!(status) => Obj::from_static(&fun1!(rotation_sensor_status,&RotationSensorObj)),
+        qstr!(set_data_interval) => Obj::from_static(&fun3!(rotation_sensor_set_data_interval,&RotationSensorObj, f32, &TimeUnitObj)),
+        qstr!(free) => Obj::from_static(&fun1!(rotation_sensor_free, &RotationSensorObj)),
     ]);
 
 unsafe impl ObjTrait for RotationSensorObj {

@@ -12,7 +12,7 @@ use vexide_devices::smart::distance::DistanceSensor;
 use crate::{
     args::Args,
     devices::{self, PortNumber},
-    fun::fun1_from_fn,
+    fun::fun1,
     modvenice::{distance_sensor::distance_object::DistanceObjectObj, raise_device_error},
     obj::alloc_obj,
     qstrgen::qstr,
@@ -25,16 +25,14 @@ pub struct DistanceSensorObj {
     guard: RegistryGuard<'static, DistanceSensor>,
 }
 
-pub static DISTANCE_SENSOR_OBJ_TYPE: ObjFullType = ObjFullType::new(
-    TypeFlags::empty(),
-    qstr!(DistanceSensor),
-)
-.set_make_new(make_new_from_fn!(distance_sensor_make_new))
-.set_locals_dict(const_dict![
-    qstr!(object) => Obj::from_static(&fun1_from_fn!(distance_sensor_object, &DistanceSensorObj)),
-    qstr!(status) => Obj::from_static(&fun1_from_fn!(distance_sensor_status, &DistanceSensorObj)),
-    qstr!(free) => Obj::from_static(&fun1_from_fn!(distance_sensor_free, &DistanceSensorObj)),
-]);
+pub static DISTANCE_SENSOR_OBJ_TYPE: ObjFullType =
+    ObjFullType::new(TypeFlags::empty(), qstr!(DistanceSensor))
+        .set_make_new(make_new_from_fn!(distance_sensor_make_new))
+        .set_locals_dict(const_dict![
+            qstr!(object) => Obj::from_static(&fun1!(distance_sensor_object, &DistanceSensorObj)),
+            qstr!(status) => Obj::from_static(&fun1!(distance_sensor_status, &DistanceSensorObj)),
+            qstr!(free) => Obj::from_static(&fun1!(distance_sensor_free, &DistanceSensorObj)),
+        ]);
 
 unsafe impl ObjTrait for DistanceSensorObj {
     const OBJ_TYPE: &ObjType = DISTANCE_SENSOR_OBJ_TYPE.as_obj_type();

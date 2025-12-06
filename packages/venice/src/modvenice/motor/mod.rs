@@ -19,7 +19,7 @@ use super::raise_device_error;
 use crate::{
     args::Args,
     devices::{self, PortNumber},
-    fun::{fun_var_from_fn, fun1_from_fn, fun2_from_fn, fun3_from_fn},
+    fun::{fun_var, fun1, fun2, fun3},
     modvenice::{motor::motor_type::MotorTypeObj, units::rotation::RotationUnitObj},
     obj::alloc_obj,
     qstrgen::qstr,
@@ -36,49 +36,52 @@ pub(crate) static ABSTRACT_MOTOR_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFl
     .set_locals_dict(const_dict![
         qstr!(WRITE_INTERVAL_MS) => Obj::from_int(5),
 
-        qstr!(set_voltage) => Obj::from_static(&fun2_from_fn!(motor_set_voltage,&MotorObj, f32)),
-        qstr!(set_velocity) => Obj::from_static(&fun2_from_fn!(motor_set_velocity,&MotorObj, i32)),
-        qstr!(brake) => Obj::from_static(&fun2_from_fn!(motor_brake,&MotorObj, &BrakeModeObj)),
-        qstr!(set_position_target) => Obj::from_static(&fun_var_from_fn!(motor_set_position_target)),
-        qstr!(is_exp) => Obj::from_static(&fun1_from_fn!(motor_is_exp, &MotorObj)),
-        qstr!(is_v5) => Obj::from_static(&fun1_from_fn!(motor_is_v5, &MotorObj)),
-        qstr!(max_voltage) => Obj::from_static(&fun1_from_fn!(motor_max_voltage, &MotorObj)),
-        qstr!(velocity) => Obj::from_static(&fun1_from_fn!(motor_velocity, &MotorObj)),
-        qstr!(power) => Obj::from_static(&fun1_from_fn!(motor_power, &MotorObj)),
-        qstr!(torque) => Obj::from_static(&fun1_from_fn!(motor_torque, &MotorObj)),
-        qstr!(voltage) => Obj::from_static(&fun1_from_fn!(motor_voltage, &MotorObj)),
-        qstr!(raw_position) => Obj::from_static(&fun1_from_fn!(motor_raw_position, &MotorObj)),
-        qstr!(current) => Obj::from_static(&fun1_from_fn!(motor_current, &MotorObj)),
-        qstr!(efficiency) => Obj::from_static(&fun1_from_fn!(motor_efficiency, &MotorObj)),
-        qstr!(current_limit) => Obj::from_static(&fun1_from_fn!(motor_current_limit, &MotorObj)),
-        qstr!(voltage_limit) => Obj::from_static(&fun1_from_fn!(motor_voltage_limit, &MotorObj)),
-        qstr!(temperature) => Obj::from_static(&fun1_from_fn!(motor_temperature, &MotorObj)),
-        qstr!(set_profiled_velocity) => Obj::from_static(&fun2_from_fn!(motor_set_profiled_velocity, &MotorObj, i32)),
-        qstr!(reset_position) => Obj::from_static(&fun1_from_fn!(motor_reset_position, &MotorObj)),
-        qstr!(set_current_limit) => Obj::from_static(&fun2_from_fn!(motor_set_current_limit, &MotorObj, f32)),
-        qstr!(set_voltage_limit) => Obj::from_static(&fun2_from_fn!(motor_set_voltage_limit, &MotorObj, f32)),
-        qstr!(is_over_temperature) => Obj::from_static(&fun1_from_fn!(motor_is_over_temperature, &MotorObj)),
-        qstr!(is_over_current) => Obj::from_static(&fun1_from_fn!(motor_is_over_current, &MotorObj)),
-        qstr!(is_driver_fault) => Obj::from_static(&fun1_from_fn!(motor_is_driver_fault, &MotorObj)),
-        qstr!(is_driver_over_current) => Obj::from_static(&fun1_from_fn!(motor_is_driver_over_current, &MotorObj)),
-        qstr!(status) => Obj::from_static(&fun1_from_fn!(motor_status, &MotorObj)),
-        qstr!(faults) => Obj::from_static(&fun1_from_fn!(motor_faults, &MotorObj)),
-        qstr!(motor_type) => Obj::from_static(&fun1_from_fn!(motor_motor_type, &MotorObj)),
-        qstr!(position) => Obj::from_static(&fun2_from_fn!(motor_position, &MotorObj, &RotationUnitObj)),
-        qstr!(set_position) => Obj::from_static(&fun3_from_fn!(motor_set_position, &MotorObj, f32, &RotationUnitObj)),
-        qstr!(set_direction) => Obj::from_static(&fun2_from_fn!(motor_set_direction, &MotorObj, &DirectionObj)),
-        qstr!(direction) => Obj::from_static(&fun1_from_fn!(motor_direction, &MotorObj)),
-        qstr!(free) => Obj::from_static(&fun1_from_fn!(motor_free, &MotorObj)),
+        qstr!(set_voltage) => Obj::from_static(&fun2!(motor_set_voltage,&MotorObj, f32)),
+        qstr!(set_velocity) => Obj::from_static(&fun2!(motor_set_velocity,&MotorObj, i32)),
+        qstr!(brake) => Obj::from_static(&fun2!(motor_brake,&MotorObj, &BrakeModeObj)),
+        qstr!(set_position_target) => Obj::from_static(&fun_var!(motor_set_position_target)),
+        qstr!(is_exp) => Obj::from_static(&fun1!(motor_is_exp, &MotorObj)),
+        qstr!(is_v5) => Obj::from_static(&fun1!(motor_is_v5, &MotorObj)),
+        qstr!(max_voltage) => Obj::from_static(&fun1!(motor_max_voltage, &MotorObj)),
+        qstr!(velocity) => Obj::from_static(&fun1!(motor_velocity, &MotorObj)),
+        qstr!(power) => Obj::from_static(&fun1!(motor_power, &MotorObj)),
+        qstr!(torque) => Obj::from_static(&fun1!(motor_torque, &MotorObj)),
+        qstr!(voltage) => Obj::from_static(&fun1!(motor_voltage, &MotorObj)),
+        qstr!(raw_position) => Obj::from_static(&fun1!(motor_raw_position, &MotorObj)),
+        qstr!(current) => Obj::from_static(&fun1!(motor_current, &MotorObj)),
+        qstr!(efficiency) => Obj::from_static(&fun1!(motor_efficiency, &MotorObj)),
+        qstr!(current_limit) => Obj::from_static(&fun1!(motor_current_limit, &MotorObj)),
+        qstr!(voltage_limit) => Obj::from_static(&fun1!(motor_voltage_limit, &MotorObj)),
+        qstr!(temperature) => Obj::from_static(&fun1!(motor_temperature, &MotorObj)),
+        qstr!(set_profiled_velocity) => Obj::from_static(&fun2!(motor_set_profiled_velocity, &MotorObj, i32)),
+        qstr!(reset_position) => Obj::from_static(&fun1!(motor_reset_position, &MotorObj)),
+        qstr!(set_current_limit) => Obj::from_static(&fun2!(motor_set_current_limit, &MotorObj, f32)),
+        qstr!(set_voltage_limit) => Obj::from_static(&fun2!(motor_set_voltage_limit, &MotorObj, f32)),
+        qstr!(is_over_temperature) => Obj::from_static(&fun1!(motor_is_over_temperature, &MotorObj)),
+        qstr!(is_over_current) => Obj::from_static(&fun1!(motor_is_over_current, &MotorObj)),
+        qstr!(is_driver_fault) => Obj::from_static(&fun1!(motor_is_driver_fault, &MotorObj)),
+        qstr!(is_driver_over_current) => Obj::from_static(&fun1!(motor_is_driver_over_current, &MotorObj)),
+        qstr!(status) => Obj::from_static(&fun1!(motor_status, &MotorObj)),
+        qstr!(faults) => Obj::from_static(&fun1!(motor_faults, &MotorObj)),
+        qstr!(motor_type) => Obj::from_static(&fun1!(motor_motor_type, &MotorObj)),
+        qstr!(position) => Obj::from_static(&fun2!(motor_position, &MotorObj, &RotationUnitObj)),
+        qstr!(set_position) => Obj::from_static(&fun3!(motor_set_position, &MotorObj, f32, &RotationUnitObj)),
+        qstr!(set_direction) => Obj::from_static(&fun2!(motor_set_direction, &MotorObj, &DirectionObj)),
+        qstr!(direction) => Obj::from_static(&fun1!(motor_direction, &MotorObj)),
+        qstr!(free) => Obj::from_static(&fun1!(motor_free, &MotorObj)),
     ]);
 
-pub(crate) static MOTOR_V5_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(MotorV5))
-    .set_make_new(make_new_from_fn!(motor_v5_make_new))
-    .set_parent(ABSTRACT_MOTOR_OBJ_TYPE.as_obj_type())
-    .set_locals_dict(const_dict![
-        qstr!(MAX_VOLTAGE) => Obj::from_float(12.0),
-        qstr!(set_gearset) => Obj::from_static(&fun2_from_fn!(motor_set_gearset,&MotorObj, &GearsetObj)),
-        qstr!(gearset) => Obj::from_static(&fun1_from_fn!(motor_gearset,&MotorObj)),
-    ]);
+pub(crate) static MOTOR_V5_OBJ_TYPE: ObjFullType = ObjFullType::new(
+    TypeFlags::empty(),
+    qstr!(MotorV5),
+)
+.set_make_new(make_new_from_fn!(motor_v5_make_new))
+.set_parent(ABSTRACT_MOTOR_OBJ_TYPE.as_obj_type())
+.set_locals_dict(const_dict![
+    qstr!(MAX_VOLTAGE) => Obj::from_float(12.0),
+    qstr!(set_gearset) => Obj::from_static(&fun2!(motor_set_gearset,&MotorObj, &GearsetObj)),
+    qstr!(gearset) => Obj::from_static(&fun1!(motor_gearset,&MotorObj)),
+]);
 
 pub(crate) static MOTOR_EXP_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(MotorExp))

@@ -1,4 +1,4 @@
-macro_rules! fun1_from_fn {
+macro_rules! fun1 {
     ($f:expr, $a:ty) => {{
         use ::micropython_rs::{except::raise_type_error, fun::Fun1, init::token, obj::Obj};
         use $crate::args::{ArgTrait, ArgValue};
@@ -24,7 +24,7 @@ macro_rules! fun1_from_fn {
     }};
 }
 
-macro_rules! fun2_from_fn {
+macro_rules! fun2 {
     ($f:expr, $a:ty, $b:ty) => {{
         use ::micropython_rs::{except::raise_type_error, fun::Fun2, init::token, obj::Obj};
         use $crate::args::{ArgTrait, ArgValue};
@@ -67,7 +67,7 @@ macro_rules! fun2_from_fn {
     }};
 }
 
-macro_rules! fun3_from_fn {
+macro_rules! fun3 {
     ($f:expr, $a:ty, $b:ty, $c:ty) => {{
         use ::micropython_rs::{except::raise_type_error, fun::Fun3, init::token, obj::Obj};
         use $crate::args::{ArgTrait, ArgValue};
@@ -123,7 +123,7 @@ macro_rules! fun3_from_fn {
     }};
 }
 
-macro_rules! fun_var_from_fn {
+macro_rules! fun_var {
     ($f:expr) => {{
         use ::micropython_rs::fun::FunVar;
 
@@ -136,7 +136,7 @@ macro_rules! fun_var_from_fn {
     }};
 }
 
-pub(crate) use fun_var_from_fn;
-pub(crate) use fun1_from_fn;
-pub(crate) use fun2_from_fn;
-pub(crate) use fun3_from_fn;
+pub(crate) use fun_var;
+pub(crate) use fun1;
+pub(crate) use fun2;
+pub(crate) use fun3;

@@ -17,7 +17,7 @@ use vexide_devices::smart::ai_vision::AiVisionSensor;
 use crate::{
     args::Args,
     devices::{self, PortNumber},
-    fun::{fun1_from_fn, fun2_from_fn, fun3_from_fn},
+    fun::{fun1, fun2, fun3},
     modvenice::{
         ai_vision::{
             ai_vision_color::AiVisionColorObj, ai_vision_color_code::AiVisionColorCodeObj,
@@ -43,21 +43,21 @@ static AI_VISION_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qs
         qstr!(DIAGONAL_FOV) => Obj::from_float(87.0),
     ])
     .set_locals_dict(const_dict![
-        qstr!(temperature) => Obj::from_static(&fun1_from_fn!(ai_vision_sensor_temperature, &AiVisionSensorObj)),
-        qstr!(set_color_code) => Obj::from_static(&fun3_from_fn!(ai_vision_sensor_set_color_code, &AiVisionSensorObj, i32, &AiVisionColorCodeObj)),
-        qstr!(color_code) => Obj::from_static(&fun2_from_fn!(ai_vision_sensor_color_code, &AiVisionSensorObj, i32)),
-        qstr!(color) => Obj::from_static(&fun2_from_fn!(ai_vision_sensor_color, &AiVisionSensorObj, i32)),
-        qstr!(set_color) => Obj::from_static(&fun3_from_fn!(ai_vision_sensor_set_color, &AiVisionSensorObj, i32, &AiVisionColorObj)),
-        qstr!(set_detection_mode) => Obj::from_static(&fun2_from_fn!(ai_vision_sensor_set_detection_mode, &AiVisionSensorObj, &AiVisionDetectionModeObj)),
-        qstr!(flags) => Obj::from_static(&fun1_from_fn!(ai_vision_sensor_flags, &AiVisionSensorObj)),
-        qstr!(set_flags) => Obj::from_static(&fun2_from_fn!(ai_vision_sensor_set_flags, &AiVisionSensorObj, &AiVisionFlagsObj)),
-        qstr!(start_awb) => Obj::from_static(&fun1_from_fn!(ai_vision_sensor_start_awb, &AiVisionSensorObj)),
-        qstr!(enable_test) => Obj::from_static(&fun2_from_fn!(ai_vision_sensor_enable_test, &AiVisionSensorObj, i32)),
-        qstr!(set_apriltag_family) => Obj::from_static(&fun2_from_fn!(ai_vision_sensor_set_apriltag_family, &AiVisionSensorObj, &AprilTagFamilyObj)),
-        qstr!(object_count) => Obj::from_static(&fun1_from_fn!(ai_vision_sensor_object_count, &AiVisionSensorObj)),
-        qstr!(objects) => Obj::from_static(&fun1_from_fn!(ai_vision_sensor_objects, &AiVisionSensorObj)),
-        qstr!(color_codes) => Obj::from_static(&fun1_from_fn!(ai_vision_sensor_color_codes, &AiVisionSensorObj)),
-        qstr!(free) => Obj::from_static(&fun1_from_fn!(ai_vision_sensor_free, &AiVisionSensorObj)),
+        qstr!(temperature) => Obj::from_static(&fun1!(ai_vision_sensor_temperature, &AiVisionSensorObj)),
+        qstr!(set_color_code) => Obj::from_static(&fun3!(ai_vision_sensor_set_color_code, &AiVisionSensorObj, i32, &AiVisionColorCodeObj)),
+        qstr!(color_code) => Obj::from_static(&fun2!(ai_vision_sensor_color_code, &AiVisionSensorObj, i32)),
+        qstr!(color) => Obj::from_static(&fun2!(ai_vision_sensor_color, &AiVisionSensorObj, i32)),
+        qstr!(set_color) => Obj::from_static(&fun3!(ai_vision_sensor_set_color, &AiVisionSensorObj, i32, &AiVisionColorObj)),
+        qstr!(set_detection_mode) => Obj::from_static(&fun2!(ai_vision_sensor_set_detection_mode, &AiVisionSensorObj, &AiVisionDetectionModeObj)),
+        qstr!(flags) => Obj::from_static(&fun1!(ai_vision_sensor_flags, &AiVisionSensorObj)),
+        qstr!(set_flags) => Obj::from_static(&fun2!(ai_vision_sensor_set_flags, &AiVisionSensorObj, &AiVisionFlagsObj)),
+        qstr!(start_awb) => Obj::from_static(&fun1!(ai_vision_sensor_start_awb, &AiVisionSensorObj)),
+        qstr!(enable_test) => Obj::from_static(&fun2!(ai_vision_sensor_enable_test, &AiVisionSensorObj, i32)),
+        qstr!(set_apriltag_family) => Obj::from_static(&fun2!(ai_vision_sensor_set_apriltag_family, &AiVisionSensorObj, &AprilTagFamilyObj)),
+        qstr!(object_count) => Obj::from_static(&fun1!(ai_vision_sensor_object_count, &AiVisionSensorObj)),
+        qstr!(objects) => Obj::from_static(&fun1!(ai_vision_sensor_objects, &AiVisionSensorObj)),
+        qstr!(color_codes) => Obj::from_static(&fun1!(ai_vision_sensor_color_codes, &AiVisionSensorObj)),
+        qstr!(free) => Obj::from_static(&fun1!(ai_vision_sensor_free, &AiVisionSensorObj)),
     ]);
 
 #[repr(C)]
