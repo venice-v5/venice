@@ -76,7 +76,7 @@ fn ai_vision_sensor_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, ar
     let port = PortNumber::from_i32(reader.next_positional())
         .unwrap_or_else(|_| raise_value_error(token, "port number must be between 1 and 21"));
 
-    let guard = devices::lock_port(port, |port| AiVisionSensor::new(port));
+    let guard = devices::lock_port(port, AiVisionSensor::new);
 
     alloc_obj(AiVisionSensorObj {
         base: ObjBase::new(ty),
@@ -211,7 +211,7 @@ fn ai_vision_sensor_objects(this: &AiVisionSensorObj) -> Obj {
         .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
     let objects = objects
         .into_iter()
-        .map(|obj| AiVisionObjectObj::create_obj(obj))
+        .map(AiVisionObjectObj::create_obj)
         .collect::<Vec<_>>();
     new_list(&objects[..])
 }

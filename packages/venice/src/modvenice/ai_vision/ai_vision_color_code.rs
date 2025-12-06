@@ -33,10 +33,8 @@ impl AiVisionColorCodeObj {
     }
     pub fn new(color: AiVisionColorCode) -> Self {
         let mut codes = [None; 7];
-        let mut i = 0;
-        for c in color.iter() {
-            codes[i] = Some(c);
-            i += 1;
+        for (c, code) in color.iter().zip(codes.iter_mut()) {
+            *code = Some(c);
         }
         Self {
             base: ObjBase::new(AI_VISION_COLOR_CODE_OBJ_TYPE.as_obj_type()),
@@ -54,10 +52,11 @@ fn ai_vision_color_code_make_new(
     let mut reader = Args::new(n_pos, n_kw, args).reader(token().unwrap());
     reader.assert_npos(1, 7);
     let mut values = [None; 7];
-    for i in 0..7 {
+    for value in values.iter_mut() {
         let res = reader.try_next_positional::<i32>();
-        if let Ok(value) = res {
-            values[i] = Some(value as _);
+        if let Ok(v) = res {
+            // TODO: this conversion needs a bounds check
+            *value = Some(v as u8);
         } else {
             break;
         }

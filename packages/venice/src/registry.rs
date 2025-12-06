@@ -5,6 +5,7 @@ use std::{
 };
 
 use micropython_rs::{except::raise_value_error, init::token};
+use thiserror::Error;
 use vexide_devices::{controller::Controller, smart::SmartPort};
 
 pub trait PortDevice {
@@ -30,6 +31,14 @@ pub struct RegistryGuard<'a, D: PortDevice> {
     guard: RefCell<Option<ActiveRegistryGuard<'a, D>>>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
+#[error("device already freed")]
+pub struct DeviceFreedError;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
+#[error("device occupied")]
+pub struct DeviceOccupiedError;
+
 impl RegistryDevice {
     fn take(&mut self) -> Self {
         std::mem::replace(self, Self::Occupied)
@@ -43,7 +52,10 @@ impl Registry {
         }
     }
 
-    pub fn try_lock<'a, D, I>(&'a self, init: I) -> Result<RegistryGuard<'a, D>, ()>
+    pub fn try_lock<'a, D, I>(
+        &'a self,
+        init: I,
+    ) -> Result<RegistryGuard<'a, D>, DeviceOccupiedError>
     where
         D: PortDevice,
         I: FnOnce(SmartPort) -> D,
@@ -59,7 +71,7 @@ impl Registry {
                 },
                 RegistryDevice::Occupied => panic!("registry guard not dropped"),
             })
-            .map_err(|_| ())
+            .map_err(|_| DeviceOccupiedError)
     }
 
     pub fn lock<'a, D, I>(&'a self, init: I) -> RegistryGuard<'a, D>
@@ -73,18 +85,18 @@ impl Registry {
 }
 
 impl<'a, D: PortDevice> RegistryGuard<'a, D> {
-    pub fn try_borrow<'b>(&'b self) -> Result<Ref<'b, D>, ()> {
+    pub fn try_borrow<'b>(&'b self) -> Result<Ref<'b, D>, DeviceFreedError> {
         Ref::filter_map(self.guard.borrow(), |guard| {
             guard.as_ref().map(|guard| &guard.device)
         })
-        .map_err(|_| ())
+        .map_err(|_| DeviceFreedError)
     }
 
-    pub fn try_borrow_mut<'b>(&'b self) -> Result<RefMut<'b, D>, ()> {
+    pub fn try_borrow_mut<'b>(&'b self) -> Result<RefMut<'b, D>, DeviceFreedError> {
         RefMut::filter_map(self.guard.borrow_mut(), |guard| {
             guard.as_mut().map(|guard| &mut guard.device)
         })
-        .map_err(|_| ())
+        .map_err(|_| DeviceFreedError)
     }
 
     pub fn borrow<'b>(&'b self) -> Ref<'b, D> {
@@ -99,14 +111,14 @@ impl<'a, D: PortDevice> RegistryGuard<'a, D> {
         })
     }
 
-    pub fn free(&self) -> Result<(), ()> {
+    pub fn free(&self) -> Result<(), DeviceFreedError> {
         let guard = self.guard.replace(None);
         match guard {
             Some(mut guard) => {
                 *guard.guard = RegistryDevice::Available(guard.device.take_port());
                 Ok(())
             }
-            None => Err(()),
+            None => Err(DeviceFreedError),
         }
     }
 
@@ -118,7 +130,7 @@ impl<'a, D: PortDevice> RegistryGuard<'a, D> {
 
 impl<'a, D: PortDevice> Drop for RegistryGuard<'a, D> {
     fn drop(&mut self) {
-        let guard = std::mem::replace(self.guard.get_mut(), None);
+        let guard = self.guard.get_mut().take();
         if let Some(mut guard) = guard {
             *guard.guard = RegistryDevice::Available(guard.device.take_port());
         }
@@ -193,13 +205,13 @@ impl ControllerRegistry {
         }
     }
 
-    pub fn try_lock<'a>(&'a self) -> Result<ControllerGuard<'a>, ()> {
+    pub fn try_lock<'a>(&'a self) -> Result<ControllerGuard<'a>, DeviceOccupiedError> {
         self.controller
             .try_lock()
             .map(|controller| ControllerGuard {
                 guard: RefCell::new(Some(ActiveControllerGuard { guard: controller })),
             })
-            .map_err(|_| ())
+            .map_err(|_| DeviceOccupiedError)
     }
 
     pub fn lock<'a>(&'a self) -> ControllerGuard<'a> {
@@ -209,20 +221,20 @@ impl ControllerRegistry {
 }
 
 impl<'a> ControllerGuard<'a> {
-    pub fn try_borrow<'b>(&'b self) -> Result<ControllerRef<'a, 'b>, ()> {
+    pub fn try_borrow<'b>(&'b self) -> Result<ControllerRef<'a, 'b>, DeviceFreedError> {
         Ref::filter_map(self.guard.borrow(), |guard| {
             guard.as_ref().map(|guard| &guard.guard)
         })
         .map(|r| ControllerRef { r })
-        .map_err(|_| ())
+        .map_err(|_| DeviceFreedError)
     }
 
-    pub fn try_borrow_mut<'b>(&'b self) -> Result<ControllerRefMut<'a, 'b>, ()> {
+    pub fn try_borrow_mut<'b>(&'b self) -> Result<ControllerRefMut<'a, 'b>, DeviceFreedError> {
         RefMut::filter_map(self.guard.borrow_mut(), |guard| {
             guard.as_mut().map(|guard| &mut guard.guard)
         })
         .map(|r| ControllerRefMut { r })
-        .map_err(|_| ())
+        .map_err(|_| DeviceFreedError)
     }
 
     pub fn borrow<'b>(&'b self) -> ControllerRef<'a, 'b> {
@@ -237,11 +249,11 @@ impl<'a> ControllerGuard<'a> {
         })
     }
 
-    pub fn free(&self) -> Result<(), ()> {
+    pub fn free(&self) -> Result<(), DeviceFreedError> {
         // guard will be dropped at the end of this function, calling MutexGuard::drop and releasing the lock
         match self.guard.replace(None) {
             Some(_) => Ok(()),
-            None => Err(()),
+            None => Err(DeviceFreedError),
         }
     }
 

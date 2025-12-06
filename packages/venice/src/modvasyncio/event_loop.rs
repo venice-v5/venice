@@ -66,7 +66,7 @@ unsafe impl ObjTrait for EventLoop {
 }
 
 thread_local! {
-    static RUNNING_LOOP: Cell<Obj> = Cell::new(Obj::NONE);
+    static RUNNING_LOOP: Cell<Obj> = const { Cell::new(Obj::NONE) };
 }
 
 impl EventLoop {

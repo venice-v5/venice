@@ -46,7 +46,7 @@ fn distance_sensor_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, arg
     let port = PortNumber::from_i32(reader.next_positional())
         .unwrap_or_else(|_| raise_value_error(token, "port number must be between 1 and 21"));
 
-    let guard = devices::lock_port(port, |port| DistanceSensor::new(port));
+    let guard = devices::lock_port(port, DistanceSensor::new);
 
     alloc_obj(DistanceSensorObj {
         base: ObjBase::new(ty),

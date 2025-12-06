@@ -16,7 +16,7 @@ pub struct Instant {
 }
 
 const NANOS_PER_MICROS: u64 = 1000;
-const MICROS_PER_SEC: u64 = 1000_000;
+const MICROS_PER_SEC: u64 = 1_000_000;
 const NANOS_PER_SEC: u64 = NANOS_PER_MICROS * MICROS_PER_SEC;
 
 impl Nanoseconds {
@@ -35,7 +35,7 @@ impl Duration {
         Self {
             secs_hi: (secs << 32) as u32,
             secs_lo: secs as u32,
-            nanos: nanos,
+            nanos,
         }
     }
 

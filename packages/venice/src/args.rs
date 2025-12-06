@@ -243,39 +243,6 @@ impl<'a> Args<'a> {
         Self { n_pos, n_kw, args }
     }
 
-    pub const unsafe fn from_ptr(n_pos: usize, n_kw: usize, ptr: *const Obj) -> Self {
-        let len = n_pos + (n_kw * 2);
-        Self {
-            n_pos,
-            n_kw,
-            args: unsafe { std::slice::from_raw_parts(ptr, len) },
-        }
-    }
-
-    pub const fn from_fun1_args(args: &'a [Obj]) -> Self {
-        Self {
-            n_pos: 1,
-            n_kw: 0,
-            args,
-        }
-    }
-
-    pub const fn from_fun2_args(args: &'a [Obj]) -> Self {
-        Self {
-            n_pos: 2,
-            n_kw: 0,
-            args,
-        }
-    }
-
-    pub const fn from_fun3_args(args: &'a [Obj]) -> Self {
-        Self {
-            n_pos: 3,
-            n_kw: 0,
-            args,
-        }
-    }
-
     pub fn nth(&self, n: usize) -> Result<Arg<'a>, ArgError<'a>> {
         if n < self.n_pos {
             return Ok(Arg::Positional(ArgValue::from_obj(&self.args[n])));
@@ -320,10 +287,7 @@ impl<'a> ArgsReader<'a> {
     pub fn assert_npos(&self, min: usize, max: usize) -> &Self {
         if self.args.n_pos < min || self.args.n_pos > max {
             if max == 0 {
-                raise_type_error(
-                    self.token,
-                    format!("function does not accept positional arguments"),
-                )
+                raise_type_error(self.token, "function does not accept positional arguments")
             } else {
                 raise_type_error(
                     self.token,
@@ -339,10 +303,7 @@ impl<'a> ArgsReader<'a> {
     pub fn assert_nkw(&self, min: usize, max: usize) -> &Self {
         if self.args.n_kw < min || self.args.n_kw > max {
             if max == 0 {
-                raise_type_error(
-                    self.token,
-                    format!("function does not accept keyword arguments"),
-                )
+                raise_type_error(self.token, "function does not accept keyword arguments")
             } else {
                 raise_type_error(
                     self.token,
@@ -512,13 +473,10 @@ impl ArgError<'_> {
                 token,
                 format!("expected keyword argument '{}'", arg_name.as_ref()),
             ),
-            Self::ExpectedKeyword => raise_type_error(
-                token,
-                format!("expected keyword argument instead of positional"),
-            ),
-            Self::KeywordsExhuasted => {
-                raise_type_error(token, format!("expected keyword argument"))
+            Self::ExpectedKeyword => {
+                raise_type_error(token, "expected keyword argument instead of positional")
             }
+            Self::KeywordsExhuasted => raise_type_error(token, "expected keyword argument"),
             _ => panic!("invalid kw arg error"),
         }
     }

@@ -102,10 +102,7 @@ impl PortNumber {
     }
 
     pub fn from_i32(number: i32) -> Result<Self, ()> {
-        number
-            .try_into()
-            .map_err(|_| ())
-            .and_then(|number| Self::new(number))
+        number.try_into().map_err(|_| ()).and_then(Self::new)
     }
 
     pub const fn number(self) -> u8 {
