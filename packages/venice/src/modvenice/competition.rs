@@ -1,7 +1,7 @@
 use std::cell::Cell;
 
 use bitflags::bitflags;
-use micropython_rs::obj::{IterType, Obj, ObjBase, ObjFullType, ObjTrait, TypeFlags};
+use micropython_rs::obj::{Iter, Obj, ObjBase, ObjFullType, ObjTrait, TypeFlags};
 
 use crate::{
     modvasyncio::event_loop::{self, EventLoop},
@@ -89,7 +89,7 @@ pub struct CompetitionRuntime {
 
 pub static COMPETITION_RUNTIME_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::ITER_IS_ITERNEXT, qstr!(CompetitionRuntime))
-        .set_iter(IterType::IterNext(runtime_iternext));
+        .set_iter(Iter::IterNext(runtime_iternext));
 
 unsafe impl ObjTrait for CompetitionRuntime {
     const OBJ_TYPE: &micropython_rs::obj::ObjType = COMPETITION_RUNTIME_OBJ_TYPE.as_obj_type();

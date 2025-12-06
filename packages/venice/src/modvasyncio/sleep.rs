@@ -4,7 +4,7 @@ use micropython_rs::{
     except::{raise_stop_iteration, raise_type_error},
     init::token,
     make_new_from_fn,
-    obj::{IterType, Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
+    obj::{Iter, Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
 
 use super::time32;
@@ -25,7 +25,7 @@ pub struct Sleep {
 pub static SLEEP_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::ITER_IS_ITERNEXT, qstr!(Sleep))
         .set_make_new(make_new_from_fn!(sleep_make_new))
-        .set_iter(IterType::IterNext(sleep_iternext));
+        .set_iter(Iter::IterNext(sleep_iternext));
 
 unsafe impl ObjTrait for Sleep {
     const OBJ_TYPE: &micropython_rs::obj::ObjType = SLEEP_OBJ_TYPE.as_obj_type();

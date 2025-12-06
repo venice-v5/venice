@@ -58,7 +58,7 @@ pub fn push_nlr<R>(_: InitToken, f: impl FnOnce() -> R) -> Option<R> {
         } else {
             mp_obj_print_exception(
                 &raw const mp_plat_print,
-                Obj::from_raw(nlr_buf.ret_val as u32),
+                Obj::from_raw(nlr_buf.ret_val as usize),
             );
             None
         }
