@@ -1,13 +1,8 @@
-/// From: `py/qstr.h`
 pub type QstrShort = u16;
-
-/// From: `py/qstr.h`
 pub type QstrHash = u16;
-
-/// From: `py/qstr.h`
 pub type QstrLen = u8;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct Qstr(usize);
 
