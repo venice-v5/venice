@@ -31,14 +31,15 @@ unsafe impl ObjTrait for RotationUnitObj {
 }
 
 impl RotationUnit {
-    pub fn in_angle(self, angle: Angle) -> f32 {
+    pub fn angle_to_float(self, angle: Angle) -> f32 {
         (match self {
             Self::Radians => angle.as_radians(),
             Self::Degrees => angle.as_degrees(),
             Self::Turns => angle.as_turns(),
         }) as f32
     }
-    pub fn from_float(self, value: f32) -> Angle {
+
+    pub fn float_to_angle(self, value: f32) -> Angle {
         let value = value as f64;
         match self {
             Self::Radians => Angle::from_radians(value),

@@ -75,7 +75,7 @@ fn rotation_sensor_angle(this: &RotationSensorObj, unit: &RotationUnitObj) -> Ob
         .borrow_mut()
         .angle()
         .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
-    Obj::from_float(unit.unit().in_angle(angle))
+    Obj::from_float(unit.unit().angle_to_float(angle))
 }
 
 fn rotation_sensor_position(this: &RotationSensorObj, unit: &RotationUnitObj) -> Obj {
@@ -84,7 +84,7 @@ fn rotation_sensor_position(this: &RotationSensorObj, unit: &RotationUnitObj) ->
         .borrow_mut()
         .position()
         .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
-    Obj::from_float(unit.unit().in_angle(position))
+    Obj::from_float(unit.unit().angle_to_float(position))
 }
 
 fn rotation_sensor_set_position(
@@ -92,7 +92,7 @@ fn rotation_sensor_set_position(
     position: f32,
     unit: &RotationUnitObj,
 ) -> Obj {
-    let angle = unit.unit().from_float(position);
+    let angle = unit.unit().float_to_angle(position);
     this.guard
         .borrow_mut()
         .set_position(angle)
@@ -149,7 +149,7 @@ fn rotation_sensor_set_data_interval(
 ) -> Obj {
     this.guard
         .borrow_mut()
-        .set_data_interval(unit.unit().from_float(interval))
+        .set_data_interval(unit.unit().float_to_dur(interval))
         .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
     Obj::NONE
 }

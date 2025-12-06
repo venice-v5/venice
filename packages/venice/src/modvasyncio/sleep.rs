@@ -68,7 +68,7 @@ fn sleep_make_new(_: &ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Obj {
     };
 
     let unit = args.next_positional::<&TimeUnitObj>().unit();
-    let duration = time32::Duration::from_duration(unit.from_float(interval_float));
+    let duration = time32::Duration::from_duration(unit.float_to_dur(interval_float));
     alloc_obj(Sleep::new(duration))
 }
 

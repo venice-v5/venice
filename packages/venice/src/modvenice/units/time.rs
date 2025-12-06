@@ -14,7 +14,7 @@ pub enum TimeUnit {
 }
 
 impl TimeUnit {
-    pub fn from_float(self, value: f32) -> Duration {
+    pub fn float_to_dur(self, value: f32) -> Duration {
         let ms = match self {
             Self::Millis => value as u64,
             Self::Second => (value * 1000.0) as u64,

@@ -191,7 +191,7 @@ fn ai_vision_object_state_attr(this: &AiVisionObjectObj, attr: Qstr, op: AttrOp)
 
 fn ai_vision_object_angle(this: &AiVisionObjectObj, angle_unit: &RotationUnitObj) -> Obj {
     if let AiVisionObject::Code { angle, .. } = this.object {
-        Obj::from_float(angle_unit.unit().in_angle(angle))
+        Obj::from_float(angle_unit.unit().angle_to_float(angle))
     } else {
         Obj::NONE
     }

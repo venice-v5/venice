@@ -207,7 +207,7 @@ fn motor_set_position_target(args: &[Obj]) -> Obj {
     let unit_obj = reader.next_positional::<&RotationUnitObj>();
 
     let velocity_val = reader.next_positional();
-    let angle = unit_obj.unit().from_float(position_val);
+    let angle = unit_obj.unit().float_to_angle(position_val);
 
     motor
         .guard
@@ -387,11 +387,11 @@ fn motor_position(this: &MotorObj, unit: &RotationUnitObj) -> Obj {
         .borrow()
         .position()
         .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
-    Obj::from_float(unit.unit().in_angle(angle))
+    Obj::from_float(unit.unit().angle_to_float(angle))
 }
 
 fn motor_set_position(this: &MotorObj, position: f32, unit: &RotationUnitObj) -> Obj {
-    let angle = unit.unit().from_float(position);
+    let angle = unit.unit().float_to_angle(position);
     this.guard
         .borrow_mut()
         .set_position(angle)
