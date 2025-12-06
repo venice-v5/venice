@@ -60,7 +60,7 @@ extern "C" fn ai_vision_flags_binary_op(op: BinaryOp, obj_1: Obj, obj_2: Obj) ->
         return Obj::NULL;
     }
     let lhs = obj_1
-        .try_to_obj::<AiVisionFlagsObj>()
+        .try_as_obj::<AiVisionFlagsObj>()
         .unwrap_or_else(|| {
             raise_type_error(
                 token().unwrap(),
@@ -72,7 +72,7 @@ extern "C" fn ai_vision_flags_binary_op(op: BinaryOp, obj_1: Obj, obj_2: Obj) ->
         })
         .flags;
     let rhs = obj_2
-        .try_to_obj::<AiVisionFlagsObj>()
+        .try_as_obj::<AiVisionFlagsObj>()
         .unwrap_or_else(|| {
             raise_type_error(
                 token().unwrap(),

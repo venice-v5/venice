@@ -85,7 +85,7 @@ impl<'a, O: ObjTrait> ArgTrait<'a> for &'a O {
 
     fn from_arg_value(v: ArgValue<'a>) -> Option<Self> {
         match v {
-            ArgValue::Obj(o) => o.try_to_obj(),
+            ArgValue::Obj(o) => o.try_as_obj(),
             _ => None,
         }
     }

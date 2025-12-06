@@ -53,7 +53,7 @@ extern "C" fn ai_vision_detection_mode_binary_op(op: BinaryOp, obj_1: Obj, obj_2
         return Obj::NULL;
     }
     let lhs = obj_1
-        .try_to_obj::<AiVisionDetectionModeObj>()
+        .try_as_obj::<AiVisionDetectionModeObj>()
         .unwrap_or_else(|| {
             raise_type_error(
                 token().unwrap(),
@@ -65,7 +65,7 @@ extern "C" fn ai_vision_detection_mode_binary_op(op: BinaryOp, obj_1: Obj, obj_2
         })
         .mode;
     let rhs = obj_2
-        .try_to_obj::<AiVisionDetectionModeObj>()
+        .try_as_obj::<AiVisionDetectionModeObj>()
         .unwrap_or_else(|| {
             raise_type_error(
                 token().unwrap(),

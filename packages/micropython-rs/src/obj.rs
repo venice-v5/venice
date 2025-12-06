@@ -330,7 +330,7 @@ macro_rules! attr_from_fn {
                     }
                 }
             };
-            $f(self_in.try_to_obj().unwrap(), attr, op)
+            $f(self_in.try_as_obj().unwrap(), attr, op)
         }
 
         unsafe { $crate::obj::Attr::new(trampoline) }
@@ -353,7 +353,7 @@ macro_rules! subscr_from_fn {
                 SubscrOp::Store { src: value }
             };
 
-            $f(self_in.try_to_obj().unwrap(), index, op)
+            $f(self_in.try_as_obj().unwrap(), index, op)
         }
 
         unsafe { $crate::obj::Subscr::new(trampoline) }
@@ -673,7 +673,7 @@ impl Obj {
         }
     }
 
-    pub fn try_to_obj_raw<T: ObjTrait>(self) -> Option<NonNull<T>> {
+    pub fn try_as_obj_raw<T: ObjTrait>(self) -> Option<NonNull<T>> {
         if let Some(ty) = self.obj_type()
             && ty == T::OBJ_TYPE
         {
@@ -683,8 +683,8 @@ impl Obj {
         }
     }
 
-    pub fn try_to_obj<T: ObjTrait>(&self) -> Option<&T> {
-        self.try_to_obj_raw().map(|ptr| unsafe { ptr.as_ref() })
+    pub fn try_as_obj<T: ObjTrait>(&self) -> Option<&T> {
+        self.try_as_obj_raw().map(|ptr| unsafe { ptr.as_ref() })
     }
 
     pub fn to_int(self) -> i32 {
@@ -708,7 +708,7 @@ impl Obj {
             return Some(qstr.bytes());
         }
 
-        if let Some(str) = Self::try_to_obj::<Str>(self) {
+        if let Some(str) = Self::try_as_obj::<Str>(self) {
             return Some(str.data());
         }
 

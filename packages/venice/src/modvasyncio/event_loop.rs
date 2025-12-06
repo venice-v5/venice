@@ -91,7 +91,7 @@ impl EventLoop {
             task_obj = self.current_task.get()
         }
 
-        let task = task_obj.try_to_obj::<Task>().unwrap();
+        let task = task_obj.try_as_obj::<Task>().unwrap();
         if coro.is_null() {
             coro = task.coro();
         }
@@ -110,12 +110,12 @@ impl EventLoop {
                 true
             }
             VmReturnKind::Yield => {
-                if let Some(sleep) = result.obj.try_to_obj::<Sleep>() {
+                if let Some(sleep) = result.obj.try_as_obj::<Sleep>() {
                     self.sleepers.borrow_mut().push(Sleeper {
                         task: task_obj,
                         deadline: time32::Instant::now() + sleep.duration(),
                     });
-                } else if let Some(awaited_task) = result.obj.try_to_obj::<Task>() {
+                } else if let Some(awaited_task) = result.obj.try_as_obj::<Task>() {
                     awaited_task.add_waiting_task(task_obj);
                 }
 
@@ -175,7 +175,7 @@ extern "C" fn event_loop_spawn(self_in: Obj, coro: Obj) -> Obj {
         raise_type_error(token().unwrap(), "expected coroutine");
     }
 
-    self_in.try_to_obj::<EventLoop>().unwrap().spawn(coro)
+    self_in.try_as_obj::<EventLoop>().unwrap().spawn(coro)
 }
 
 // this function can't use a Fun generator because it needs the EventLoop in Obj form, not as a
@@ -184,7 +184,7 @@ extern "C" fn event_loop_run(self_in: Obj) -> Obj {
     let prev_loop = RUNNING_LOOP.replace(self_in);
     push_nlr_callback(
         token().unwrap(),
-        || self_in.try_to_obj::<EventLoop>().unwrap().run(),
+        || self_in.try_as_obj::<EventLoop>().unwrap().run(),
         || RUNNING_LOOP.set(prev_loop),
         true,
     );

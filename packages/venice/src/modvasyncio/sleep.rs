@@ -73,7 +73,7 @@ fn sleep_make_new(_: &ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Obj {
 }
 
 extern "C" fn sleep_iternext(self_in: Obj) -> Obj {
-    let sleep = self_in.try_to_obj::<Sleep>().unwrap();
+    let sleep = self_in.try_as_obj::<Sleep>().unwrap();
     if sleep.complete.get() {
         raise_stop_iteration(token().unwrap(), Obj::NONE);
     } else {
