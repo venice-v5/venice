@@ -14,7 +14,7 @@ pub struct BrakeModeObj {
 
 pub static BRAKE_MODE_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(BrakeMode)).set_slot_locals_dict_from_static(
-        &const_dict![
+        const_dict![
             qstr!(BRAKE) => Obj::from_static(&BrakeModeObj::BRAKE),
             qstr!(COAST) => Obj::from_static(&BrakeModeObj::COAST),
             qstr!(HOLD) => Obj::from_static(&BrakeModeObj::HOLD),

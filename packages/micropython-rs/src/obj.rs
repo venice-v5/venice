@@ -505,9 +505,6 @@ impl_slot_setter!(unsafe set_slot_iter, Slot::Iter, *const c_void);
 
 unsafe impl Sync for ObjFullType {}
 unsafe impl Sync for ObjBase<'_> {}
-// these are definitely not true but i dont car :)
-unsafe impl Sync for Obj {}
-unsafe impl Send for Obj {}
 
 unsafe extern "C" {
     static mp_type_type: ObjType;

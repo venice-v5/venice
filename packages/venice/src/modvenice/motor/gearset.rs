@@ -13,7 +13,7 @@ pub struct GearsetObj {
 }
 
 static GEARSET_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(Gearset))
-    .set_slot_locals_dict_from_static(&const_dict![
+    .set_slot_locals_dict_from_static(const_dict![
         qstr!(RED) => Obj::from_static(&GearsetObj::RED),
         qstr!(GREEN) => Obj::from_static(&GearsetObj::GREEN),
         qstr!(BLUE) => Obj::from_static(&GearsetObj::BLUE),

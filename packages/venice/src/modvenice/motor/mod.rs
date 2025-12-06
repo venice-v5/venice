@@ -33,7 +33,7 @@ pub struct MotorObj {
 }
 
 pub(crate) static ABSTRACT_MOTOR_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(AbstractMotor))
-    .set_slot_locals_dict_from_static(&const_dict![
+    .set_slot_locals_dict_from_static(const_dict![
         qstr!(WRITE_INTERVAL_MS) => Obj::from_int(5),
 
         qstr!(set_voltage) => Obj::from_static(&fun2_from_fn!(motor_set_voltage,&MotorObj, f32)),
@@ -74,7 +74,7 @@ pub(crate) static ABSTRACT_MOTOR_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFl
 pub(crate) static MOTOR_V5_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(MotorV5))
     .set_make_new(make_new_from_fn!(motor_v5_make_new))
     .set_slot_parent(ABSTRACT_MOTOR_OBJ_TYPE.as_obj_type())
-    .set_slot_locals_dict_from_static(&const_dict![
+    .set_slot_locals_dict_from_static(const_dict![
         qstr!(MAX_VOLTAGE) => Obj::from_float(12.0),
         qstr!(set_gearset) => Obj::from_static(&fun2_from_fn!(motor_set_gearset,&MotorObj, &GearsetObj)),
         qstr!(gearset) => Obj::from_static(&fun1_from_fn!(motor_gearset,&MotorObj)),
@@ -83,7 +83,7 @@ pub(crate) static MOTOR_V5_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::e
 pub(crate) static MOTOR_EXP_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(MotorExp))
         .set_make_new(make_new_from_fn!(motor_exp_make_new))
-        .set_slot_locals_dict_from_static(&const_dict![
+        .set_slot_locals_dict_from_static(const_dict![
             qstr!(MAX_VOLTAGE) => Obj::from_float(8.0),
         ]);
 

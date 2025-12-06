@@ -13,7 +13,7 @@ use crate::{
     fun::fun2_from_fn, modvenice::units::rotation::RotationUnitObj, obj::alloc_obj, qstrgen::qstr,
 };
 
-const AI_VISION_OBJECT_LOCAL_DICT: Dict = const_dict![
+const AI_VISION_OBJECT_LOCAL_DICT: &Dict = const_dict![
     qstr!(angle) => Obj::from_static(&fun2_from_fn!(ai_vision_object_angle, &AiVisionObjectObj, &RotationUnitObj)),
 ];
 
@@ -24,25 +24,25 @@ static AI_VISION_OBJECT_OBJ_TYPE: ObjFullType =
 pub(crate) static AI_VISION_COLOR_OBJECT_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(AiVisionColorObject))
         .set_slot_parent(AI_VISION_OBJECT_OBJ_TYPE.as_obj_type())
-        .set_slot_locals_dict_from_static(&AI_VISION_OBJECT_LOCAL_DICT)
+        .set_slot_locals_dict_from_static(AI_VISION_OBJECT_LOCAL_DICT)
         .set_attr(attr_from_fn!(ai_vision_object_state_attr));
 
 pub(crate) static AI_VISION_CODE_OBJECT_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(AiVisionCodeObject))
         .set_slot_parent(AI_VISION_OBJECT_OBJ_TYPE.as_obj_type())
-        .set_slot_locals_dict_from_static(&AI_VISION_OBJECT_LOCAL_DICT)
+        .set_slot_locals_dict_from_static(AI_VISION_OBJECT_LOCAL_DICT)
         .set_attr(attr_from_fn!(ai_vision_object_state_attr));
 
 pub(crate) static AI_VISION_APRIL_TAG_OBJECT_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(AiVisionAprilTagObject))
         .set_slot_parent(AI_VISION_OBJECT_OBJ_TYPE.as_obj_type())
-        .set_slot_locals_dict_from_static(&AI_VISION_OBJECT_LOCAL_DICT)
+        .set_slot_locals_dict_from_static(AI_VISION_OBJECT_LOCAL_DICT)
         .set_attr(attr_from_fn!(ai_vision_object_state_attr));
 
 pub(crate) static AI_VISION_MODEL_OBJECT_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(AiVisionModelObject))
         .set_slot_parent(AI_VISION_OBJECT_OBJ_TYPE.as_obj_type())
-        .set_slot_locals_dict_from_static(&AI_VISION_OBJECT_LOCAL_DICT)
+        .set_slot_locals_dict_from_static(AI_VISION_OBJECT_LOCAL_DICT)
         .set_attr(attr_from_fn!(ai_vision_object_state_attr));
 
 #[repr(C)]

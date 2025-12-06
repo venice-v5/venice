@@ -13,7 +13,7 @@ static AI_VISION_FLAGS_OBJ_TYPE: ObjFullType = ObjFullType::new(
     TypeFlags::empty(),
     qstr!(AiVisionFlags),
 )
-.set_slot_locals_dict_from_static(&const_dict![
+.set_slot_locals_dict_from_static(const_dict![
     qstr!(DISABLE_APRILTAG) => Obj::from_static(&AiVisionFlagsObj::DISABLE_APRILTAG),
     qstr!(DISABLE_COLOR) => Obj::from_static(&AiVisionFlagsObj::DISABLE_COLOR),
     qstr!(DISABLE_MODEL) => Obj::from_static(&AiVisionFlagsObj::DISABLE_MODEL),

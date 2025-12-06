@@ -29,11 +29,11 @@ mod statics {
     use micropython_rs::obj::Obj;
 
     #[unsafe(no_mangle)]
-    static mp_sys_stdin_obj: Obj = Obj::NONE;
+    static mut mp_sys_stdin_obj: Obj = Obj::NONE;
 
     #[unsafe(no_mangle)]
-    static mp_sys_stdout_obj: Obj = Obj::NONE;
+    static mut mp_sys_stdout_obj: Obj = Obj::NONE;
 
     #[unsafe(no_mangle)]
-    static mp_sys_stderr_obj: Obj = Obj::NONE;
+    static mut mp_sys_stderr_obj: Obj = Obj::NONE;
 }

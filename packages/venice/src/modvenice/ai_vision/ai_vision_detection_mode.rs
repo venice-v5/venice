@@ -11,7 +11,7 @@ use crate::{args::ArgType, obj::alloc_obj, qstrgen::qstr};
 
 static AI_VISION_DETECTION_MODE_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(AiVisionDetectionMode))
-        .set_slot_locals_dict_from_static(&const_dict![
+        .set_slot_locals_dict_from_static(const_dict![
             qstr!(APRILTAG) => Obj::from_static(&AiVisionDetectionModeObj::APRILTAG),
             qstr!(COLOR) => Obj::from_static(&AiVisionDetectionModeObj::COLOR),
             qstr!(MODEL) => Obj::from_static(&AiVisionDetectionModeObj::MODEL),

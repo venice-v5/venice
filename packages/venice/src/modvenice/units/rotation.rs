@@ -21,7 +21,7 @@ pub struct RotationUnitObj {
 
 pub static ROTATION_UNIT_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(RotationUnit)).set_slot_locals_dict_from_static(
-        &const_dict![
+        const_dict![
             qstr!(RADIANS) => Obj::from_static(&RotationUnitObj::RADIANS),
             qstr!(DEGREES) => Obj::from_static(&RotationUnitObj::DEGREES),
             qstr!(TURNS) => Obj::from_static(&RotationUnitObj::TURNS),

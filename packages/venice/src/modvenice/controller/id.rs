@@ -14,7 +14,7 @@ pub struct ControllerIdObj {
 
 pub static CONTROLLER_ID_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(ControllerId)).set_slot_locals_dict_from_static(
-        &const_dict![
+        const_dict![
             qstr!(PRIMARY) => Obj::from_static(&ControllerIdObj::PRIMARY),
             qstr!(PARTNER) => Obj::from_static(&ControllerIdObj::PARTNER),
         ],

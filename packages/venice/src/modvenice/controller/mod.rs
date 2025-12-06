@@ -29,7 +29,7 @@ pub struct ControllerObj {
 static CONTROLLER_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(Controller))
         .set_make_new(make_new_from_fn!(controller_make_new))
-        .set_slot_locals_dict_from_static(&const_dict![
+        .set_slot_locals_dict_from_static(const_dict![
             qstr!(UPDATE_INTERVAL_MS) => Obj::from_int(25),
             qstr!(MAX_COLUMNS) => Obj::from_int(19),
             qstr!(MAX_LINES) => Obj::from_int(3),

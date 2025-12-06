@@ -7,7 +7,7 @@ mod rotation_sensor;
 pub mod units;
 
 use micropython_rs::{
-    const_dict,
+    const_map,
     except::{new_exception_type, raise_msg},
     init::InitToken,
     map::Dict,
@@ -51,7 +51,7 @@ fn raise_device_error(token: InitToken, msg: impl AsRef<str>) -> ! {
 
 #[unsafe(no_mangle)]
 #[allow(non_upper_case_globals)]
-static venice_globals: Dict = const_dict![
+static mut venice_globals: Dict = Dict::new(const_map![
     qstr!(__name__) => Obj::from_qstr(qstr!(__name__)),
 
     // motor
@@ -87,4 +87,4 @@ static venice_globals: Dict = const_dict![
     // units
     qstr!(RotationUnit) => Obj::from_static(RotationUnitObj::OBJ_TYPE),
     qstr!(TimeUnit) => Obj::from_static(TimeUnitObj::OBJ_TYPE)
-];
+]);

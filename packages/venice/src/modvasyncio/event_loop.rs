@@ -21,7 +21,7 @@ pub static EVENT_LOOP_OBJ_TYPE: ObjFullType = unsafe {
     ObjFullType::new(TypeFlags::empty(), qstr!(EventLoop))
         .set_slot_make_new(event_loop_new)
         .set_slot_locals_dict_from_static({
-            &const_dict![
+            const_dict![
                 qstr!(spawn) => Obj::from_static(&Fun2::new(event_loop_spawn)),
                 qstr!(run) => Obj::from_static(&Fun1::new(event_loop_run)),
             ]

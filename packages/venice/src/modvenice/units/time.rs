@@ -30,7 +30,7 @@ pub struct TimeUnitObj {
 }
 
 static TIME_UNIT_OBJ_OBJ: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(Gearset))
-    .set_slot_locals_dict_from_static(&const_dict![
+    .set_slot_locals_dict_from_static(const_dict![
         qstr!(MILLIS) => Obj::from_static(&TimeUnitObj::MILLIS),
         qstr!(SECOND) => Obj::from_static(&TimeUnitObj::SECOND),
     ]);
