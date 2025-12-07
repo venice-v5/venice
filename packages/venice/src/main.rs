@@ -45,21 +45,7 @@ unsafe extern "C" {
 }
 
 fn init_main(token: InitToken) {
-    const VENICE_PACKAGE_NAME_PROGRAM: &[u8] = b"__venice__package_name__";
-
-    let entrypoint_name = MODULE_MAP
-        .get()
-        .unwrap()
-        .get(VENICE_PACKAGE_NAME_PROGRAM)
-        .unwrap_or_else(|| {
-            panic!(
-                "malformed VPT: '{}' not present",
-                str::from_utf8(VENICE_PACKAGE_NAME_PROGRAM).unwrap()
-            )
-        })
-        .payload();
-
-    let entrypoint_qstr = Qstr::from_bytes(entrypoint_name);
+    let entrypoint_qstr = Qstr::from_bytes(b"main");
 
     let entrypoint = MODULE_MAP
         .get()
@@ -67,8 +53,7 @@ fn init_main(token: InitToken) {
         .get(entrypoint_qstr.bytes())
         .unwrap_or_else(|| {
             panic!(
-                "malformed VPT: package '{}' not present",
-                String::from_utf8_lossy(entrypoint_name)
+                "malformed VPT: package 'main' not present",
             )
         })
         .payload();

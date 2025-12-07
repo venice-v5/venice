@@ -10,7 +10,7 @@ use micropython_rs::{
 };
 
 use crate::{
-    module_map::{MODULE_MAP, VptModuleFlags},
+    module_map::{MODULE_MAP},
     qstrgen::qstr,
 };
 
@@ -25,8 +25,8 @@ pub fn absolute_name(token: InitToken, mut level: i32, module_name: &[u8]) -> Ve
         .unwrap()
         .get(current_module_name)
         .unwrap()
-        .flags()
-        .contains(VptModuleFlags::IS_PACKAGE);
+        .is_package();
+
     if is_package {
         level -= 1;
     }

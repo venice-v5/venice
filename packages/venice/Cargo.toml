@@ -5,7 +5,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-venice-program-table = { git = "https://github.com/venice-v5/venice-program-table.git", rev = "e5a1762be2eeaf94841bb972af4e447bbf5f4eea" }
+venice-program-table.path = "../../../venice-program-table"
 micropython-rs.path = "../micropython-rs"
 cty = "0.2.2"
 bitflags = "2.9.2"
