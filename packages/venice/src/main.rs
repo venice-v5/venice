@@ -44,6 +44,10 @@ unsafe extern "C" {
     static __linked_file_start: u8;
 }
 
+#[unsafe(no_mangle)]
+extern "C" fn _init() {}
+
+
 fn init_main(token: InitToken) {
     let entrypoint_qstr = Qstr::from_bytes(b"main");
 

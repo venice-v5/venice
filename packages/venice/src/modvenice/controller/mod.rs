@@ -16,6 +16,7 @@ use micropython_rs::{
     make_new_from_fn,
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
+use vex_sdk_jumptable as _;
 use vex_sdk::{
     V5_ControllerId, V5_ControllerStatus, vexControllerConnectionStatusGet, vexControllerTextSet,
 };
