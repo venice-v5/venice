@@ -5,7 +5,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-venice-program-table.path = "../../../venice-program-table"
 micropython-rs.path = "../micropython-rs"
 cty = "0.2.2"
 bitflags = "2.9.2"
@@ -18,3 +17,8 @@ rgb = "0.8.52"
 format-bytes = "0.3.0"
 regex = "1.11.1"
 vex-sdk-vexcode = "0.0.1"
+
+[dependencies.venice-program-table]
+git = "https://github.com/venice-v5/venice-program-table"
+rev = "044930bc247abbcfee08973d897f547a24833069"
+features = ["builder"]
