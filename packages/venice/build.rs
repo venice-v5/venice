@@ -71,7 +71,7 @@ impl Builder {
     fn gen_version_header(&self) {
         Command::new("python3")
             .arg(format!("{}/makeversionhdr.py", self.py_dir))
-            .arg(format!("{}/mpversion.h", self.py_dir))
+            .arg(format!("{}/mpversion.h", self.genhdr_dir))
             .status()
             .expect("couldn't generate mp version header");
     }
