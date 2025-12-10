@@ -54,12 +54,15 @@ impl Builder {
             &mut rust_srcs,
         );
 
+        let genhdr_dir = format!("{out_dir}/genhdr");
+        std::fs::create_dir_all(&genhdr_dir).expect("couldn't create genhdr dir");
+
         Builder {
             py_dir: format!("{mp_dir}/py"),
-            genhdr_dir: format!("{out_dir}/genhdr"),
             out_dir,
             mp_dir,
             port_dir,
+            genhdr_dir,
             c_srcs,
             rust_srcs,
         }
