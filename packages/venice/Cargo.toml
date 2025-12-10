@@ -17,6 +17,7 @@ talc = "4.4.3"
 thiserror = "2.0.17"
 
 [build-dependencies]
-format-bytes = "0.3.0"
+cc = "1.2.49"
 regex = "1.11.1"
+# TODO: replace with vex-sdk-jumptable
 vex-sdk-vexcode = "0.0.1"
