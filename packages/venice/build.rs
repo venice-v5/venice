@@ -224,6 +224,61 @@ impl Builder {
         self.gen_root_pointers(&root_pointers);
     }
 
+    fn gen_qstrs_rs(&self) {
+        let qstrdefs_generated_h =
+            std::fs::read_to_string(format!("{}/qstrdefs.generated.h", self.genhdr_dir))
+                .expect("couldn't read generated qstrdefs");
+
+        let qdef0_re =
+            regex::Regex::new(r#"QDEF0\(MP_QSTR_([a-zA-Z_][a-zA-Z0-9_]*), \d+, \d+, ".*"\)"#)
+                .unwrap();
+        let qdef1_re =
+            regex::Regex::new(r#"QDEF1\(MP_QSTR_([a-zA-Z_][a-zA-Z0-9_]*), \d+, \d+, ".*"\)"#)
+                .unwrap();
+
+        let mut defs = Vec::new();
+        for qdef0_cap in qdef0_re.captures_iter(&qstrdefs_generated_h) {
+            defs.push(qdef0_cap[1].to_string());
+        }
+
+        for qdef1_cap in qdef1_re.captures_iter(&qstrdefs_generated_h) {
+            defs.push(qdef1_cap[1].to_string());
+        }
+
+        let generated_qstrs_rs_path = format!("{}/generated_qstrs.rs", self.out_dir);
+        let mut generated_qstrs_rs = OpenOptions::new()
+            .write(true)
+            .truncate(true)
+            .create(true)
+            .open(&generated_qstrs_rs_path)
+            .expect("couldn't open generated_qstrs.rs file");
+
+        writeln!(
+            &mut generated_qstrs_rs,
+            r"
+            #[allow(non_camel_case_types, dead_code)]
+            #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+            #[repr(C)]
+            pub enum GeneratedQstr {{
+                MP_QSTRnull,
+                MP_QSTR_,
+            "
+        )
+        .expect("couldn't write out generated qstrs");
+
+        for def in defs.iter() {
+            writeln!(&mut generated_qstrs_rs, "    MP_QSTR_{},\n", def)
+                .expect("couldn't write out generated qstrs");
+        }
+
+        writeln!(&mut generated_qstrs_rs, "}}").expect("couldn't write oout generated qstrs");
+
+        println!(
+            "cargo::rustc-env=GENERATED_QSTRS_RS={}",
+            generated_qstrs_rs_path
+        );
+    }
+
     fn compile_mp(&self) {
         todo!("cc compilation not added yet")
     }
@@ -233,5 +288,6 @@ fn main() {
     let builder = Builder::new();
     builder.gen_version_header();
     builder.gen_headers();
+    builder.gen_qstrs_rs();
     builder.compile_mp();
 }
