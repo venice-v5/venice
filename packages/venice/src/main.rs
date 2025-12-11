@@ -47,7 +47,6 @@ unsafe extern "C" {
 #[unsafe(no_mangle)]
 extern "C" fn _init() {}
 
-
 fn init_main(token: InitToken) {
     let entrypoint_qstr = Qstr::from_bytes(b"main");
 
@@ -55,11 +54,7 @@ fn init_main(token: InitToken) {
         .get()
         .unwrap()
         .get(entrypoint_qstr.bytes())
-        .unwrap_or_else(|| {
-            panic!(
-                "malformed VPT: package 'main' not present",
-            )
-        })
+        .unwrap_or_else(|| panic!("malformed VPT: package 'main' not present",))
         .payload;
 
     push_nlr(token, || exec_module(token, entrypoint_qstr, entrypoint));

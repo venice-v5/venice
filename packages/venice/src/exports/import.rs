@@ -9,10 +9,7 @@ use micropython_rs::{
     state::{globals, loaded_modules},
 };
 
-use crate::{
-    module_map::{MODULE_MAP},
-    qstrgen::qstr,
-};
+use crate::{module_map::MODULE_MAP, qstrgen::qstr};
 
 pub fn absolute_name(token: InitToken, mut level: i32, module_name: &[u8]) -> Vec<u8> {
     const NAME_OBJ: Obj = Obj::from_qstr(qstr!(__name__));

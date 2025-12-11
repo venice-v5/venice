@@ -12,8 +12,9 @@ use micropython_rs::{
     nlr::{self, push_nlr_callback},
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
+
 use super::{sleep::Sleep, task::Task};
-use crate::{modvenice::device_future::{DeviceFutureObj}, obj::alloc_obj, qstrgen::qstr};
+use crate::{modvenice::device_future::DeviceFutureObj, obj::alloc_obj, qstrgen::qstr};
 
 pub static EVENT_LOOP_OBJ_TYPE: ObjFullType = unsafe {
     ObjFullType::new(TypeFlags::empty(), qstr!(EventLoop))
@@ -121,10 +122,12 @@ impl EventLoop {
                         deadline: sleep.deadline(),
                     });
                 } else if let Some(_) = result.obj.try_to_obj::<DeviceFutureObj>() {
-                    self.device_futures.borrow_mut().push_back(DeviceFutureInstance {
-                        task: task_obj,
-                        device_future: result.obj,
-                    });
+                    self.device_futures
+                        .borrow_mut()
+                        .push_back(DeviceFutureInstance {
+                            task: task_obj,
+                            device_future: result.obj,
+                        });
                 } else if let Some(awaited_task) = result.obj.try_to_obj::<Task>() {
                     awaited_task.add_waiting_task(task_obj);
                 }

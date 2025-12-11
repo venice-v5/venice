@@ -14,13 +14,10 @@ pub fn init_module_map(vpt: Vpt<'static>) -> Result<(), ModuleMap> {
             name: b"typing",
             payload: include_bytes!("modtyping/typing.mpy"),
             flags: 0,
-        }
+        },
     );
     for program in vpt.program_iter() {
-        map.insert(
-            program.name,
-            program,
-        );
+        map.insert(program.name, program);
     }
     MODULE_MAP.set(map)
 }

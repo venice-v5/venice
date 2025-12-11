@@ -1,15 +1,20 @@
-mod device_future;
 mod ai_vision;
 mod competition;
 mod controller;
+mod device_future;
 mod distance_sensor;
+mod modvasyncio;
 mod motor;
 mod rotation_sensor;
-mod modvasyncio;
 mod units;
 
 use micropython_rs::{
-    const_dict, except::{new_exception_type, raise_msg}, init::InitToken, map::Dict, module::Module, obj::{Obj, ObjFullType, ObjTrait}
+    const_dict,
+    except::{new_exception_type, raise_msg},
+    init::InitToken,
+    map::Dict,
+    module::Module,
+    obj::{Obj, ObjFullType, ObjTrait},
 };
 
 use self::{
@@ -36,7 +41,8 @@ use crate::{
         },
         distance_sensor::{DistanceSensorObj, distance_object::DistanceObjectObj},
         motor::{MOTOR_EXP_OBJ_TYPE, MOTOR_V5_OBJ_TYPE, motor_type::MotorTypeObj},
-    }, qstrgen::qstr
+    },
+    qstrgen::qstr,
 };
 
 pub static DEVICE_ERROR_OBJ_TYPE: ObjFullType = new_exception_type(qstr!(DeviceError));

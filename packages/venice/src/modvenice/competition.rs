@@ -5,10 +5,7 @@ use cty::c_void;
 use micropython_rs::obj::{Obj, ObjBase, ObjFullType, ObjTrait, TypeFlags};
 
 use super::modvasyncio::event_loop::{self, EventLoop};
-
-use crate::{
-    qstrgen::qstr,
-};
+use crate::qstrgen::qstr;
 
 bitflags! {
     // thanks for the comments vexide

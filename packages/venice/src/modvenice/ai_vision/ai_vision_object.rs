@@ -68,7 +68,12 @@ impl AiVisionObjectObj {
     }
 }
 
-fn ai_vision_object_make_new(_ty: &'static ObjType, _n_pos: usize, _n_kw: usize, _args: &[Obj]) -> Obj {
+fn ai_vision_object_make_new(
+    _ty: &'static ObjType,
+    _n_pos: usize,
+    _n_kw: usize,
+    _args: &[Obj],
+) -> Obj {
     raise_not_implemented_error(token().unwrap(), "inaccessible initializer")
 }
 

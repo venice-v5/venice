@@ -14,16 +14,21 @@ use micropython_rs::{
     make_new_from_fn,
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
-use vex_sdk_jumptable as _;
 use vex_sdk::{
     V5_ControllerId, V5_ControllerStatus, vexControllerConnectionStatusGet, vexControllerTextSet,
 };
+use vex_sdk_jumptable as _;
 use vexide_devices::controller::{Controller, ControllerError, ControllerId};
 
 use self::state::ControllerStateObj;
 use super::raise_device_error;
 use crate::{
-    args::{ArgTrait, ArgValue}, devices, fun::{fun1_from_fn}, modvenice::device_future::{DeviceFuture, DeviceFutureObj}, obj::alloc_obj, qstrgen::qstr
+    args::{ArgTrait, ArgValue},
+    devices,
+    fun::fun1_from_fn,
+    modvenice::device_future::{DeviceFuture, DeviceFutureObj},
+    obj::alloc_obj,
+    qstrgen::qstr,
 };
 
 #[repr(C)]

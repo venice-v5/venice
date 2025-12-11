@@ -73,11 +73,11 @@ unsafe extern "C" fn sleep_make_new(
     alloc_obj(Sleep::new(duration))
 }
 
-    extern "C" fn sleep_iternext(self_in: Obj) -> Obj {
-        let sleep = self_in.try_to_obj::<Sleep>().unwrap();
-        if sleep.deadline <= super::instant::Instant::now() {
-            raise_stop_iteration(token().unwrap(), Obj::NONE);
-        } else {
-            self_in
-        }
+extern "C" fn sleep_iternext(self_in: Obj) -> Obj {
+    let sleep = self_in.try_to_obj::<Sleep>().unwrap();
+    if sleep.deadline <= super::instant::Instant::now() {
+        raise_stop_iteration(token().unwrap(), Obj::NONE);
+    } else {
+        self_in
     }
+}
