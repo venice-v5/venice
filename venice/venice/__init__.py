@@ -115,6 +115,10 @@ class MotorType:
     """An 11W Smart Motor"""
 
 
+MotorType.EXP = MotorType()
+MotorType.V5 = MotorType()
+
+
 class RotationSensor:
     """A rotation sensor plugged into a Smart Port.
 
@@ -216,7 +220,7 @@ class RotationSensor:
         """
         ...
 
-    def direction(self):
+    def direction(self) -> Direction:
         """Returns the `Direction` of this sensor."""
         ...
 
@@ -468,15 +472,15 @@ class AbstractMotor:
         """Returns `True` if the motor's over temperature flag is set."""
         ...
 
-    def is_over_current(self):
+    def is_over_current(self) -> bool:
         """Returns `True` if the motor's over-current flag is set."""
         ...
 
-    def is_driver_fault(self):
+    def is_driver_fault(self) -> bool:
         """Returns `True` if a H-bridge (motor driver) fault has occurred."""
         ...
 
-    def is_driver_over_current(self):
+    def is_driver_over_current(self) -> bool:
         """Returns `True` if the motor's H-bridge has an over-current fault."""
         ...
 
@@ -488,7 +492,7 @@ class AbstractMotor:
         """Returns the fault flags of the motor as bits."""
         ...
 
-    def motor_type(self):
+    def motor_type(self) -> MotorType:
         """Returns the type of the motor.
 
         This does not check the hardware, it simply returns the type that the motor was created
@@ -544,7 +548,7 @@ class AbstractMotor:
         """
         ...
 
-    def direction(self):
+    def direction(self) -> Direction:
         """Returns the `Direction` of this motor."""
         ...
 
@@ -755,7 +759,7 @@ class AiVisionColorCode:
         """
         ...
 
-    # we annotate the docstring as @public because pdoc otherqise doesn't
+    # we annotate the docstring as @public because pdoc otherwise doesn't
     # document slot items
     def __getitem__(self, item: int):
         """@public Returns the color signature id at the given index.
@@ -791,7 +795,7 @@ class AiVisionDetectionMode:
     COLOR_MERGE: ClassVar["AiVisionDetectionMode"]
     """Merge color blobs?"""
 
-    def __or__(self, value) -> AiVisionDetectionMode:
+    def __or__(self, value: AiVisionDetectionMode) -> AiVisionDetectionMode:
         """@public Bitwise OR is applied to the internal bitflags, "merging" the modes. The result is returned
 
         ```python
@@ -802,7 +806,7 @@ class AiVisionDetectionMode:
         """
         ...
 
-    def __ior__(self, value):
+    def __ior__(self, value: AiVisionDetectionMode) -> "AiVisionDetectionMode":
         """@public Bitwise OR is applied to the internal bitflags, "merging" the modes. `self` is set to the result.
 
         ```python
@@ -843,7 +847,7 @@ class AiVisionFlags:
     DISABLE_USB_OVERLAY: ClassVar["AiVisionFlags"]
     """Disable USB overlay"""
 
-    def __or__(self, value) -> AiVisionDetectionMode:
+    def __or__(self, value: AiVisionFlags) -> AiVisionFlags:
         """@public Bitwise OR is applied to the internal bitflags, "merging" the modes. The result is returned
 
         ```python
@@ -854,7 +858,7 @@ class AiVisionFlags:
         """
         ...
 
-    def __ior__(self, value):
+    def __ior__(self, value: AiVisionFlags) -> AiVisionFlags:
         """@public Bitwise OR is applied to the internal bitflags, "merging" the modes. `self` is set to the result.
 
         ```python
@@ -918,7 +922,7 @@ class AiVisionCodeObject:
 
         Args:
 
-        - units: The unit of measurement for the angle. This is the unit of
+        - unit: The unit of measurement for the angle. This is the unit of
         the returned `float`.
         """
         ...
@@ -1048,6 +1052,9 @@ class AiVisionSensor:
     DIAGONAL_FOV: float = 87.0
     """The diagonal FOV of the vision sensor in degrees."""
 
+    def __init__(self, port: int):
+        ...
+
     def temperature(self) -> float:
         """Returns the current temperature of the sensor in degrees Celsius."""
         ...
@@ -1083,7 +1090,7 @@ class AiVisionSensor:
         """Returns all color codes set on the AI Vision sensor as a list of 8 optional `AiVisionColorCode` objects."""
         ...
 
-    def set_color(self, id: int, color: AiVisionColor) -> AiVisionColor:
+    def set_color(self, id: int, color: AiVisionColor) -> None:
         """Sets a color signature for the AI Vision sensor.
 
         Args:
@@ -1192,17 +1199,18 @@ class AiVisionSensor:
 
 
 ###########################################
-# Binary file skibidi                     #
+# Binary file provider                    #
 # Stuff for the CLI. DO NOT use in user   #
 # code                                    #
 ###########################################
 import importlib.resources as pkg_resources  # noqa: E402
 import importlib.metadata  # noqa: E402
 
+__version__: str
 try:
     __version__ = importlib.metadata.version(__package__ if __package__ else "")
 except importlib.metadata.PackageNotFoundError:
-    __version__ ="0.1.0"
+    __version__ = "0.1.0"
 
 def _dangerous_DO_NOT_TOUCH_YOU_WILL_GET_ELECTROCUTED_get_binary_path():  # pyright: ignore[reportUnusedFunction]
     """DO NOT use this method in user programs that you are intending to run on the VEX V5.
