@@ -15,7 +15,7 @@ use micropython_rs::{
 };
 
 use super::{sleep::Sleep, task::Task};
-use crate::{modvenice::device_future::DeviceFutureObj, obj::alloc_obj, qstrgen::qstr};
+use crate::{modvenice::{device_future::DeviceFutureObj, modvasyncio::time32}, obj::alloc_obj, qstrgen::qstr};
 
 pub static EVENT_LOOP_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(EventLoop))
@@ -121,7 +121,7 @@ impl EventLoop {
                         task: task_obj,
                         deadline: time32::Instant::now() + sleep.duration(),
                     });
-                } else if let Some(_) = result.obj.try_to_obj::<DeviceFutureObj>() {
+                } else if let Some(_) = result.obj.try_as_obj::<DeviceFutureObj>() {
                     self.device_futures
                         .borrow_mut()
                         .push_back(DeviceFutureInstance {
@@ -160,7 +160,7 @@ impl EventLoop {
         let mut i = 0;
         while i < device_futures.len() {
             let instance = &mut device_futures[i];
-            let device_future: &DeviceFutureObj = instance.device_future.try_to_obj().unwrap();
+            let device_future: &DeviceFutureObj = instance.device_future.try_as_obj().unwrap();
             match device_future.poll() {
                 Some(val) => {
                     let instance = device_futures.remove(i).unwrap();

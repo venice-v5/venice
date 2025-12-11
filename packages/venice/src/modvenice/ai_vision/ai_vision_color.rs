@@ -6,7 +6,7 @@ use micropython_rs::{
     qstr::Qstr,
 };
 use rgb::Rgb;
-use vexide_devices::smart::ai_vision::AiVisionColor;
+use vexide_devices::{color::Color, smart::ai_vision::AiVisionColor};
 
 use crate::{args::Args, obj::alloc_obj, qstrgen::qstr};
 
@@ -53,7 +53,7 @@ fn ai_vision_color_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, arg
     let token = token().unwrap();
     let mut reader = Args::new(n_pos, n_kw, args).reader(token);
     reader.assert_npos(5, 5);
-    let rgb = Rgb::<u8>::new(
+    let rgb = Color::new(
         reader.next_positional::<i32>() as _,
         reader.next_positional::<i32>() as _,
         reader.next_positional::<i32>() as _,

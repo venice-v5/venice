@@ -15,19 +15,16 @@ use micropython_rs::{
     make_new_from_fn,
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
-use vexide_devices::controller::Controller;
-
+use vex_sdk::{V5_ControllerId, V5_ControllerStatus, vexControllerTextSet};
+use vexide_devices::controller::{Controller, ControllerError, ControllerId};
+use vex_sdk_jumptable::{self as _, vexControllerConnectionStatusGet};
 use self::state::ControllerStateObj;
 use super::raise_device_error;
 use crate::{
     args::{ArgTrait, ArgValue},
-    devices,
-    fun::fun1_from_fn,
     modvenice::device_future::{DeviceFuture, DeviceFutureObj},
-    args::Args,
     devices,
-    fun::{fun1, fun2},
-    modvenice::controller::id::ControllerIdObj,
+    fun::{fun1},
     obj::alloc_obj,
     qstrgen::qstr,
     registry::ControllerGuard,
@@ -47,7 +44,7 @@ static CONTROLLER_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), q
         qstr!(MAX_LINES) => Obj::from_int(Controller::MAX_LINES as i32),
 
         qstr!(read_state) => Obj::from_static(&fun1!(controller_read_state, &ControllerObj)),
-        qstr!(rumble) => Obj::from_static(&fun2!(controller_rumble, &ControllerObj, &[u8])),
+        qstr!(rumble) => Obj::from_static(&Fun2::new(controller_rumble)),
         qstr!(free) => Obj::from_static(&fun1!(controller_free, &ControllerObj))
     ]);
 
@@ -59,8 +56,8 @@ fn controller_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, _args: &
     if n_pos != 0 || n_kw != 0 {
         raise_type_error(token().unwrap(), "function does not accept arguments");
     }
-
-    let guard = devices::try_lock_controller().unwrap_or_else(|_| panic!("port is already in use"));
+    // TODO! allow the user to specify partner=true or similar
+    let guard = devices::lock_controller(ControllerId::Primary);
 
     alloc_obj(ControllerObj {
         base: ObjBase::new(ty),
@@ -70,6 +67,7 @@ fn controller_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, _args: &
 fn controller_read_state(controller: &ControllerObj) -> Obj {
     let state = controller
         .guard
+        .borrow()
         .state()
         .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
     alloc_obj(ControllerStateObj::new(state))
@@ -198,12 +196,15 @@ impl ControllerScreenWriteAwaitable {
                 .map_err(Clone::clone)
                 .expect("A NUL (0x00) character was found in the text input string.");
 
-            let controller: &ControllerObj = (*controller).try_to_obj().unwrap();
-            let id = controller.guard.id();
+            let controller: &ControllerObj = (*controller).try_as_obj().unwrap();
+            let id: ControllerId = controller.guard.borrow().id();
 
             match validate_connection(id) {
                 Ok(()) => {
-                    let id = V5_ControllerId::from(id);
+                    let id = match id {
+                        ControllerId::Primary => V5_ControllerId::kControllerMaster,
+                        ControllerId::Partner => V5_ControllerId::kControllerPartner,
+                    };
 
                     let result = unsafe {
                         vexControllerTextSet(

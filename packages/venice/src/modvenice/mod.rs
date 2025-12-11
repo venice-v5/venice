@@ -7,7 +7,7 @@ mod modvasyncio;
 mod motor;
 mod rotation_sensor;
 mod units;
-
+use std::ptr::addr_of;
 use micropython_rs::{
     const_map,
     except::{new_exception_type, raise_msg},
@@ -28,6 +28,7 @@ use self::{
 };
 use crate::{
     modvenice::{
+        modvasyncio::get_vasyncio_globals,
         ai_vision::{
             AiVisionSensorObj,
             ai_vision_color::AiVisionColorObj,
@@ -91,8 +92,7 @@ static mut venice_globals: Dict = Dict::new(const_map![
     qstr!(RotationUnit) => Obj::from_static(RotationUnitObj::OBJ_TYPE),
     qstr!(TimeUnit) => Obj::from_static(TimeUnitObj::OBJ_TYPE),
 
-    qstr!(vasyncio) => Obj::from_static(&Module::new(&modvasyncio::vasyncio_globals)),
-    qstr!(DeviceError) => Obj::from_static(&DEVICE_ERROR_OBJ_TYPE)
-];
+    qstr!(vasyncio) => Obj::from_static(&Module::new(&get_vasyncio_globals())),
+    qstr!(DeviceError) => Obj::from_static(&DEVICE_ERROR_OBJ_TYPE),
     qstr!(TimeUnit) => Obj::from_static(TimeUnitObj::OBJ_TYPE)
 ]);

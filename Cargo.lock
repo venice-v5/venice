@@ -98,6 +98,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f9fbbcab51052fe104eb5e5d351cf728d30a5be1fe14d9be8a3b097481fb97de"
 
 [[package]]
+name = "lock_api"
+version = "0.4.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "224399e74b87b5f3557511d98dff8b14089b3dadafcab6bb93eab67d3aace965"
+dependencies = [
+ "scopeguard",
+]
+
+[[package]]
 name = "memchr"
 version = "2.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -200,6 +209,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "scopeguard"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
+
+[[package]]
 name = "shlex"
 version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -258,6 +273,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "talc"
+version = "4.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a3ae828aa394de34c7de08f522d1b86bd1c182c668d27da69caadda00590f26d"
+dependencies = [
+ "lock_api",
+]
+
+[[package]]
 name = "thiserror"
 version = "2.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -295,8 +319,10 @@ dependencies = [
  "paste",
  "regex",
  "rgb",
+ "talc",
+ "thiserror",
  "venice-program-table",
- "vex-sdk 0.27.1",
+ "vex-sdk",
  "vex-sdk-jumptable",
  "vexide-devices",
 ]
@@ -313,12 +339,6 @@ dependencies = [
 
 [[package]]
 name = "vex-sdk"
-version = "0.27.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79e5fe15afde1305478b35e2cb717fff59f485428534cf49cfdbfa4723379bf6"
-
-[[package]]
-name = "vex-sdk"
 version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b95fb7c2b31cb4a3e80b86ea47fc2abf21f8065dfd7d603657c44fb56d21b22d"
@@ -329,7 +349,7 @@ version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c522b5bf978b1e816e9007b23f9d467edc14dd983133a8740069af6ce747236e"
 dependencies = [
- "vex-sdk 0.28.0",
+ "vex-sdk",
 ]
 
 [[package]]
@@ -340,7 +360,7 @@ dependencies = [
  "bitflags",
  "futures-core",
  "pin-project",
- "vex-sdk 0.28.0",
+ "vex-sdk",
 ]
 
 [[package]]
@@ -355,6 +375,6 @@ dependencies = [
  "rgb",
  "smart-leds-trait",
  "snafu",
- "vex-sdk 0.28.0",
+ "vex-sdk",
  "vexide-core",
 ]

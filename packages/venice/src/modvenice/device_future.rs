@@ -1,7 +1,7 @@
 use micropython_rs::{
     except::raise_stop_iteration,
     init::token,
-    obj::{IterSlotValue, Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
+    obj::{Iter, Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
 
 use crate::{
@@ -12,10 +12,10 @@ use crate::{
 
 pub static DEVICE_FUTURE_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(DeviceFuture))
-        .set_iter(IterSlotValue::IterNext(device_future_iternext));
+        .set_iter(Iter::IterNext(device_future_iternext));
 
 extern "C" fn device_future_iternext(self_in: Obj) -> Obj {
-    let this = self_in.try_to_obj::<DeviceFutureObj>().unwrap();
+    let this = self_in.try_as_obj::<DeviceFutureObj>().unwrap();
     if let Some(out) = this.poll() {
         raise_stop_iteration(token().unwrap(), out);
     } else {
