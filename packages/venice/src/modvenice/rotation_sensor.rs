@@ -10,7 +10,7 @@ use vexide_devices::{math::Direction, smart::rotation::RotationSensor};
 use crate::{
     args::Args,
     devices::{self, PortNumber},
-    fun::{fun1_from_fn, fun2_from_fn, fun3_from_fn},
+    fun::{fun1, fun2, fun3},
     modvenice::{
         motor::direction::DirectionObj,
         raise_device_error,
@@ -29,18 +29,20 @@ pub struct RotationSensorObj {
 
 pub static ROTATION_SENSOR_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(RotationSensor))
     .set_make_new(make_new_from_fn!(rotation_sensor_make_new))
-    .set_slot_locals_dict_from_static(&const_dict![
-        qstr!(MIN_DATA_INTERVAL_MS) => Obj::from_int(5),
-        qstr!(TICKS_PER_REVOLUTION) => Obj::from_int(36000),
-        qstr!(angle) => Obj::from_static(&fun2_from_fn!(rotation_sensor_angle, &RotationSensorObj, &RotationUnitObj)),
-        qstr!(position) => Obj::from_static(&fun2_from_fn!(rotation_sensor_position, &RotationSensorObj, &RotationUnitObj)),
-        qstr!(set_position) => Obj::from_static(&fun3_from_fn!(rotation_sensor_set_position, &RotationSensorObj, f32, &RotationUnitObj)),
-        qstr!(velocity) => Obj::from_static(&fun1_from_fn!(rotation_sensor_velocity, &RotationSensorObj)),
-        qstr!(reset_position) => Obj::from_static(&fun1_from_fn!(rotation_sensor_reset_position,&RotationSensorObj)),
-        qstr!(set_direction) => Obj::from_static(&fun2_from_fn!(rotation_sensor_set_direction,&RotationSensorObj, &DirectionObj)),
-        qstr!(direction) => Obj::from_static(&fun1_from_fn!(rotation_sensor_direction,&RotationSensorObj)),
-        qstr!(status) => Obj::from_static(&fun1_from_fn!(rotation_sensor_status,&RotationSensorObj)),
-        qstr!(set_data_interval) => Obj::from_static(&fun3_from_fn!(rotation_sensor_set_data_interval,&RotationSensorObj, f32, &TimeUnitObj)),
+    .set_locals_dict(const_dict![
+        qstr!(MIN_DATA_INTERVAL_MS) => Obj::from_int(RotationSensor::MIN_DATA_INTERVAL.as_millis() as i32),
+        qstr!(TICKS_PER_REVOLUTION) => Obj::from_int(RotationSensor::TICKS_PER_REVOLUTION as i32),
+
+        qstr!(angle) => Obj::from_static(&fun2!(rotation_sensor_angle, &RotationSensorObj, &RotationUnitObj)),
+        qstr!(position) => Obj::from_static(&fun2!(rotation_sensor_position, &RotationSensorObj, &RotationUnitObj)),
+        qstr!(set_position) => Obj::from_static(&fun3!(rotation_sensor_set_position, &RotationSensorObj, f32, &RotationUnitObj)),
+        qstr!(velocity) => Obj::from_static(&fun1!(rotation_sensor_velocity, &RotationSensorObj)),
+        qstr!(reset_position) => Obj::from_static(&fun1!(rotation_sensor_reset_position,&RotationSensorObj)),
+        qstr!(set_direction) => Obj::from_static(&fun2!(rotation_sensor_set_direction,&RotationSensorObj, &DirectionObj)),
+        qstr!(direction) => Obj::from_static(&fun1!(rotation_sensor_direction,&RotationSensorObj)),
+        qstr!(status) => Obj::from_static(&fun1!(rotation_sensor_status,&RotationSensorObj)),
+        qstr!(set_data_interval) => Obj::from_static(&fun3!(rotation_sensor_set_data_interval,&RotationSensorObj, f32, &TimeUnitObj)),
+        qstr!(free) => Obj::from_static(&fun1!(rotation_sensor_free, &RotationSensorObj)),
     ]);
 
 unsafe impl ObjTrait for RotationSensorObj {
@@ -59,8 +61,7 @@ fn rotation_sensor_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, arg
         .next_positional_or(&DirectionObj::FORWARD)
         .direction();
 
-    let guard = devices::try_lock_port(port, |port| RotationSensor::new(port, direction))
-        .unwrap_or_else(|_| panic!("port is already in use"));
+    let guard = devices::lock_port(port, |port| RotationSensor::new(port, direction));
 
     alloc_obj(RotationSensorObj {
         base: ObjBase::new(ty),
@@ -74,7 +75,7 @@ fn rotation_sensor_angle(this: &RotationSensorObj, unit: &RotationUnitObj) -> Ob
         .borrow_mut()
         .angle()
         .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
-    Obj::from_float(unit.unit().in_angle(angle))
+    Obj::from_float(unit.unit().angle_to_float(angle))
 }
 
 fn rotation_sensor_position(this: &RotationSensorObj, unit: &RotationUnitObj) -> Obj {
@@ -83,7 +84,7 @@ fn rotation_sensor_position(this: &RotationSensorObj, unit: &RotationUnitObj) ->
         .borrow_mut()
         .position()
         .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
-    Obj::from_float(unit.unit().in_angle(position))
+    Obj::from_float(unit.unit().angle_to_float(position))
 }
 
 fn rotation_sensor_set_position(
@@ -91,7 +92,7 @@ fn rotation_sensor_set_position(
     position: f32,
     unit: &RotationUnitObj,
 ) -> Obj {
-    let angle = unit.unit().from_float(position);
+    let angle = unit.unit().float_to_angle(position);
     this.guard
         .borrow_mut()
         .set_position(angle)
@@ -148,7 +149,12 @@ fn rotation_sensor_set_data_interval(
 ) -> Obj {
     this.guard
         .borrow_mut()
-        .set_data_interval(unit.unit().from_float(interval))
+        .set_data_interval(unit.unit().float_to_dur(interval))
         .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
+    Obj::NONE
+}
+
+fn rotation_sensor_free(this: &RotationSensorObj) -> Obj {
+    this.guard.free_or_raise();
     Obj::NONE
 }

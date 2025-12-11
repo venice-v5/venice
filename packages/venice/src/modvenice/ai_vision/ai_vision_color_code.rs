@@ -33,10 +33,8 @@ impl AiVisionColorCodeObj {
     }
     pub fn new(color: AiVisionColorCode) -> Self {
         let mut codes = [None; 7];
-        let mut i = 0;
-        for c in color.iter() {
-            codes[i] = Some(c);
-            i += 1;
+        for (c, code) in color.iter().zip(codes.iter_mut()) {
+            *code = Some(c);
         }
         Self {
             base: ObjBase::new(AI_VISION_COLOR_CODE_OBJ_TYPE.as_obj_type()),

@@ -1,8 +1,7 @@
 use std::cell::Cell;
 
 use bitflags::bitflags;
-use cty::c_void;
-use micropython_rs::obj::{Obj, ObjBase, ObjFullType, ObjTrait, TypeFlags};
+use micropython_rs::obj::{Iter, Obj, ObjBase, ObjFullType, ObjTrait, TypeFlags};
 
 use super::modvasyncio::event_loop::{self, EventLoop};
 use crate::qstrgen::qstr;
@@ -86,10 +85,9 @@ pub struct CompetitionRuntime {
     coro: Cell<Obj>,
 }
 
-pub static COMPETITION_RUNTIME_OBJ_TYPE: ObjFullType = unsafe {
+pub static COMPETITION_RUNTIME_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::ITER_IS_ITERNEXT, qstr!(CompetitionRuntime))
-        .set_slot_iter(runtime_iternext as *const c_void)
-};
+        .set_iter(Iter::IterNext(runtime_iternext));
 
 unsafe impl ObjTrait for CompetitionRuntime {
     const OBJ_TYPE: &micropython_rs::obj::ObjType = COMPETITION_RUNTIME_OBJ_TYPE.as_obj_type();
@@ -133,7 +131,7 @@ impl CompetitionRuntime {
         if !self.coro.get().is_null() {
             // tick the coroutine on the current task
             let terminated = event_loop::get_running_loop()
-                .try_to_obj::<EventLoop>()
+                .try_as_obj::<EventLoop>()
                 .unwrap()
                 .tick_coro(Obj::NULL, self.coro.get(), Obj::NONE);
 
@@ -160,6 +158,6 @@ impl CompetitionRuntime {
 }
 
 extern "C" fn runtime_iternext(self_in: Obj) -> Obj {
-    self_in.try_to_obj::<CompetitionRuntime>().unwrap().tick();
+    self_in.try_as_obj::<CompetitionRuntime>().unwrap().tick();
     Obj::NONE
 }

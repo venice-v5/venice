@@ -4,7 +4,8 @@ use bitflags::bitflags;
 use thiserror::Error;
 
 use crate::{
-    gc::Gc,
+    gc::{self},
+    init::InitToken,
     map::Dict,
     ops::{BinaryOp, UnaryOp},
     print::{Print, PrintKind},
@@ -12,7 +13,12 @@ use crate::{
     str::Str,
 };
 
-/// From: `py/obj.h`
+/// A MicroPython object type.
+///
+/// Object types consist of a name, flags (see [`TypeFlags`]), and a set of 12 slots. This type, as
+/// oppposed to [`ObjFullType`], is dynamically allocated so that it uses memory for the slots it
+/// needs. As a result, working with this type is inherently unsafe, and unidiomatic within Rust.
+/// For a version of this type that is easier to work with, see [`ObjFullType`].
 #[derive(Debug)]
 #[repr(C)]
 pub struct ObjType {
@@ -38,7 +44,12 @@ pub struct ObjType {
     slots: (),
 }
 
-/// From: `py/obj.h`
+/// A MicroPython object type.
+///
+/// Object types consist of a name, flags (see [`TypeFlags`]), and a set of 12 slots. This type, as
+/// opposed to the dynamically allocated [`ObjType`], preallocates memory for every slot it might
+/// contain. This leads to some wasted memory, but makes usage from Rust easy and idiomatic.
+/// Information on each slot can be found in the documentation of [`Slot`].
 #[derive(Debug)]
 #[repr(C)]
 pub struct ObjFullType {
@@ -48,6 +59,7 @@ pub struct ObjFullType {
     flags: u16,
     name: u16,
 
+    // each slot corresponds to an index within the `slots` array
     slot_index_make_new: u8,
     slot_index_print: u8,
     slot_index_call: u8,
@@ -64,23 +76,38 @@ pub struct ObjFullType {
     slots: [*const c_void; 12],
 }
 
+/// An object type slot.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Slot {
+    /// Object constructor. Equivalent to `__new__` in Python.
     MakeNew = 1,
     Print = 2,
+    /// Call operator. Equivalent to `__call__` in Python.
     Call = 3,
+    /// Unary operators, e.g. `!value`, `-value`.
     UnaryOp = 4,
+    /// Binary operators, e.g. `a + b`, `a * b`.
     BinaryOp = 5,
+    /// Attribute accessor. Called whenever an object's attribute is to be loaded (read), stored
+    /// (written), or deleted. E.g. `value = object.attr`, `obj.attr = value`, `del obj.attr`
     Attr = 6,
+    /// Subscript operator, e.g. `object[index]`.
     Subscr = 7,
+    /// Iterator implementation. The specific behavior of the slot's value depends on the type's
+    /// [`TypeFlags`].
     Iter = 8,
     Buffer = 9,
     Protocol = 10,
+    /// The superclass or superclasses of the object.
     Parent = 11,
+    /// Dictionary of associated locals, i.e. constants or methods.
     LocalsDict = 12,
 }
 
-/// From: `py/obj.h`
+/// Object base
+///
+/// Each object representation must begin with this, which contains a pointer to the object's
+/// associated [`ObjType`].
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
 pub struct ObjBase<'a> {
@@ -118,6 +145,7 @@ pub type StaticObjbase = ObjBase<'static>;
 #[repr(transparent)]
 pub struct Obj(*mut c_void);
 
+/// Low-level repr C implementation. See [`Obj`] for details.
 pub mod repr_c {
     use std::ffi::c_void;
 
@@ -214,17 +242,21 @@ pub mod repr_c {
     }
 }
 
+/// A trait for types that can be stored as MicroPython objects.
+///
 /// # Safety
 ///
-/// Object representation must begin with an [`mp_obj_base_t`], always initialized to `OBJ_TYPE`.
-/// Additionally, all instances must be aligned to exactly 4 bytes in memory, but this is already
-/// guaranteed if the first invariant is true, as a side effect. A higher alignment than this will
-/// cause issues, since all objects are assumed to have an inherent alignment of 4.
+/// Type representation must begin with an [`ObjBase`].
+/// All instances of the type must be aligned to exactly 4 bytes in memory, but this is already
+/// guaranteed if the first invariant is true, as a side effect. A higher alignment than this may
+/// cause misalignment when allocated with the garbage collector, since it assumes an alignment of
+/// 4.
 pub unsafe trait ObjTrait: Sized {
     const OBJ_TYPE: &ObjType;
 }
 
 bitflags! {
+    /// Object type flags.
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub struct TypeFlags: u16 {
         const IS_SUBCLASSED = 0x0001;
@@ -251,49 +283,88 @@ pub type BinaryOpFn = extern "C" fn(op: BinaryOp, obj_1: Obj, obj_2: Obj) -> Obj
 pub type AttrFn = unsafe extern "C" fn(self_in: Obj, attr: Qstr, dest: *mut Obj);
 pub type SubscrFn = extern "C" fn(self_in: Obj, index: Obj, value: Obj) -> Obj;
 
+/// A safe [`MakeNewFn`]. This type can be constructed using the unsafe function [`MakeNew::new`],
+/// whose safety bound is that the [`MakeNewFn`] passsed in is sound when called with valid
+/// arguments.
 #[derive(Debug, Clone, Copy)]
 pub struct MakeNew {
     f: MakeNewFn,
 }
 
+/// A safe [`AttrFn`]. This type can be constructed using the unsafe function [`AttrFn::new`],
+/// whose safety bound is that the [`AttrFn`] passsed in is sound when called with valid
+/// arguments.
 #[derive(Debug, Clone, Copy)]
 pub struct Attr {
     f: AttrFn,
 }
 
+/// An attribute operation.
 pub enum AttrOp<'a> {
+    /// Load/read the attribute, and store it into the location at `dest`.
     Load { dest: &'a mut Obj },
+    /// Store/write to the attribute with `src`.
     Store { src: Obj },
+    /// Delete the attribute.
     Delete,
 }
 
 impl MakeNew {
+    /// # Safety
+    ///
+    /// `f` must be sound when called with valid arguments.
     pub const unsafe fn new(f: MakeNewFn) -> Self {
         Self { f }
     }
 }
 
 impl Attr {
+    /// # Safety
+    ///
+    /// `f` must be sound when called with valid arguments.
     pub const unsafe fn new(f: AttrFn) -> Self {
         Self { f }
     }
 }
 
+/// A safe [`SubscrFn`]. This type can be constructed using the unsafe function [`SubscrFn::new`],
+/// whose safety bound is that the [`SubscrFn`] passsed in is sound when called with valid
+/// arguments.
 #[derive(Debug, Clone, Copy)]
 pub struct Subscr {
     f: SubscrFn,
 }
+
 impl Subscr {
+    /// # Safety
+    ///
+    /// `f` must be sound when called with valid arguments.
     pub const unsafe fn new(f: SubscrFn) -> Self {
         Self { f }
     }
 }
+
+/// A subscript operation.
 pub enum SubscrOp {
+    /// Load/read the stored value.
     Load,
+    /// Store/write to the stored value with `src`.
     Store { src: Obj },
+    /// Delete the stored value.
     Delete,
 }
 
+/// Generates a [`MakeNew`] from a safe Rust function.
+///
+/// # Usage
+///
+/// ```rs
+/// fn example_make_new_fn(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Obj {
+///     Obj::NONE
+/// }
+///
+/// let example_make_new: MakeNew = make_new_from_fn!(example_make_new);
+/// ```
 #[macro_export]
 macro_rules! make_new_from_fn {
     ($f:expr) => {{
@@ -313,6 +384,18 @@ macro_rules! make_new_from_fn {
     }};
 }
 
+/// Generates an [`Attr`] from a safe Rust function.
+///
+/// # Usage
+///
+/// ```rs
+/// // assuming MyObj: ObjTrait
+/// fn example_attr_fn(this: &MyObj, attr: Qstr, op: Attr) -> Obj {
+///     Obj::NONE
+/// }
+///
+/// let example_attr: Attr = attr_from_fn!(example_attr_fn);
+/// ```
 #[macro_export]
 macro_rules! attr_from_fn {
     ($f:expr) => {{
@@ -329,13 +412,25 @@ macro_rules! attr_from_fn {
                     }
                 }
             };
-            $f(self_in.try_to_obj().unwrap(), attr, op)
+            $f(self_in.try_as_obj().unwrap(), attr, op)
         }
 
         unsafe { $crate::obj::Attr::new(trampoline) }
     }};
 }
 
+/// Generates a [`Subscr`] from a safe Rust function.
+///
+/// # Usage
+///
+/// ```rs
+/// // assuming MyObj: ObjTrait
+/// fn example_subscr_fn(this: &MyObj, index: i32, op: SubscrOp) -> Obj {
+///     Obj::NONE
+/// }
+///
+/// let example_subscr: Subscr = subscr_from_fn!(example_subscr_fn);
+/// ```
 #[macro_export]
 macro_rules! subscr_from_fn {
     ($f:expr) => {{
@@ -352,7 +447,7 @@ macro_rules! subscr_from_fn {
                 SubscrOp::Store { src: value }
             };
 
-            $f(self_in.try_to_obj().unwrap(), index, op)
+            $f(self_in.try_as_obj().unwrap(), index, op)
         }
 
         unsafe { $crate::obj::Subscr::new(trampoline) }
@@ -361,6 +456,7 @@ macro_rules! subscr_from_fn {
 
 impl PartialEq for ObjType {
     fn eq(&self, other: &Self) -> bool {
+        // reference equality should suffice
         self as *const _ == other as *const _
     }
 }
@@ -369,12 +465,13 @@ impl Eq for ObjType {}
 
 impl ObjType {
     pub fn name(&self) -> Qstr {
-        // SAFETY: maybe
+        // SAFETY: probably!
         unsafe { Qstr::from_index(self.name as usize) }
     }
 }
 
 impl ObjFullType {
+    /// Constructs an [`ObjFullType`] with the given name and flags.
     pub const fn new(flags: TypeFlags, name: Qstr) -> Self {
         Self {
             base: ObjBase::new(Self::OBJ_TYPE),
@@ -398,6 +495,7 @@ impl ObjFullType {
         }
     }
 
+    /// Returns the corresponding slot index to `slot`.
     const fn slot_index(&mut self, slot: Slot) -> &mut u8 {
         match slot {
             Slot::MakeNew => &mut self.slot_index_make_new,
@@ -420,50 +518,74 @@ impl ObjFullType {
         unsafe { std::mem::transmute(self) }
     }
 
+    /// Sets the slot's value to `value`.
+    ///
+    /// # Safety
+    ///
+    /// `value` must be a valid slot value for the given slot. If `value` is to be interpreted as
+    /// a pointer to memory, it must be valid for access for the duration of the type's lifetime.
     pub const unsafe fn set_slot(mut self, slot: Slot, value: *const c_void) -> Self {
         *self.slot_index(slot) = slot as u8;
         self.slots[slot as usize - 1] = value;
         self
     }
 
-    pub const fn set_slot_locals_dict_from_static(self, value: &'static Dict) -> Self {
-        unsafe { self.set_slot(Slot::LocalsDict, value as *const Dict as *const c_void) }
+    /// Sets the [`LocalsDict`] slot.
+    ///
+    /// [`LocalsDict`]: [`Slot::LocalDict`]
+    pub const fn set_locals_dict(self, value: &'static Dict) -> Self {
+        unsafe { self.set_locals_dict_raw(value as *const Dict as *mut Dict) }
     }
 
-    pub const fn set_slot_parent(self, value: &'static ObjType) -> Self {
+    /// Sets the [`Parent`] slot.
+    ///
+    /// [`Parent`]: [`Slot::Parent`]
+    pub const fn set_parent(self, value: &'static ObjType) -> Self {
         unsafe { self.set_slot(Slot::Parent, value as *const ObjType as *const c_void) }
     }
 }
 
 pub type IterNextFn = extern "C" fn(self_in: Obj) -> Obj;
 
-// incomplete
-pub enum IterSlotValue {
+/// An object iterator. This iterator can take the form of a function or an object (object form
+/// currently not implemented).
+pub enum Iter {
+    /// An iterator in the form of a function.
     IterNext(IterNextFn),
 }
 
 impl ObjFullType {
-    // named differently because this isn't simply setting a slot
-    pub const fn set_iter(mut self, iter: IterSlotValue) -> Self {
+    /// Sets the type's iterator. Depending on the iterator form of `iter`, the type's flags may be
+    /// modified.
+    pub const fn set_iter(mut self, iter: Iter) -> Self {
         match iter {
-            IterSlotValue::IterNext(f) => {
+            Iter::IterNext(f) => {
                 self.flags |= TypeFlags::ITER_IS_GETITER.bits();
                 // SAFETY: f is safe to use as the iter slot value for the given iter type
-                unsafe { self.set_slot_iter(f as *const c_void) }
+                unsafe { self.set_iter_raw(f as *const c_void) }
             }
         }
     }
 
+    /// Sets the [`MakeNew`] slot.
+    ///
+    /// [`MakeNew`]: [`Slot::MakeNew`]
     pub const fn set_make_new(self, make_new: MakeNew) -> Self {
-        unsafe { self.set_slot_make_new(make_new.f) }
+        unsafe { self.set_make_new_raw(make_new.f) }
     }
 
+    /// Sets the [`Attr`] slot.
+    ///
+    /// [`Attr`]: [`Slot::Attr`]
     pub const fn set_attr(self, attr: Attr) -> Self {
-        unsafe { self.set_slot_attr(attr.f) }
+        unsafe { self.set_attr_raw(attr.f) }
     }
 
+    /// Sets the [`Subscr`] slot.
+    ///
+    /// [`Subscr`]: [`Slot::Subscr`]
     pub const fn set_subscr(self, subscr: Subscr) -> Self {
-        self.set_slot_subscr(subscr.f)
+        self.set_subscr_raw(subscr.f)
     }
 }
 
@@ -491,22 +613,20 @@ macro_rules! impl_slot_setter {
     };
 }
 
-impl_slot_setter!(set_slot_unary_op, Slot::UnaryOp, UnaryOpFn);
-impl_slot_setter!(set_slot_binary_op, Slot::BinaryOp, BinaryOpFn);
-impl_slot_setter!(set_slot_subscr, Slot::Subscr, SubscrFn);
+impl_slot_setter!(set_unary_op_raw, Slot::UnaryOp, UnaryOpFn);
+impl_slot_setter!(set_binary_op_raw, Slot::BinaryOp, BinaryOpFn);
+impl_slot_setter!(set_subscr_raw, Slot::Subscr, SubscrFn);
 
-impl_slot_setter!(unsafe set_slot_make_new, Slot::MakeNew, MakeNewFn);
-impl_slot_setter!(unsafe set_slot_attr, Slot::Attr, AttrFn);
-impl_slot_setter!(unsafe set_slot_print, Slot::Print, PrintFn);
-impl_slot_setter!(unsafe set_slot_locals_dict, Slot::LocalsDict, *mut Dict);
-impl_slot_setter!(unsafe set_slot_protocol, Slot::Protocol, *const c_void);
-impl_slot_setter!(unsafe set_slot_iter, Slot::Iter, *const c_void);
+impl_slot_setter!(unsafe set_make_new_raw, Slot::MakeNew, MakeNewFn);
+impl_slot_setter!(unsafe set_attr_raw, Slot::Attr, AttrFn);
+impl_slot_setter!(unsafe set_print_raw, Slot::Print, PrintFn);
+impl_slot_setter!(unsafe set_locals_dict_raw, Slot::LocalsDict, *mut Dict);
+impl_slot_setter!(unsafe set_protocol_raw, Slot::Protocol, *const c_void);
+impl_slot_setter!(unsafe set_iter_raw, Slot::Iter, *const c_void);
 
+// SAFETY: These types follow ownership and borrowing rules
 unsafe impl Sync for ObjFullType {}
 unsafe impl Sync for ObjBase<'_> {}
-// these are definitely not true but i dont car :)
-unsafe impl Sync for Obj {}
-unsafe impl Send for Obj {}
 
 unsafe extern "C" {
     static mp_type_type: ObjType;
@@ -521,6 +641,7 @@ unsafe impl ObjTrait for ObjFullType {
 }
 
 impl<'a> ObjBase<'a> {
+    /// Constructs an [`ObjBase`] from a given [`ObjType`]
     pub const fn new(ty: &'a ObjType) -> Self {
         Self {
             r#type: ty,
@@ -529,21 +650,40 @@ impl<'a> ObjBase<'a> {
     }
 }
 
+/// Garbage collection error.
 #[derive(Debug, Error)]
 #[error("gc allocation failed")]
 pub struct GcError;
 
 impl Obj {
+    /// The null constant. This is used internally by MicroPython to indicate sentinel values. In
+    /// essence, it is an implementation detail, and does not exist within Python, nor should it be
+    /// passed to it.
     pub const NULL: Self = unsafe { Self::from_ptr(core::ptr::null_mut()) };
+
+    /// The sentintel constant. This constant is similar to [`Obj::NULL`], but is only used when
+    /// [`Obj::NULL`] is unavailable.
     pub const SENTINEL: Self = unsafe { Self::from_ptr(4 as *mut c_void) };
 
+    /// Python `None` object.
     pub const NONE: Self = Self::from_immediate(0);
+    /// Python `True` object.
     pub const TRUE: Self = Self::from_immediate(3);
+    /// Python `False` object.
     pub const FALSE: Self = Self::from_immediate(1);
 
-    pub fn new<T: ObjTrait>(o: T, alloc: &mut Gc) -> Result<Self, GcError> {
+    /// Allocates a type implementing [`ObjTrait`] on the heap, and returns it as an [`Obj`].
+    ///
+    /// # Errors
+    ///
+    /// Returns [`GcError`] if the allocation failed.
+    pub fn new<T: ObjTrait + 'static>(
+        token: InitToken,
+        o: T,
+        enable_finaliser: bool,
+    ) -> Result<Self, GcError> {
         unsafe {
-            let mem = alloc.alloc(size_of::<T>());
+            let mem = gc::alloc(token, size_of::<T>(), enable_finaliser);
             if mem.is_null() {
                 return Err(GcError);
             }
@@ -552,27 +692,39 @@ impl Obj {
         }
     }
 
+    /// Constructs an [`Obj`] from a static reference to a type implementing [`ObjTrait`]. This
+    /// function is useful when making compile-time objects, or when low-overhead construction is
+    /// possible (e.g. enums objects) or required.
     pub const fn from_static<T: ObjTrait>(o: &'static T) -> Self {
         Self(o as *const T as *mut c_void)
     }
 
-    pub const unsafe fn from_raw(inner: u32) -> Self {
+    /// Constructs an [`Obj`] directly from an integer.
+    ///
+    /// # Safety
+    ///
+    /// `inner` must have a bit pattern valid for use as a MicroPython object.
+    pub const unsafe fn from_raw(inner: usize) -> Self {
         Self(inner as *mut c_void)
     }
 
+    /// Constructs an integer [`Obj`].
     pub const fn from_int(int: i32) -> Self {
         // TODO: add overflow assertion
         Self(repr_c::new_int(int))
     }
 
+    /// Constructs a [`Qstr`] [`Obj`].
     pub const fn from_qstr(qstr: Qstr) -> Self {
         Self(repr_c::new_qstr(qstr.index() as u32))
     }
 
+    /// Constructs an 'immediate' [`Obj`].
     pub const fn from_immediate(imm: u32) -> Self {
         Self(repr_c::new_immediate(imm))
     }
 
+    /// Constructs a boolean [`Obj`].
     pub const fn from_bool(bool: bool) -> Self {
         match bool {
             true => Self::TRUE,
@@ -580,10 +732,16 @@ impl Obj {
         }
     }
 
+    /// Constructs a float [`Obj`].
     pub const fn from_float(float: f32) -> Self {
         Self(repr_c::new_float(float))
     }
 
+    /// Constructs an [`Obj`] directly from a pointer.
+    ///
+    /// # Safety
+    ///
+    /// `ptr` must have a bit pattern valid for use as a MicroPython object.
     pub const unsafe fn from_ptr(ptr: *mut c_void) -> Self {
         Self(ptr)
     }
@@ -632,6 +790,8 @@ impl Obj {
         repr_c::type_of(self.0)
     }
 
+    /// Returns `Some(int)` if the [`Obj`] is an integer object.
+    /// Returns `None` if it is not.
     pub fn try_to_int(self) -> Option<i32> {
         if repr_c::is_int(self.0) {
             Some(repr_c::get_int(self.0))
@@ -640,6 +800,8 @@ impl Obj {
         }
     }
 
+    /// Returns `Some(qstr)` if the [`Obj`] is a [`Qstr`] object.
+    /// Returns `None` if it is not.
     pub fn try_to_qstr(self) -> Option<Qstr> {
         if repr_c::is_qstr(self.0) {
             Some(unsafe { Qstr::from_index(repr_c::get_qstr(self.0) as usize) })
@@ -648,6 +810,8 @@ impl Obj {
         }
     }
 
+    /// Returns `Some(immediate)` if the [`Obj`] is an immediate object.
+    /// Returns `None` if it is not.
     pub fn try_to_immediate(self) -> Option<u32> {
         if repr_c::is_immediate(self.0) {
             Some(repr_c::get_immediate(self.0))
@@ -656,6 +820,8 @@ impl Obj {
         }
     }
 
+    /// Returns `Some(bool)` if the [`Obj`] is a boolean object.
+    /// Returns `None` if it is not.
     pub fn try_to_bool(self) -> Option<bool> {
         self.try_to_immediate().and_then(|imm| match imm {
             val if val == Self::TRUE.to_immediate() => Some(true),
@@ -664,6 +830,8 @@ impl Obj {
         })
     }
 
+    /// Returns `Some(float)` if the [`Obj`] is a float object.
+    /// Returns `None` if it is not.
     pub fn try_to_float(self) -> Option<f32> {
         if repr_c::is_float(self.0) {
             Some(repr_c::get_float(self.0))
@@ -672,7 +840,9 @@ impl Obj {
         }
     }
 
-    pub fn try_to_obj_raw<T: ObjTrait>(self) -> Option<NonNull<T>> {
+    /// Returns `Some(ptr)` if the [`Obj`] is a pointer object.
+    /// Returns `None` if it is not.
+    pub fn try_as_obj_raw<T: ObjTrait>(self) -> Option<NonNull<T>> {
         if let Some(ty) = self.obj_type()
             && ty == T::OBJ_TYPE
         {
@@ -682,18 +852,23 @@ impl Obj {
         }
     }
 
-    pub fn try_to_obj<T: ObjTrait>(&self) -> Option<&T> {
-        self.try_to_obj_raw().map(|ptr| unsafe { ptr.as_ref() })
+    /// Returns `Some(&T)` if the [`Obj`] is a pointer object.
+    /// Returns `None` if it is not.
+    pub fn try_as_obj<T: ObjTrait>(&self) -> Option<&T> {
+        self.try_as_obj_raw().map(|ptr| unsafe { ptr.as_ref() })
     }
 
+    /// Assumes the [`Obj`] is an integer object and extracts the integer value out of it.
     pub fn to_int(self) -> i32 {
         repr_c::get_int(self.0)
     }
 
+    /// Assumes the [`Obj`] is an immediate object and extracts the immediate value out of it.
     pub fn to_immediate(self) -> u32 {
         repr_c::get_immediate(self.0)
     }
 
+    /// Assumes the [`Obj`] is a float object and extracts the float value out of it.
     pub fn to_float(self) -> f32 {
         repr_c::get_float(self.0)
     }
@@ -702,12 +877,14 @@ impl Obj {
         self.0
     }
 
+    /// Returns the string contained within the [`Obj`] if it is a [`Qstr`] or a [`Str`] object.
+    /// Returns None if it is neither.
     pub fn get_str(&self) -> Option<&[u8]> {
         if let Some(qstr) = self.try_to_qstr() {
             return Some(qstr.bytes());
         }
 
-        if let Some(str) = Self::try_to_obj::<Str>(self) {
+        if let Some(str) = Self::try_as_obj::<Str>(self) {
             return Some(str.data());
         }
 

@@ -62,6 +62,8 @@ fn controller_state_attr(this: &ControllerStateObj, attr: Qstr, op: AttrOp) {
     let AttrOp::Load { dest } = op else { return };
     let state = this.state;
     let attr_bytes = attr.bytes();
+    // Even though we can compare qstrs cheaply by their indices, that would mean losing the
+    // ability to match them. So, we just match the underlying strings.
     let button_state = match attr_bytes {
         b"button_a" => state.button_a,
         b"button_b" => state.button_b,

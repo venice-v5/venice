@@ -11,13 +11,13 @@ use crate::{args::ArgType, obj::alloc_obj, qstrgen::qstr};
 
 static AI_VISION_DETECTION_MODE_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(AiVisionDetectionMode))
-        .set_slot_locals_dict_from_static(&const_dict![
+        .set_locals_dict(const_dict![
             qstr!(APRILTAG) => Obj::from_static(&AiVisionDetectionModeObj::APRILTAG),
             qstr!(COLOR) => Obj::from_static(&AiVisionDetectionModeObj::COLOR),
             qstr!(MODEL) => Obj::from_static(&AiVisionDetectionModeObj::MODEL),
             qstr!(COLOR_MERGE) => Obj::from_static(&AiVisionDetectionModeObj::COLOR_MERGE)
         ])
-        .set_slot_binary_op(ai_vision_detection_mode_binary_op);
+        .set_binary_op_raw(ai_vision_detection_mode_binary_op);
 
 #[repr(C)]
 pub struct AiVisionDetectionModeObj {
@@ -53,7 +53,7 @@ extern "C" fn ai_vision_detection_mode_binary_op(op: BinaryOp, obj_1: Obj, obj_2
         return Obj::NULL;
     }
     let lhs = obj_1
-        .try_to_obj::<AiVisionDetectionModeObj>()
+        .try_as_obj::<AiVisionDetectionModeObj>()
         .unwrap_or_else(|| {
             raise_type_error(
                 token().unwrap(),
@@ -65,7 +65,7 @@ extern "C" fn ai_vision_detection_mode_binary_op(op: BinaryOp, obj_1: Obj, obj_2
         })
         .mode;
     let rhs = obj_2
-        .try_to_obj::<AiVisionDetectionModeObj>()
+        .try_as_obj::<AiVisionDetectionModeObj>()
         .unwrap_or_else(|| {
             raise_type_error(
                 token().unwrap(),

@@ -1,7 +1,8 @@
-use micropython_rs::obj::{Obj, ObjTrait};
+use micropython_rs::{
+    init::token,
+    obj::{Obj, ObjTrait},
+};
 
-use crate::ALLOCATOR;
-
-pub fn alloc_obj<T: ObjTrait>(o: T) -> Obj {
-    Obj::new(o, ALLOCATOR.lock().as_mut().unwrap()).unwrap()
+pub fn alloc_obj<T: ObjTrait + 'static>(o: T) -> Obj {
+    Obj::new(token().unwrap(), o, false).unwrap()
 }

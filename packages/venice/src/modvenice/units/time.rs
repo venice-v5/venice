@@ -14,7 +14,7 @@ pub enum TimeUnit {
 }
 
 impl TimeUnit {
-    pub fn from_float(self, value: f32) -> Duration {
+    pub fn float_to_dur(self, value: f32) -> Duration {
         let ms = match self {
             Self::Millis => value as u64,
             Self::Second => (value * 1000.0) as u64,
@@ -30,7 +30,7 @@ pub struct TimeUnitObj {
 }
 
 static TIME_UNIT_OBJ_OBJ: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(Gearset))
-    .set_slot_locals_dict_from_static(&const_dict![
+    .set_locals_dict(const_dict![
         qstr!(MILLIS) => Obj::from_static(&TimeUnitObj::MILLIS),
         qstr!(SECOND) => Obj::from_static(&TimeUnitObj::SECOND),
     ]);

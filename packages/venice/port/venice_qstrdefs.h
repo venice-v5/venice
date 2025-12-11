@@ -8,6 +8,7 @@ Q(DeviceFuture)
 Q(get_running_loop)
 
 Q(DeviceError)
+Q(free)
 
 Q(Gearset)
 Q(RED)
@@ -33,10 +34,15 @@ Q(set_position_target)
 
 Q(Controller)
 Q(read_state)
+Q(rumble)
+
+Q(ControllerId)
+Q(PRIMARY)
+Q(PARTNER)
+
 Q(ControllerState)
 Q(ButtonState)
 Q(JoystickState)
-Q(rumble)
 
 Q(RotationUnit)
 Q(RADIANS)

@@ -1,3 +1,4 @@
+pub mod id;
 pub mod state;
 
 use std::{
@@ -14,11 +15,7 @@ use micropython_rs::{
     make_new_from_fn,
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
-use vex_sdk::{
-    V5_ControllerId, V5_ControllerStatus, vexControllerConnectionStatusGet, vexControllerTextSet,
-};
-use vex_sdk_jumptable as _;
-use vexide_devices::controller::{Controller, ControllerError, ControllerId};
+use vexide_devices::controller::Controller;
 
 use self::state::ControllerStateObj;
 use super::raise_device_error;
@@ -27,27 +24,32 @@ use crate::{
     devices,
     fun::fun1_from_fn,
     modvenice::device_future::{DeviceFuture, DeviceFutureObj},
+    args::Args,
+    devices,
+    fun::{fun1, fun2},
+    modvenice::controller::id::ControllerIdObj,
     obj::alloc_obj,
     qstrgen::qstr,
+    registry::ControllerGuard,
 };
 
 #[repr(C)]
 pub struct ControllerObj {
     base: ObjBase<'static>,
-    guard: MutexGuard<'static, Controller>,
+    guard: ControllerGuard<'static>,
 }
 
-static CONTROLLER_OBJ_TYPE: ObjFullType =
-    ObjFullType::new(TypeFlags::empty(), qstr!(Controller))
-        .set_make_new(make_new_from_fn!(controller_make_new))
-        .set_slot_locals_dict_from_static(&const_dict![
-            qstr!(UPDATE_INTERVAL_MS) => Obj::from_int(25),
-            qstr!(MAX_COLUMNS) => Obj::from_int(19),
-            qstr!(MAX_LINES) => Obj::from_int(3),
+static CONTROLLER_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(Controller))
+    .set_make_new(make_new_from_fn!(controller_make_new))
+    .set_locals_dict(const_dict![
+        qstr!(UPDATE_INTERVAL_MS) => Obj::from_int(Controller::UPDATE_INTERVAL.as_micros() as i32),
+        qstr!(MAX_COLUMNS) => Obj::from_int(Controller::MAX_COLUMNS as i32),
+        qstr!(MAX_LINES) => Obj::from_int(Controller::MAX_LINES as i32),
 
-            qstr!(read_state) => Obj::from_static(&fun1_from_fn!(controller_read_state, &ControllerObj)),
-            qstr!(rumble) => Obj::from_static(&Fun2::new(controller_rumble)),
-        ]);
+        qstr!(read_state) => Obj::from_static(&fun1!(controller_read_state, &ControllerObj)),
+        qstr!(rumble) => Obj::from_static(&fun2!(controller_rumble, &ControllerObj, &[u8])),
+        qstr!(free) => Obj::from_static(&fun1!(controller_free, &ControllerObj))
+    ]);
 
 unsafe impl ObjTrait for ControllerObj {
     const OBJ_TYPE: &ObjType = CONTROLLER_OBJ_TYPE.as_obj_type();
@@ -230,4 +232,9 @@ impl ControllerScreenWriteAwaitable {
             None
         }
     }
+}
+
+fn controller_free(this: &ControllerObj) -> Obj {
+    this.guard.free_or_raise();
+    Obj::NONE
 }

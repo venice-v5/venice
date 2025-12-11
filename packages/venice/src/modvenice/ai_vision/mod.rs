@@ -16,8 +16,8 @@ use vexide_devices::smart::ai_vision::AiVisionSensor;
 
 use crate::{
     args::Args,
-    devices::{PortNumber, try_lock_port},
-    fun::{fun1_from_fn, fun2_from_fn, fun3_from_fn},
+    devices::{self, PortNumber},
+    fun::{fun1, fun2, fun3},
     modvenice::{
         ai_vision::{
             ai_vision_color::AiVisionColorObj, ai_vision_color_code::AiVisionColorCodeObj,
@@ -33,30 +33,28 @@ use crate::{
 
 static AI_VISION_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(AiVisionSensor))
     .set_make_new(make_new_from_fn!(ai_vision_sensor_make_new))
-    .set_slot_locals_dict_from_static(&const_dict![
-        qstr!(MAX_OBJECTS) => Obj::from_int(24),
-        qstr!(HORIZONTAL_RESOLUTION) => Obj::from_int(320),
-        qstr!(VERTICAL_RESOLUTION) => Obj::from_int(240),
-        qstr!(HORIZONTAL_FOV) => Obj::from_float(74.0),
-        qstr!(VERTICAL_FOV) => Obj::from_float(63.0),
-        qstr!(DIAGONAL_FOV) => Obj::from_float(87.0),
-    ])
-    .set_slot_locals_dict_from_static(&const_dict![
-        qstr!(temperature) => Obj::from_static(&fun1_from_fn!(ai_vision_sensor_temperature, &AiVisionSensorObj)),
-        qstr!(set_color_code) => Obj::from_static(&fun3_from_fn!(ai_vision_sensor_set_color_code, &AiVisionSensorObj, i32, &AiVisionColorCodeObj)),
-        qstr!(color_code) => Obj::from_static(&fun2_from_fn!(ai_vision_sensor_color_code, &AiVisionSensorObj, i32)),
-        qstr!(color) => Obj::from_static(&fun2_from_fn!(ai_vision_sensor_color, &AiVisionSensorObj, i32)),
-        qstr!(set_color) => Obj::from_static(&fun3_from_fn!(ai_vision_sensor_set_color, &AiVisionSensorObj, i32, &AiVisionColorObj)),
-        qstr!(set_detection_mode) => Obj::from_static(&fun2_from_fn!(ai_vision_sensor_set_detection_mode, &AiVisionSensorObj, &AiVisionDetectionModeObj)),
-        qstr!(flags) => Obj::from_static(&fun1_from_fn!(ai_vision_sensor_flags, &AiVisionSensorObj)),
-        qstr!(set_flags) => Obj::from_static(&fun2_from_fn!(ai_vision_sensor_set_flags, &AiVisionSensorObj, &AiVisionFlagsObj)),
-        qstr!(start_awb) => Obj::from_static(&fun1_from_fn!(ai_vision_sensor_start_awb, &AiVisionSensorObj)),
-        qstr!(enable_test) => Obj::from_static(&fun2_from_fn!(ai_vision_sensor_enable_test, &AiVisionSensorObj, i32)),
-        qstr!(set_apriltag_family) => Obj::from_static(&fun2_from_fn!(ai_vision_sensor_set_apriltag_family, &AiVisionSensorObj, &AprilTagFamilyObj)),
-        qstr!(object_count) => Obj::from_static(&fun1_from_fn!(ai_vision_sensor_object_count, &AiVisionSensorObj)),
-        qstr!(objects) => Obj::from_static(&fun1_from_fn!(ai_vision_sensor_objects, &AiVisionSensorObj)),
-        qstr!(color_codes) => Obj::from_static(&fun1_from_fn!(ai_vision_sensor_color_codes, &AiVisionSensorObj)),
-        qstr!(colors) => Obj::from_static(&fun1_from_fn!(ai_vision_sensor_colors, &AiVisionSensorObj))
+    .set_locals_dict(const_dict![
+        qstr!(MAX_OBJECTS) => Obj::from_int(AiVisionSensor::MAX_OBJECTS as i32),
+        qstr!(HORIZONTAL_RESOLUTION) => Obj::from_int(AiVisionSensor::HORIZONTAL_RESOLUTION as i32),
+        qstr!(VERTICAL_RESOLUTION) => Obj::from_int(AiVisionSensor::VERTICAL_RESOLUTION as i32),
+        qstr!(HORIZONTAL_FOV) => Obj::from_float(AiVisionSensor::HORIZONTAL_FOV),
+        qstr!(VERTICAL_FOV) => Obj::from_float(AiVisionSensor::VERTICAL_FOV),
+        qstr!(DIAGONAL_FOV) => Obj::from_float(AiVisionSensor::DIAGONAL_FOV),
+        qstr!(temperature) => Obj::from_static(&fun1!(ai_vision_sensor_temperature, &AiVisionSensorObj)),
+        qstr!(set_color_code) => Obj::from_static(&fun3!(ai_vision_sensor_set_color_code, &AiVisionSensorObj, i32, &AiVisionColorCodeObj)),
+        qstr!(color_code) => Obj::from_static(&fun2!(ai_vision_sensor_color_code, &AiVisionSensorObj, i32)),
+        qstr!(color) => Obj::from_static(&fun2!(ai_vision_sensor_color, &AiVisionSensorObj, i32)),
+        qstr!(set_color) => Obj::from_static(&fun3!(ai_vision_sensor_set_color, &AiVisionSensorObj, i32, &AiVisionColorObj)),
+        qstr!(set_detection_mode) => Obj::from_static(&fun2!(ai_vision_sensor_set_detection_mode, &AiVisionSensorObj, &AiVisionDetectionModeObj)),
+        qstr!(flags) => Obj::from_static(&fun1!(ai_vision_sensor_flags, &AiVisionSensorObj)),
+        qstr!(set_flags) => Obj::from_static(&fun2!(ai_vision_sensor_set_flags, &AiVisionSensorObj, &AiVisionFlagsObj)),
+        qstr!(start_awb) => Obj::from_static(&fun1!(ai_vision_sensor_start_awb, &AiVisionSensorObj)),
+        qstr!(enable_test) => Obj::from_static(&fun2!(ai_vision_sensor_enable_test, &AiVisionSensorObj, i32)),
+        qstr!(set_apriltag_family) => Obj::from_static(&fun2!(ai_vision_sensor_set_apriltag_family, &AiVisionSensorObj, &AprilTagFamilyObj)),
+        qstr!(object_count) => Obj::from_static(&fun1!(ai_vision_sensor_object_count, &AiVisionSensorObj)),
+        qstr!(objects) => Obj::from_static(&fun1!(ai_vision_sensor_objects, &AiVisionSensorObj)),
+        qstr!(color_codes) => Obj::from_static(&fun1!(ai_vision_sensor_color_codes, &AiVisionSensorObj)),
+        qstr!(free) => Obj::from_static(&fun1!(ai_vision_sensor_free, &AiVisionSensorObj)),
     ]);
 
 #[repr(C)]
@@ -77,8 +75,7 @@ fn ai_vision_sensor_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, ar
     let port = PortNumber::from_i32(reader.next_positional())
         .unwrap_or_else(|_| raise_value_error(token, "port number must be between 1 and 21"));
 
-    let guard = try_lock_port(port, |port| AiVisionSensor::new(port))
-        .unwrap_or_else(|_| raise_device_error(token, "port is already in use"));
+    let guard = devices::lock_port(port, AiVisionSensor::new);
 
     alloc_obj(AiVisionSensorObj {
         base: ObjBase::new(ty),
@@ -213,7 +210,7 @@ fn ai_vision_sensor_objects(this: &AiVisionSensorObj) -> Obj {
         .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
     let objects = objects
         .into_iter()
-        .map(|obj| AiVisionObjectObj::create_obj(obj))
+        .map(AiVisionObjectObj::create_obj)
         .collect::<Vec<_>>();
     new_list(&objects[..])
 }
@@ -252,4 +249,9 @@ fn ai_vision_sensor_colors(this: &AiVisionSensorObj) -> Obj {
         })
         .collect::<Vec<_>>();
     new_list(&codes[..])
+}
+
+fn ai_vision_sensor_free(this: &AiVisionSensorObj) -> Obj {
+    this.guard.free_or_raise();
+    Obj::NONE
 }

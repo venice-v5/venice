@@ -3,13 +3,13 @@ use std::cell::{Cell, Ref, RefCell};
 use micropython_rs::{
     except::{raise_stop_iteration, raise_type_error},
     init::token,
-    obj::{IterSlotValue, Obj, ObjBase, ObjFullType, ObjTrait, TypeFlags},
+    obj::{Iter, Obj, ObjBase, ObjFullType, ObjTrait, TypeFlags},
 };
 
 use crate::qstrgen::qstr;
 
 static TASK_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::ITER_IS_ITERNEXT, qstr!(Task))
-    .set_iter(IterSlotValue::IterNext(task_iternext));
+    .set_iter(Iter::IterNext(task_iternext));
 
 #[repr(C)]
 pub struct Task {
@@ -57,7 +57,7 @@ impl Task {
 
 extern "C" fn task_iternext(self_in: Obj) -> Obj {
     let task = self_in
-        .try_to_obj::<Task>()
+        .try_as_obj::<Task>()
         .unwrap_or_else(|| raise_type_error(token().unwrap(), "expected Task"));
     if !task.is_complete() {
         self_in

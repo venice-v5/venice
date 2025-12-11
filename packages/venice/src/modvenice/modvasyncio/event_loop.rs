@@ -9,6 +9,7 @@ use micropython_rs::{
     fun::{Fun1, Fun2},
     generator::{GEN_INSTANCE_TYPE, VmReturnKind, resume_gen},
     init::token,
+    make_new_from_fn,
     nlr::{self, push_nlr_callback},
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
@@ -16,16 +17,15 @@ use micropython_rs::{
 use super::{sleep::Sleep, task::Task};
 use crate::{modvenice::device_future::DeviceFutureObj, obj::alloc_obj, qstrgen::qstr};
 
-pub static EVENT_LOOP_OBJ_TYPE: ObjFullType = unsafe {
+pub static EVENT_LOOP_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(EventLoop))
-        .set_slot_make_new(event_loop_new)
-        .set_slot_locals_dict_from_static({
-            &const_dict![
+        .set_make_new(make_new_from_fn!(event_loop_new))
+        .set_locals_dict({
+            const_dict![
                 qstr!(spawn) => Obj::from_static(&Fun2::new(event_loop_spawn)),
                 qstr!(run) => Obj::from_static(&Fun1::new(event_loop_run)),
             ]
-        })
-};
+        });
 
 struct DeviceFutureInstance {
     task: Obj,
@@ -34,7 +34,7 @@ struct DeviceFutureInstance {
 
 struct Sleeper {
     task: Obj,
-    deadline: super::instant::Instant,
+    deadline: time32::Instant,
 }
 
 impl PartialEq for Sleeper {
@@ -71,7 +71,7 @@ unsafe impl ObjTrait for EventLoop {
 }
 
 thread_local! {
-    static RUNNING_LOOP: Cell<Obj> = Cell::new(Obj::NONE);
+    static RUNNING_LOOP: Cell<Obj> = const { Cell::new(Obj::NONE) };
 }
 
 impl EventLoop {
@@ -97,7 +97,7 @@ impl EventLoop {
             task_obj = self.current_task.get()
         }
 
-        let task = task_obj.try_to_obj::<Task>().unwrap();
+        let task = task_obj.try_as_obj::<Task>().unwrap();
         if coro.is_null() {
             coro = task.coro();
         }
@@ -116,10 +116,10 @@ impl EventLoop {
                 true
             }
             VmReturnKind::Yield => {
-                if let Some(sleep) = result.obj.try_to_obj::<Sleep>() {
+                if let Some(sleep) = result.obj.try_as_obj::<Sleep>() {
                     self.sleepers.borrow_mut().push(Sleeper {
                         task: task_obj,
-                        deadline: sleep.deadline(),
+                        deadline: time32::Instant::now() + sleep.duration(),
                     });
                 } else if let Some(_) = result.obj.try_to_obj::<DeviceFutureObj>() {
                     self.device_futures
@@ -128,7 +128,7 @@ impl EventLoop {
                             task: task_obj,
                             device_future: result.obj,
                         });
-                } else if let Some(awaited_task) = result.obj.try_to_obj::<Task>() {
+                } else if let Some(awaited_task) = result.obj.try_as_obj::<Task>() {
                     awaited_task.add_waiting_task(task_obj);
                 }
 
@@ -150,7 +150,7 @@ impl EventLoop {
         let mut device_futures = self.device_futures.borrow_mut();
 
         if let Some(sleeper) = sleepers.peek()
-            && sleeper.deadline <= super::instant::Instant::now()
+            && sleeper.deadline <= super::time32::Instant::now()
         {
             let sleeper = sleepers.pop().unwrap();
             ready.push_back((sleeper.task, Obj::NONE));
@@ -192,7 +192,7 @@ impl EventLoop {
     }
 }
 
-extern "C" fn event_loop_new(_: *const ObjType, n_args: usize, n_kw: usize, _: *const Obj) -> Obj {
+fn event_loop_new(_: &ObjType, n_args: usize, n_kw: usize, _args: &[Obj]) -> Obj {
     if n_args != 0 || n_kw != 0 {
         raise_type_error(token().unwrap(), "function does not accept any arguments");
     }
@@ -200,19 +200,23 @@ extern "C" fn event_loop_new(_: *const ObjType, n_args: usize, n_kw: usize, _: *
     alloc_obj(EventLoop::new())
 }
 
+// this function can't use a Fun generator because a Generator struct would be needed to write out
+// its type signature, and that struct does not exist
 extern "C" fn event_loop_spawn(self_in: Obj, coro: Obj) -> Obj {
     if !coro.is(GEN_INSTANCE_TYPE) {
         raise_type_error(token().unwrap(), "expected coroutine");
     }
 
-    self_in.try_to_obj::<EventLoop>().unwrap().spawn(coro)
+    self_in.try_as_obj::<EventLoop>().unwrap().spawn(coro)
 }
 
+// this function can't use a Fun generator because it needs the EventLoop in Obj form, not as a
+// reference, in order to properly replace the static variable
 extern "C" fn event_loop_run(self_in: Obj) -> Obj {
     let prev_loop = RUNNING_LOOP.replace(self_in);
     push_nlr_callback(
         token().unwrap(),
-        || self_in.try_to_obj::<EventLoop>().unwrap().run(),
+        || self_in.try_as_obj::<EventLoop>().unwrap().run(),
         || RUNNING_LOOP.set(prev_loop),
         true,
     );
@@ -233,6 +237,8 @@ pub extern "C" fn vasyncio_run(coro: Obj) -> Obj {
     event_loop_run(alloc_obj(eloop))
 }
 
+// this function can't use a Fun generator because a Generator struct would be needed to write out
+// its type signature, and that struct does not exist
 pub extern "C" fn vasyncio_spawn(coro: Obj) -> Obj {
     let eloop = get_running_loop();
     if eloop.is_none() {

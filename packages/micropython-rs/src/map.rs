@@ -53,7 +53,7 @@ macro_rules! map_table {
 #[macro_export]
 macro_rules! const_map {
     [$($key:expr => $value:expr),* $(,)?] => {{
-        static TABLE: &[$crate::map::MapElem] = [$($crate::map::MapElem {
+        static mut TABLE: &[$crate::map::MapElem] = [$($crate::map::MapElem {
             key: $crate::obj::Obj::from_qstr($key),
             value: $value,
         }),*].as_slice();
@@ -67,15 +67,14 @@ macro_rules! const_map {
 #[macro_export]
 macro_rules! const_dict {
     [$($key:expr => $value:expr),* $(,)?] => {{
-        $crate::map::Dict::new($crate::const_map![$($key => $value),*])
+        static mut DICT: $crate::map::Dict = $crate::map::Dict::new($crate::const_map![$($key => $value),*]);
+        unsafe { &DICT }
     }};
 }
 
-unsafe impl Sync for Map {}
-
 impl Map {
     pub const unsafe fn from_raw_parts(
-        ptr: *const MapElem,
+        ptr: *mut MapElem,
         len: usize,
         alloc: usize,
         all_qstr_keys: bool,

@@ -98,7 +98,7 @@ impl ModuleContext {
 
 pub fn exec_module(token: InitToken, name: Qstr, bc: &[u8]) -> Obj {
     let context_obj = ModuleContext::new(name);
-    let context_ptr = context_obj.try_to_obj_raw().unwrap().as_ptr();
+    let context_ptr = context_obj.try_as_obj_raw().unwrap().as_ptr();
 
     let mut cm = CompiledModule {
         context: context_ptr,
@@ -108,7 +108,7 @@ pub fn exec_module(token: InitToken, name: Qstr, bc: &[u8]) -> Obj {
     let old_globals = globals(token);
     let old_locals = locals(token);
     let new_globals = context_obj
-        .try_to_obj::<ModuleContext>()
+        .try_as_obj::<ModuleContext>()
         .unwrap()
         .module
         .globals;

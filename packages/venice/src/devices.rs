@@ -1,11 +1,12 @@
-use std::sync::{LazyLock, Mutex, MutexGuard};
+use std::sync::LazyLock;
 
-use vexide_devices::{controller::Controller, peripherals::Peripherals, smart::SmartPort};
+use vexide_devices::{controller::ControllerId, peripherals::Peripherals, smart::SmartPort};
 
-use crate::registry::{PortDevice, Registry, RegistryGuard};
+use crate::registry::{ControllerGuard, ControllerRegistry, PortDevice, Registry, RegistryGuard};
 
 pub struct Devices {
-    pub controller: Mutex<Controller>,
+    pub primary_controller: ControllerRegistry,
+    pub partner_controller: ControllerRegistry,
 
     pub port_1: Registry,
     pub port_2: Registry,
@@ -33,7 +34,8 @@ pub struct Devices {
 impl Devices {
     fn new() -> Option<Self> {
         Peripherals::take().map(|peris| Self {
-            controller: Mutex::new(peris.primary_controller),
+            primary_controller: ControllerRegistry::new(peris.primary_controller),
+            partner_controller: ControllerRegistry::new(peris.partner_controller),
 
             port_1: Registry::new(peris.port_1),
             port_2: Registry::new(peris.port_2),
@@ -100,10 +102,7 @@ impl PortNumber {
     }
 
     pub fn from_i32(number: i32) -> Result<Self, ()> {
-        number
-            .try_into()
-            .map_err(|_| ())
-            .and_then(|number| Self::new(number))
+        number.try_into().map_err(|_| ()).and_then(Self::new)
     }
 
     pub const fn number(self) -> u8 {
@@ -113,14 +112,17 @@ impl PortNumber {
 
 static REGISTRIES: LazyLock<Devices> = LazyLock::new(|| Devices::new().unwrap());
 
-pub fn try_lock_port<D, I>(port: PortNumber, init: I) -> Result<RegistryGuard<'static, D>, ()>
+pub fn lock_port<D, I>(port: PortNumber, init: I) -> RegistryGuard<'static, D>
 where
     D: PortDevice,
     I: FnOnce(SmartPort) -> D,
 {
-    REGISTRIES.registry_by_port(port).try_lock(init)
+    REGISTRIES.registry_by_port(port).lock(init)
 }
 
-pub fn try_lock_controller() -> Result<MutexGuard<'static, Controller>, ()> {
-    REGISTRIES.controller.try_lock().map_err(|_| ())
+pub fn lock_controller(id: ControllerId) -> ControllerGuard<'static> {
+    match id {
+        ControllerId::Primary => REGISTRIES.primary_controller.lock(),
+        ControllerId::Partner => REGISTRIES.partner_controller.lock(),
+    }
 }

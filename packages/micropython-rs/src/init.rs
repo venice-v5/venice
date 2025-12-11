@@ -5,7 +5,7 @@ use std::{
 
 use thiserror::Error;
 
-use crate::gc::{Gc, gc_init};
+use crate::gc::gc_init;
 
 static INIT: AtomicBool = AtomicBool::new(false);
 
@@ -26,10 +26,7 @@ pub struct InitToken(());
 #[error("micropython already initialized")]
 pub struct AlreadyInit;
 
-pub unsafe fn init_mp(
-    heap_start: *mut u8,
-    heap_end: *mut u8,
-) -> Result<(InitToken, Gc), AlreadyInit> {
+pub unsafe fn init_mp(heap_start: *mut u8, heap_end: *mut u8) -> Result<InitToken, AlreadyInit> {
     if let Err(_) = INIT.compare_exchange(false, true, Ordering::Relaxed, Ordering::Relaxed) {
         return Err(AlreadyInit);
     }
@@ -41,7 +38,8 @@ pub unsafe fn init_mp(
         gc_init(heap_start as *mut c_void, heap_end as *mut c_void);
         mp_init();
 
-        Ok((InitToken(()), Gc::new()))
+        let token = InitToken(());
+        Ok(token)
     }
 }
 

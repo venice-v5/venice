@@ -10,11 +10,11 @@ use micropython_rs::{
 use vexide_devices::smart::ai_vision::AiVisionObject;
 
 use crate::{
-    fun::fun2_from_fn, modvenice::units::rotation::RotationUnitObj, obj::alloc_obj, qstrgen::qstr,
+    fun::fun2, modvenice::units::rotation::RotationUnitObj, obj::alloc_obj, qstrgen::qstr,
 };
 
-const AI_VISION_OBJECT_LOCAL_DICT: Dict = const_dict![
-    qstr!(angle) => Obj::from_static(&fun2_from_fn!(ai_vision_object_angle, &AiVisionObjectObj, &RotationUnitObj)),
+const AI_VISION_OBJECT_LOCAL_DICT: &Dict = const_dict![
+    qstr!(angle) => Obj::from_static(&fun2!(ai_vision_object_angle, &AiVisionObjectObj, &RotationUnitObj)),
 ];
 
 static AI_VISION_OBJECT_OBJ_TYPE: ObjFullType =
@@ -23,26 +23,26 @@ static AI_VISION_OBJECT_OBJ_TYPE: ObjFullType =
 
 pub(crate) static AI_VISION_COLOR_OBJECT_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(AiVisionColorObject))
-        .set_slot_parent(AI_VISION_OBJECT_OBJ_TYPE.as_obj_type())
-        .set_slot_locals_dict_from_static(&AI_VISION_OBJECT_LOCAL_DICT)
+        .set_parent(AI_VISION_OBJECT_OBJ_TYPE.as_obj_type())
+        .set_locals_dict(AI_VISION_OBJECT_LOCAL_DICT)
         .set_attr(attr_from_fn!(ai_vision_object_state_attr));
 
 pub(crate) static AI_VISION_CODE_OBJECT_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(AiVisionCodeObject))
-        .set_slot_parent(AI_VISION_OBJECT_OBJ_TYPE.as_obj_type())
-        .set_slot_locals_dict_from_static(&AI_VISION_OBJECT_LOCAL_DICT)
+        .set_parent(AI_VISION_OBJECT_OBJ_TYPE.as_obj_type())
+        .set_locals_dict(AI_VISION_OBJECT_LOCAL_DICT)
         .set_attr(attr_from_fn!(ai_vision_object_state_attr));
 
 pub(crate) static AI_VISION_APRIL_TAG_OBJECT_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(AiVisionAprilTagObject))
-        .set_slot_parent(AI_VISION_OBJECT_OBJ_TYPE.as_obj_type())
-        .set_slot_locals_dict_from_static(&AI_VISION_OBJECT_LOCAL_DICT)
+        .set_parent(AI_VISION_OBJECT_OBJ_TYPE.as_obj_type())
+        .set_locals_dict(AI_VISION_OBJECT_LOCAL_DICT)
         .set_attr(attr_from_fn!(ai_vision_object_state_attr));
 
 pub(crate) static AI_VISION_MODEL_OBJECT_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(AiVisionModelObject))
-        .set_slot_parent(AI_VISION_OBJECT_OBJ_TYPE.as_obj_type())
-        .set_slot_locals_dict_from_static(&AI_VISION_OBJECT_LOCAL_DICT)
+        .set_parent(AI_VISION_OBJECT_OBJ_TYPE.as_obj_type())
+        .set_locals_dict(AI_VISION_OBJECT_LOCAL_DICT)
         .set_attr(attr_from_fn!(ai_vision_object_state_attr));
 
 #[repr(C)]
@@ -191,7 +191,7 @@ fn ai_vision_object_state_attr(this: &AiVisionObjectObj, attr: Qstr, op: AttrOp)
 
 fn ai_vision_object_angle(this: &AiVisionObjectObj, angle_unit: &RotationUnitObj) -> Obj {
     if let AiVisionObject::Code { angle, .. } = this.object {
-        Obj::from_float(angle_unit.unit().in_angle(angle))
+        Obj::from_float(angle_unit.unit().angle_to_float(angle))
     } else {
         Obj::NONE
     }
