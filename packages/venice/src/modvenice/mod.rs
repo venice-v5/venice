@@ -7,7 +7,6 @@ mod modvasyncio;
 mod motor;
 mod rotation_sensor;
 mod units;
-use std::ptr::addr_of;
 use micropython_rs::{
     const_map,
     except::{new_exception_type, raise_msg},
@@ -28,7 +27,6 @@ use self::{
 };
 use crate::{
     modvenice::{
-        modvasyncio::get_vasyncio_globals,
         ai_vision::{
             AiVisionSensorObj,
             ai_vision_color::AiVisionColorObj,
@@ -42,6 +40,7 @@ use crate::{
         },
         controller::id::ControllerIdObj,
         distance_sensor::{DistanceSensorObj, distance_object::DistanceObjectObj},
+        modvasyncio::get_vasyncio_globals,
         motor::{MOTOR_EXP_OBJ_TYPE, MOTOR_V5_OBJ_TYPE, motor_type::MotorTypeObj},
     },
     qstrgen::qstr,

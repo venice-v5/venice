@@ -15,7 +15,11 @@ use micropython_rs::{
 };
 
 use super::{sleep::Sleep, task::Task};
-use crate::{modvenice::{device_future::DeviceFutureObj, modvasyncio::time32}, obj::alloc_obj, qstrgen::qstr};
+use crate::{
+    modvenice::{device_future::DeviceFutureObj, modvasyncio::time32},
+    obj::alloc_obj,
+    qstrgen::qstr,
+};
 
 pub static EVENT_LOOP_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(EventLoop))

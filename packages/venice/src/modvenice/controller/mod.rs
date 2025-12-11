@@ -4,7 +4,6 @@ pub mod state;
 use std::{
     cell::RefCell,
     ffi::{CString, NulError},
-    sync::MutexGuard,
 };
 
 use micropython_rs::{
@@ -16,15 +15,16 @@ use micropython_rs::{
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
 use vex_sdk::{V5_ControllerId, V5_ControllerStatus, vexControllerTextSet};
-use vexide_devices::controller::{Controller, ControllerError, ControllerId};
 use vex_sdk_jumptable::{self as _, vexControllerConnectionStatusGet};
+use vexide_devices::controller::{Controller, ControllerError, ControllerId};
+
 use self::state::ControllerStateObj;
 use super::raise_device_error;
 use crate::{
     args::{ArgTrait, ArgValue},
-    modvenice::device_future::{DeviceFuture, DeviceFutureObj},
     devices,
-    fun::{fun1},
+    fun::fun1,
+    modvenice::device_future::{DeviceFuture, DeviceFutureObj},
     obj::alloc_obj,
     qstrgen::qstr,
     registry::ControllerGuard,

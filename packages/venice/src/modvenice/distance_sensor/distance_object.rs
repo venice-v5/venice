@@ -37,7 +37,13 @@ fn distance_object_attr(this: &DistanceObjectObj, attr: Qstr, op: AttrOp) {
             *dest = match attr_bytes {
                 b"confidence" => Obj::from_float(this.object.confidence as _),
                 b"distance" => Obj::from_int(this.object.distance as _),
-                b"relative_size" => if let Some(v) = this.object.relative_size { Obj::from_int(v as _) } else { Obj::NONE },
+                b"relative_size" => {
+                    if let Some(v) = this.object.relative_size {
+                        Obj::from_int(v as _)
+                    } else {
+                        Obj::NONE
+                    }
+                }
                 b"velocity" => Obj::from_float(this.object.velocity as _),
                 _ => return,
             };

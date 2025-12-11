@@ -5,7 +5,6 @@ use micropython_rs::{
     obj::{AttrOp, Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
     qstr::Qstr,
 };
-use rgb::Rgb;
 use vexide_devices::{color::Color, smart::ai_vision::AiVisionColor};
 
 use crate::{args::Args, obj::alloc_obj, qstrgen::qstr};

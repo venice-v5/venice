@@ -1,8 +1,8 @@
 pub mod event_loop;
+pub mod instant;
 pub mod sleep;
 pub mod task;
 pub mod time32;
-pub mod instant;
 
 use micropython_rs::{
     const_map,
