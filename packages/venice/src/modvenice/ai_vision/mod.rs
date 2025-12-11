@@ -238,7 +238,7 @@ fn ai_vision_sensor_color_codes(this: &AiVisionSensorObj) -> Obj {
 
 fn ai_vision_sensor_colors(this: &AiVisionSensorObj) -> Obj {
     let this = this.guard.borrow();
-    let codes = (0..8)
+    let codes = (1..8)
         .map(|n| {
             this.color(n)
                 .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")))

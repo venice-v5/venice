@@ -8,7 +8,7 @@ use direction::DirectionObj;
 use gearset::GearsetObj;
 use micropython_rs::{
     const_dict,
-    except::{raise_not_implemented_error, raise_value_error},
+    except::{raise_value_error},
     init::token,
     make_new_from_fn,
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},

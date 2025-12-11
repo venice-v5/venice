@@ -1,9 +1,6 @@
 use std::{
     cell::{Cell, RefCell},
     collections::{binary_heap::BinaryHeap, vec_deque::VecDeque},
-    future::Future,
-    pin::Pin,
-    task::{Context, Poll, Waker},
 };
 
 use micropython_rs::{
@@ -15,10 +12,8 @@ use micropython_rs::{
     nlr::{self, push_nlr_callback},
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
-use vex_sdk::vexTasksRun;
-
 use super::{sleep::Sleep, task::Task};
-use crate::{modvenice::device_future::{DeviceFutureObj, DEVICE_FUTURE_OBJ_TYPE}, obj::alloc_obj, qstrgen::qstr};
+use crate::{modvenice::device_future::{DeviceFutureObj}, obj::alloc_obj, qstrgen::qstr};
 
 pub static EVENT_LOOP_OBJ_TYPE: ObjFullType = unsafe {
     ObjFullType::new(TypeFlags::empty(), qstr!(EventLoop))
@@ -125,7 +120,7 @@ impl EventLoop {
                         task: task_obj,
                         deadline: sleep.deadline(),
                     });
-                } else if let Some(device_future) = result.obj.try_to_obj::<DeviceFutureObj>() {
+                } else if let Some(_) = result.obj.try_to_obj::<DeviceFutureObj>() {
                     self.device_futures.borrow_mut().push_back(DeviceFutureInstance {
                         task: task_obj,
                         device_future: result.obj,

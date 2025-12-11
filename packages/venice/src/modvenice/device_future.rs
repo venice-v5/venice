@@ -1,11 +1,6 @@
-use std::task::{Context, Poll, Waker};
-use std::{cell::RefCell, future::Future};
-use std::pin::Pin;
-
 use micropython_rs::except::raise_stop_iteration;
 use micropython_rs::init::token;
 use micropython_rs::obj::{IterSlotValue, Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags};
-use vexide_devices::controller::ControllerScreenWriteFuture;
 
 use crate::modvenice::controller::ControllerScreenWriteAwaitable;
 use crate::modvenice::raise_device_error;

@@ -3,9 +3,7 @@ pub mod state;
 use std::{
     cell::RefCell,
     ffi::{CString, NulError},
-    rc::Rc,
     sync::MutexGuard,
-    task::Poll,
 };
 
 use micropython_rs::{
@@ -25,7 +23,7 @@ use vexide_devices::controller::{Controller, ControllerError, ControllerId};
 use self::state::ControllerStateObj;
 use super::raise_device_error;
 use crate::{
-    args::{ArgTrait, ArgValue}, devices, fun::{fun1_from_fn, fun2_from_fn}, modvenice::device_future::{DeviceFuture, DeviceFutureObj}, obj::alloc_obj, qstrgen::qstr
+    args::{ArgTrait, ArgValue}, devices, fun::{fun1_from_fn}, modvenice::device_future::{DeviceFuture, DeviceFutureObj}, obj::alloc_obj, qstrgen::qstr
 };
 
 #[repr(C)]
@@ -116,7 +114,7 @@ enum ControllerScreenWriteAwaitableState {
 
         /// The column to write to.
         ///
-        /// This **NOT** is indexed like the SDK. The first onscreen column is 1.
+        /// This is **NOT** indexed like the SDK. The first onscreen column is 1.
         column: u8,
 
         /// The text to write.
