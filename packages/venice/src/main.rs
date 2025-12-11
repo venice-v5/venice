@@ -60,7 +60,7 @@ fn init_main(token: InitToken) {
                 "malformed VPT: package 'main' not present",
             )
         })
-        .payload();
+        .payload;
 
     push_nlr(token, || exec_module(token, entrypoint_qstr, entrypoint));
 }

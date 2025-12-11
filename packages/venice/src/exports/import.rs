@@ -67,7 +67,7 @@ pub fn process_import_at_level(
     }
 
     if let Some(module) = MODULE_MAP.get().unwrap().get(full_name.bytes()) {
-        exec_module(token, full_name, module.payload())
+        exec_module(token, full_name, module.payload)
     } else {
         let name = str::from_utf8(full_name.bytes()).unwrap_or("<invalid utf8 module name>");
         raise_msg(

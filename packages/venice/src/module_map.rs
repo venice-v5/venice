@@ -18,7 +18,7 @@ pub fn init_module_map(vpt: Vpt<'static>) -> Result<(), ModuleMap> {
     );
     for program in vpt.program_iter() {
         map.insert(
-            program.name(),
+            program.name,
             program,
         );
     }
