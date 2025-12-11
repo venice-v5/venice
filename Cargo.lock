@@ -267,7 +267,7 @@ dependencies = [
 [[package]]
 name = "venice-program-table"
 version = "0.1.0"
-source = "git+https://github.com/venice-v5/venice-program-table?rev=044930bc247abbcfee08973d897f547a24833069#044930bc247abbcfee08973d897f547a24833069"
+source = "git+https://github.com/venice-v5/venice-program-table?rev=08ef32f26d9442ebdeb82101527fb04ed3ad0673#08ef32f26d9442ebdeb82101527fb04ed3ad0673"
 dependencies = [
  "bitflags",
  "bytemuck",

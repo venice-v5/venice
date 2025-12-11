@@ -20,5 +20,5 @@ regex = "1.11.1"
 
 [dependencies.venice-program-table]
 git = "https://github.com/venice-v5/venice-program-table"
-rev = "044930bc247abbcfee08973d897f547a24833069"
+rev = "08ef32f26d9442ebdeb82101527fb04ed3ad0673"
 features = ["builder"]
