@@ -210,7 +210,7 @@ impl Builder {
             }
         }
 
-        let rust_qstr_re = Regex::new(r#"qstr!\(([a-zA-Z_][a-zA-Z0-9]*)\)"#).unwrap();
+        let rust_qstr_re = Regex::new(r#"qstr!\(([a-zA-Z_][a-zA-Z0-9_]*)\)"#).unwrap();
         for rust_src in self.rust_srcs.iter() {
             let out = std::fs::read(rust_src).expect("couldn't read rust source");
 
