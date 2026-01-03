@@ -280,7 +280,14 @@ impl Builder {
     }
 
     fn compile_mp(&self) {
-        todo!("cc compilation not added yet")
+        let mut build = cc::Build::new();
+        build
+            .files(&self.c_srcs)
+            .include(&self.port_dir)
+            .include(&self.mp_dir)
+            .include(&self.out_dir)
+            .flag("-Os")
+            .compile("mpv5");
     }
 }
 
