@@ -20,6 +20,9 @@ const ENOSYS: c_int = 88;
 type off_t = c_long;
 
 #[unsafe(no_mangle)]
+extern "C" fn _init() {}
+
+#[unsafe(no_mangle)]
 extern "C" fn _sbrk(_incr: ptrdiff_t) -> *mut c_void {
     unsafe { errno = ENOMEM };
     core::ptr::null_mut()

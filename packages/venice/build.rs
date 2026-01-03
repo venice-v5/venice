@@ -291,10 +291,20 @@ impl Builder {
     }
 }
 
+fn link_objects() {
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    println!("cargo::rustc-link-search=native={}/link", manifest_dir);
+    println!("cargo::rustc-link-arg=-Tvenice.ld");
+    // needed for the following symbols as of 2026-01-03: acoshf, asinhf, nearbyintf, atanhf, lgammaf
+    println!("cargo::rustc-link-lib=m");
+}
+
 fn main() {
     let builder = Builder::new();
     builder.gen_version_header();
     builder.gen_headers();
     builder.gen_qstrs_rs();
     builder.compile_mp();
+
+    link_objects();
 }
