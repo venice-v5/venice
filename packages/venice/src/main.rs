@@ -27,6 +27,7 @@ use micropython_rs::{
 };
 use talc::Span;
 use venice_program_table::Vpt;
+use vex_sdk_jumptable as _;
 
 use crate::{
     gc_alloc::GcAlloc,

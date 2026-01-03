@@ -4,6 +4,9 @@ license = "MPL-2.0"
 version = "0.1.0"
 edition = "2024"
 
+[package.metadata.v5]
+toolchain = "llvm-21.1.1"
+
 [dependencies]
 venice-program-table = { git = "https://github.com/venice-v5/venice-program-table.git", rev = "e5a1762be2eeaf94841bb972af4e447bbf5f4eea" }
 micropython-rs.path = "../micropython-rs"
@@ -15,9 +18,8 @@ vexide-devices = { git = "https://github.com/vexide/vexide" }
 rgb = "0.8.52"
 talc = "4.4.3"
 thiserror = "2.0.17"
+vex-sdk-jumptable = "0.1.1"
 
 [build-dependencies]
 cc = "1.2.49"
 regex = "1.11.1"
-# TODO: replace with vex-sdk-jumptable
-vex-sdk-vexcode = "0.0.1"
