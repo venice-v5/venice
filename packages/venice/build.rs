@@ -35,8 +35,7 @@ struct Builder {
 }
 
 impl Builder {
-    fn new() -> Self {
-        let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    fn new(manifest_dir: &str) -> Self {
         let out_dir = std::env::var("OUT_DIR").unwrap();
         let mp_dir = format!("{manifest_dir}/micropython");
         let py_dir = format!("{mp_dir}/py");
@@ -291,8 +290,15 @@ impl Builder {
     }
 }
 
-fn link_objects() {
-    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+fn rerun_if_changed(manifest_dir: &str) {
+    let paths = ["port", "link", "micropython/py"];
+
+    for path in paths.iter().map(|p| format!("{manifest_dir}/{p}")) {
+        println!("cargo::rerun-if-changed={path}");
+    }
+}
+
+fn link_objects(manifest_dir: &str) {
     println!("cargo::rustc-link-search=native={}/link", manifest_dir);
     println!("cargo::rustc-link-arg=-Tvenice.ld");
     // needed for the following symbols as of 2026-01-03: acoshf, asinhf, nearbyintf, atanhf, lgammaf
@@ -300,11 +306,14 @@ fn link_objects() {
 }
 
 fn main() {
-    let builder = Builder::new();
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+
+    let builder = Builder::new(manifest_dir);
     builder.gen_version_header();
     builder.gen_headers();
     builder.gen_qstrs_rs();
     builder.compile_mp();
 
-    link_objects();
+    link_objects(manifest_dir);
+    rerun_if_changed(manifest_dir);
 }
