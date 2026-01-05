@@ -303,6 +303,7 @@ fn link_objects(manifest_dir: &str) {
     println!("cargo::rustc-link-arg=-Tvenice.ld");
     // needed for the following symbols as of 2026-01-03: acoshf, asinhf, nearbyintf, atanhf, lgammaf
     println!("cargo::rustc-link-lib=m");
+    println!("cargo::rustc-link-lib=c");
 }
 
 fn main() {
