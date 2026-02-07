@@ -1,4 +1,5 @@
 //! Open source MicroPython port for VEX V5 robots.
+#![feature(allocator_api)]
 
 pub mod args;
 pub mod devices;
@@ -7,8 +8,8 @@ pub mod obj;
 pub mod qstrgen;
 pub mod registry;
 
+mod alloc;
 mod exports;
-mod gc_alloc;
 mod module_map;
 mod modvasyncio;
 mod modvenice;
@@ -30,12 +31,9 @@ use venice_program_table::Vpt;
 use vex_sdk_jumptable as _;
 
 use crate::{
-    gc_alloc::GcAlloc,
     module_map::{MODULE_MAP, init_module_map},
+    alloc::ALLOCATOR,
 };
-
-#[global_allocator]
-static ALLOCATOR: GcAlloc = GcAlloc::new();
 
 // TODO: pick another ID
 const VENDOR_ID: u32 = 0x11235813;
@@ -91,14 +89,11 @@ fn main() {
     let token = unsafe {
         let token = init_mp(&raw mut __heap_start, &raw mut __heap_end).unwrap();
 
-        ALLOCATOR.init(token).unwrap();
         {
             let fallback_heap_span =
                 Span::new(&raw mut __fallback_heap_start, &raw mut __fallback_heap_end);
             ALLOCATOR
-                .fallback_alloc()
                 .lock()
-                .unwrap()
                 .claim(fallback_heap_span)
                 .unwrap();
         }

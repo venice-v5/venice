@@ -6,7 +6,7 @@ use std::{
     io::{Write, stdout},
 };
 
-use crate::ALLOCATOR;
+use micropython_rs::init::token;
 
 #[unsafe(no_mangle)]
 unsafe extern "C" fn mp_hal_stdout_tx_strn_cooked(str: *const c_char, len: u32) {
@@ -16,7 +16,7 @@ unsafe extern "C" fn mp_hal_stdout_tx_strn_cooked(str: *const c_char, len: u32) 
 
 #[unsafe(no_mangle)]
 unsafe extern "C" fn gc_collect() {
-    ALLOCATOR.collect_garbage().unwrap();
+    micropython_rs::gc::collect_garbage(token().unwrap());
 }
 
 #[unsafe(no_mangle)]

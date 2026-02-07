@@ -19,6 +19,8 @@ rgb = "0.8.52"
 talc = "4.4.3"
 thiserror = "2.0.17"
 vex-sdk-jumptable = "0.1.1"
+lock_api = "0.4.14"
+spin = "0.10.0"
 
 [build-dependencies]
 cc = "1.2.49"
