@@ -16,7 +16,7 @@ use micropython_rs::{
 use vex_sdk::vexTasksRun;
 
 use super::{sleep::Sleep, task::Task, time32};
-use crate::{obj::alloc_obj, qstrgen::qstr};
+use crate::{alloc::Gc, obj::alloc_obj, qstrgen::qstr};
 
 pub static EVENT_LOOP_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(EventLoop))
@@ -56,8 +56,8 @@ impl Ord for Sleeper {
 #[repr(C)]
 pub struct EventLoop {
     base: ObjBase<'static>,
-    ready: RefCell<VecDeque<Obj>>,
-    sleepers: RefCell<BinaryHeap<Sleeper>>,
+    ready: RefCell<VecDeque<Obj, Gc>>,
+    sleepers: RefCell<BinaryHeap<Sleeper, Gc>>,
     current_task: Cell<Obj>,
 }
 
@@ -71,10 +71,11 @@ thread_local! {
 
 impl EventLoop {
     pub fn new() -> Self {
+        let gc = Gc { token: token().unwrap() };
         Self {
             base: ObjBase::new(Self::OBJ_TYPE),
-            ready: RefCell::new(VecDeque::new()),
-            sleepers: RefCell::new(BinaryHeap::new()),
+            ready: RefCell::new(VecDeque::new_in(gc)),
+            sleepers: RefCell::new(BinaryHeap::new_in(gc)),
             current_task: Cell::new(Obj::NULL),
         }
     }

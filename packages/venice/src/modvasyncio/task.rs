@@ -6,7 +6,7 @@ use micropython_rs::{
     obj::{Iter, Obj, ObjBase, ObjFullType, ObjTrait, TypeFlags},
 };
 
-use crate::qstrgen::qstr;
+use crate::{alloc::Gc, qstrgen::qstr};
 
 static TASK_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::ITER_IS_ITERNEXT, qstr!(Task))
     .set_iter(Iter::IterNext(task_iternext));
@@ -16,7 +16,7 @@ pub struct Task {
     base: ObjBase<'static>,
     // generator object
     coro: Obj,
-    waiting_tasks: RefCell<Vec<Obj>>,
+    waiting_tasks: RefCell<Vec<Obj, Gc>>,
     return_val: Cell<Obj>,
 }
 
@@ -29,7 +29,9 @@ impl Task {
         Self {
             base: ObjBase::new(Self::OBJ_TYPE),
             coro,
-            waiting_tasks: RefCell::new(Vec::new()),
+            waiting_tasks: RefCell::new(Vec::new_in(Gc {
+                token: token().unwrap(),
+            })),
             return_val: Cell::new(Obj::NULL),
         }
     }

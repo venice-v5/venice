@@ -12,6 +12,7 @@ use talc::{ErrOnOom, Talc, Talck};
 #[global_allocator]
 pub static ALLOCATOR: Talck<spin::Mutex<()>, ErrOnOom> = Talck::new(Talc::new(ErrOnOom));
 
+#[derive(Debug, Clone, Copy)]
 pub struct Gc {
     pub token: InitToken,
 }
