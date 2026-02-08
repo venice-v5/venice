@@ -468,6 +468,38 @@ impl ObjType {
         // SAFETY: probably!
         unsafe { Qstr::from_index(self.name as usize) }
     }
+
+    /// Returns the corresponding slot index to `slot`.
+    const fn slot_index(&self, slot: Slot) -> u8 {
+        match slot {
+            Slot::MakeNew => self.slot_index_make_new,
+            Slot::Print => self.slot_index_print,
+            Slot::Call => self.slot_index_call,
+            Slot::UnaryOp => self.slot_index_unary_op,
+            Slot::BinaryOp => self.slot_index_binary_op,
+            Slot::Attr => self.slot_index_attr,
+            Slot::Subscr => self.slot_index_subscr,
+            Slot::Iter => self.slot_index_iter,
+            Slot::Buffer => self.slot_index_buffer,
+            Slot::Protocol => self.slot_index_protocol,
+            Slot::Parent => self.slot_index_parent,
+            Slot::LocalsDict => self.slot_index_locals_dict,
+        }
+    }
+
+    /// Returns the value of `slot` as a raw `*mut c_void`.
+    pub fn slot_value_raw(&self, slot: Slot) -> Option<*mut c_void> {
+        let index = self.slot_index(slot);
+        if index == 0 {
+            return None;
+        }
+
+        let base = &raw const self.slots as *const *mut c_void;
+        unsafe {
+            let slot_ptr = base.add(index as usize - 1);
+            Some(*slot_ptr)
+        }
+    }
 }
 
 impl ObjFullType {
@@ -899,6 +931,24 @@ impl Obj {
         } else {
             None
         }
+    }
+}
+
+/// Object call operation error.
+#[derive(Debug)]
+pub enum CallError {
+    /// The object is a non-callable primitive.
+    PrimitiveObj,
+    /// The object's call slot is not defined.
+    NoCallSlot,
+}
+
+impl Obj {
+    pub fn call(&self, n_kw: usize, args: &[Obj]) -> Result<Obj, CallError> {
+        let ty = self.obj_type().ok_or(CallError::PrimitiveObj)?;
+        let call_ptr = ty.slot_value_raw(Slot::Call).ok_or(CallError::NoCallSlot)? as *const CallFn;
+        let ret = unsafe { (*call_ptr)(*self, args.len() - n_kw, n_kw, args.as_ptr()) };
+        Ok(ret)
     }
 }
 
