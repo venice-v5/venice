@@ -398,6 +398,22 @@ impl<'a> ArgsReader<'a> {
             .unwrap_or_else(|e| e.raise_kw(self.token, str::from_utf8(kw).unwrap()))
     }
 
+    pub fn try_next_kw_untyped(&mut self) -> Result<KwArg<'a>, ArgError<'a>> {
+        match self.args.nth(self.n) {
+            Ok(arg) => match arg {
+                Arg::Keyword(kw_arg) => {
+                    self.n += 1;
+                    Ok(kw_arg)
+                }
+                Arg::Positional(_) => Err(ArgError::ExpectedKeyword),
+            },
+            Err(e) => Err(match e {
+                ArgError::NotPresent => ArgError::KeywordsExhuasted,
+                _ => unreachable!(),
+            }),
+        }
+    }
+
     pub fn try_next_kw<A: ArgTrait<'a>>(&mut self) -> Result<GenericKwArg<'a, A>, ArgError<'a>> {
         match self.args.nth_of_type(self.n, A::ty()) {
             Ok(arg) => match arg {

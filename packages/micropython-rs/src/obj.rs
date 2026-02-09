@@ -950,6 +950,12 @@ impl Obj {
         let ret = unsafe { (*call_ptr)(*self, args.len() - n_kw, n_kw, args.as_ptr()) };
         Ok(ret)
     }
+
+    pub fn is_callable(&self) -> bool {
+        self.obj_type()
+            .and_then(|ty| ty.slot_value_raw(Slot::Call))
+            .is_some()
+    }
 }
 
 // for potential future use

@@ -1,10 +1,17 @@
 use std::cell::Cell;
 
 use bitflags::bitflags;
-use micropython_rs::obj::{Iter, Obj, ObjBase, ObjFullType, ObjTrait, TypeFlags};
+use micropython_rs::{
+    except::raise_type_error,
+    generator::GEN_INSTANCE_TYPE,
+    init::token,
+    make_new_from_fn,
+    obj::{Iter, Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
+};
 
 use crate::{
     modvasyncio::event_loop::{self, EventLoop},
+    obj::alloc_obj,
     qstrgen::qstr,
 };
 
@@ -74,14 +81,11 @@ pub struct CompetitionRuntime {
     status: Cell<Status>,
     phase: Cell<Phase>,
 
-    /// Arbitrary user class that may contain the following competition methods:
-    /// - async def connected(self)
-    /// - async def disconnected(self)
-    /// - async def driver(self)
-    /// - async def autonomous(self)
-    /// - async def disabled(self)
-    /// Any absent methods are replaced with noops.
-    robot_obj: Obj,
+    connected: Obj,
+    disconnected: Obj,
+    driver: Obj,
+    autonomous: Obj,
+    disabled: Obj,
 
     // nullable
     coro: Cell<Obj>,
@@ -89,7 +93,8 @@ pub struct CompetitionRuntime {
 
 pub static COMPETITION_RUNTIME_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::ITER_IS_ITERNEXT, qstr!(CompetitionRuntime))
-        .set_iter(Iter::IterNext(runtime_iternext));
+        .set_iter(Iter::IterNext(runtime_iternext))
+        .set_make_new(make_new_from_fn!(runtime_make_new));
 
 unsafe impl ObjTrait for CompetitionRuntime {
     const OBJ_TYPE: &micropython_rs::obj::ObjType = COMPETITION_RUNTIME_OBJ_TYPE.as_obj_type();
@@ -150,13 +155,69 @@ impl CompetitionRuntime {
 
         // update coroutine
         if phase_updated {
-            self.coro.set(match self.phase.get() {
-                Phase::Connected => todo!(),
-                Phase::Disconnected => todo!(),
-                Phase::Mode(_) => todo!(),
+            self.coro.set({
+                let coro = match self.phase.get() {
+                    Phase::Connected => self.connected,
+                    Phase::Disconnected => self.disconnected,
+                    Phase::Mode(Mode::Driver) => self.driver,
+                    Phase::Mode(Mode::Autonomous) => self.autonomous,
+                    Phase::Mode(Mode::Disabled) => self.disabled,
+                }
+                .call(0, &[])
+                .unwrap(); // object is verified to be callable in make_new
+
+                if !coro.is(GEN_INSTANCE_TYPE) && !coro.is_null() {
+                    raise_type_error(token().unwrap(), "object is not a coroutine");
+                }
+
+                coro
             });
         }
     }
+}
+
+fn runtime_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Obj {
+    if n_pos > 0 {
+        raise_type_error(
+            token().unwrap(),
+            "function does not accept positional arguments",
+        );
+    }
+
+    let mut runtime = CompetitionRuntime {
+        base: ObjBase::new(ty),
+        status: Cell::new(status()),
+        phase: Cell::new(Phase::Disconnected),
+
+        connected: Obj::NULL,
+        disconnected: Obj::NULL,
+        driver: Obj::NULL,
+        autonomous: Obj::NULL,
+        disabled: Obj::NULL,
+
+        coro: Cell::new(Obj::NULL),
+    };
+
+    for i in 0..n_kw {
+        let k = args[i * 2].get_str().unwrap();
+        let v = args[i * 2 + 1];
+
+        let routine = match k {
+            b"driver" => &mut runtime.driver,
+            b"autonomous" => &mut runtime.autonomous,
+            b"connected" => &mut runtime.connected,
+            b"disconnected" => &mut runtime.disconnected,
+            b"disabled" => &mut runtime.disabled,
+            _ => raise_type_error(token().unwrap(), "no such competition routine"),
+        };
+
+        if !v.is_callable() {
+            raise_type_error(token().unwrap(), "routine value is not callable");
+        }
+        *routine = v;
+    }
+
+    alloc_obj(runtime)
 }
 
 extern "C" fn runtime_iternext(self_in: Obj) -> Obj {
