@@ -8,7 +8,7 @@ macro_rules! fun1 {
 
             if a_value.ty() != <$a as ArgTrait>::ty() {
                 raise_type_error(
-                    token().unwrap(),
+                    token(),
                     format!(
                         "expected <{}> for argument #1, found <{}>",
                         <$a as ArgTrait>::ty(),
@@ -35,7 +35,7 @@ macro_rules! fun2 {
 
             if a_value.ty() != <$a as ArgTrait>::ty() {
                 raise_type_error(
-                    token().unwrap(),
+                    token(),
                     format!(
                         "expected <{}> for argument #1, found <{}>",
                         <$a as ArgTrait>::ty(),
@@ -46,7 +46,7 @@ macro_rules! fun2 {
 
             if b_value.ty() != <$b as ArgTrait>::ty() {
                 raise_type_error(
-                    token().unwrap(),
+                    token(),
                     format!(
                         "expected <{}> for argument #2, found <{}>",
                         <$b as ArgTrait>::ty(),
@@ -79,7 +79,7 @@ macro_rules! fun3 {
 
             if a_value.ty() != <$a as ArgTrait>::ty() {
                 raise_type_error(
-                    token().unwrap(),
+                    token(),
                     format!(
                         "expected <{}> for argument #1, found <{}>",
                         <$a as ArgTrait>::ty(),
@@ -90,7 +90,7 @@ macro_rules! fun3 {
 
             if b_value.ty() != <$b as ArgTrait>::ty() {
                 raise_type_error(
-                    token().unwrap(),
+                    token(),
                     format!(
                         "expected <{}> for argument #2, found <{}>",
                         <$b as ArgTrait>::ty(),
@@ -101,7 +101,7 @@ macro_rules! fun3 {
 
             if c_value.ty() != <$c as ArgTrait>::ty() {
                 raise_type_error(
-                    token().unwrap(),
+                    token(),
                     format!(
                         "expected <{}> for argument #3, found <{}>",
                         <$c as ArgTrait>::ty(),

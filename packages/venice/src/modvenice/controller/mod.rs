@@ -44,7 +44,7 @@ unsafe impl ObjTrait for ControllerObj {
 }
 
 fn controller_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Obj {
-    let token = token().unwrap();
+    let token = token();
     let mut reader = Args::new(n_pos, n_kw, args).reader(token);
     reader.assert_npos(0, 1).assert_nkw(0, 0);
 
@@ -62,7 +62,7 @@ fn controller_read_state(this: &ControllerObj) -> Obj {
         .guard
         .borrow()
         .state()
-        .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
+        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
     alloc_obj(ControllerStateObj::new(state))
 }
 

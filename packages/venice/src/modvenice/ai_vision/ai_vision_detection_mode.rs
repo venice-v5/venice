@@ -56,7 +56,7 @@ extern "C" fn ai_vision_detection_mode_binary_op(op: BinaryOp, obj_1: Obj, obj_2
         .try_as_obj::<AiVisionDetectionModeObj>()
         .unwrap_or_else(|| {
             raise_type_error(
-                token().unwrap(),
+                token(),
                 format!(
                     "expected <AiVisionFlags> for argument #1, found <{}>",
                     ArgType::of(&obj_1)
@@ -68,7 +68,7 @@ extern "C" fn ai_vision_detection_mode_binary_op(op: BinaryOp, obj_1: Obj, obj_2
         .try_as_obj::<AiVisionDetectionModeObj>()
         .unwrap_or_else(|| {
             raise_type_error(
-                token().unwrap(),
+                token(),
                 format!(
                     "expected <AiVisionFlags> for argument #2, found <{}>",
                     ArgType::of(&obj_2)

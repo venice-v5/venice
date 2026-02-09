@@ -4,5 +4,5 @@ use micropython_rs::{
 };
 
 pub fn alloc_obj<T: ObjTrait + 'static>(o: T) -> Obj {
-    Obj::new(token().unwrap(), o, false).unwrap()
+    Obj::new(token(), o, false).unwrap()
 }

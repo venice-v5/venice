@@ -167,7 +167,7 @@ impl CompetitionRuntime {
                 .unwrap(); // object is verified to be callable in make_new
 
                 if !coro.is(GEN_INSTANCE_TYPE) && !coro.is_null() {
-                    raise_type_error(token().unwrap(), "object is not a coroutine");
+                    raise_type_error(token(), "object is not a coroutine");
                 }
 
                 coro
@@ -178,10 +178,7 @@ impl CompetitionRuntime {
 
 fn runtime_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Obj {
     if n_pos > 0 {
-        raise_type_error(
-            token().unwrap(),
-            "function does not accept positional arguments",
-        );
+        raise_type_error(token(), "function does not accept positional arguments");
     }
 
     let mut runtime = CompetitionRuntime {
@@ -208,11 +205,11 @@ fn runtime_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj
             b"connected" => &mut runtime.connected,
             b"disconnected" => &mut runtime.disconnected,
             b"disabled" => &mut runtime.disabled,
-            _ => raise_type_error(token().unwrap(), "no such competition routine"),
+            _ => raise_type_error(token(), "no such competition routine"),
         };
 
         if !v.is_callable() {
-            raise_type_error(token().unwrap(), "routine value is not callable");
+            raise_type_error(token(), "routine value is not callable");
         }
         *routine = v;
     }

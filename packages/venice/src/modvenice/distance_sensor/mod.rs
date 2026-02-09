@@ -39,7 +39,7 @@ unsafe impl ObjTrait for DistanceSensorObj {
 }
 
 fn distance_sensor_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Obj {
-    let token = token().unwrap();
+    let token = token();
     let mut reader = Args::new(n_pos, n_kw, args).reader(token);
     reader.assert_npos(1, 1).assert_nkw(0, 0);
 
@@ -59,7 +59,7 @@ fn distance_sensor_status(this: &DistanceSensorObj) -> Obj {
         .guard
         .borrow()
         .status()
-        .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
+        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
     Obj::from_int(status as i32)
 }
 
@@ -68,7 +68,7 @@ fn distance_sensor_object(this: &DistanceSensorObj) -> Obj {
         .guard
         .borrow()
         .object()
-        .unwrap_or_else(|e| raise_device_error(token().unwrap(), format!("{e}")));
+        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
     match status {
         Some(state) => alloc_obj(DistanceObjectObj::new(state)),
         None => Obj::NONE,

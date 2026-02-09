@@ -49,7 +49,7 @@ fn ai_vision_color_code_make_new(
     n_kw: usize,
     args: &[Obj],
 ) -> Obj {
-    let mut reader = Args::new(n_pos, n_kw, args).reader(token().unwrap());
+    let mut reader = Args::new(n_pos, n_kw, args).reader(token());
     reader.assert_npos(1, 7);
     let mut values = [None; 7];
     for value in values.iter_mut() {

@@ -46,7 +46,7 @@ impl Sleep {
 }
 
 fn sleep_make_new(_: &ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Obj {
-    let token = token().unwrap();
+    let token = token();
     let mut args = Args::new(n_pos, n_kw, args).reader(token);
     args.assert_npos(2, 2);
 
@@ -75,7 +75,7 @@ fn sleep_make_new(_: &ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Obj {
 extern "C" fn sleep_iternext(self_in: Obj) -> Obj {
     let sleep = self_in.try_as_obj::<Sleep>().unwrap();
     if sleep.complete.get() {
-        raise_stop_iteration(token().unwrap(), Obj::NONE);
+        raise_stop_iteration(token(), Obj::NONE);
     } else {
         self_in
     }

@@ -131,7 +131,7 @@ unsafe extern "C" fn venice_import(arg_count: usize, args: *const Obj) -> Obj {
     };
 
     import(
-        token().unwrap(),
+        token(),
         Qstr::from_bytes(module_name_obj.get_str().unwrap()),
         fromtuple,
         level,

@@ -71,7 +71,7 @@ thread_local! {
 
 impl EventLoop {
     pub fn new() -> Self {
-        let gc = Gc { token: token().unwrap() };
+        let gc = Gc { token: token() };
         Self {
             base: ObjBase::new(Self::OBJ_TYPE),
             ready: RefCell::new(VecDeque::new_in(gc)),
@@ -122,7 +122,7 @@ impl EventLoop {
 
                 false
             }
-            VmReturnKind::Exception => nlr::raise(token().unwrap(), result.obj),
+            VmReturnKind::Exception => nlr::raise(token(), result.obj),
         };
 
         self.current_task.set(prev_task_obj);
@@ -163,7 +163,7 @@ impl EventLoop {
 
 fn event_loop_new(_: &ObjType, n_args: usize, n_kw: usize, _args: &[Obj]) -> Obj {
     if n_args != 0 || n_kw != 0 {
-        raise_type_error(token().unwrap(), "function does not accept any arguments");
+        raise_type_error(token(), "function does not accept any arguments");
     }
 
     alloc_obj(EventLoop::new())
@@ -173,7 +173,7 @@ fn event_loop_new(_: &ObjType, n_args: usize, n_kw: usize, _args: &[Obj]) -> Obj
 // its type signature, and that struct does not exist
 extern "C" fn event_loop_spawn(self_in: Obj, coro: Obj) -> Obj {
     if !coro.is(GEN_INSTANCE_TYPE) {
-        raise_type_error(token().unwrap(), "expected coroutine");
+        raise_type_error(token(), "expected coroutine");
     }
 
     self_in.try_as_obj::<EventLoop>().unwrap().spawn(coro)
@@ -184,7 +184,7 @@ extern "C" fn event_loop_spawn(self_in: Obj, coro: Obj) -> Obj {
 extern "C" fn event_loop_run(self_in: Obj) -> Obj {
     let prev_loop = RUNNING_LOOP.replace(self_in);
     push_nlr_callback(
-        token().unwrap(),
+        token(),
         || self_in.try_as_obj::<EventLoop>().unwrap().run(),
         || RUNNING_LOOP.set(prev_loop),
         true,
@@ -198,7 +198,7 @@ pub extern "C" fn get_running_loop() -> Obj {
 
 pub extern "C" fn vasyncio_run(coro: Obj) -> Obj {
     if !coro.is(GEN_INSTANCE_TYPE) {
-        raise_type_error(token().unwrap(), "expected coroutine");
+        raise_type_error(token(), "expected coroutine");
     }
 
     let eloop = EventLoop::new();
@@ -211,11 +211,7 @@ pub extern "C" fn vasyncio_run(coro: Obj) -> Obj {
 pub extern "C" fn vasyncio_spawn(coro: Obj) -> Obj {
     let eloop = get_running_loop();
     if eloop.is_none() {
-        raise_msg(
-            token().unwrap(),
-            &mp_type_RuntimeError,
-            "no running event loop",
-        );
+        raise_msg(token(), &mp_type_RuntimeError, "no running event loop");
     }
 
     event_loop_spawn(eloop, coro)

@@ -29,9 +29,7 @@ impl Task {
         Self {
             base: ObjBase::new(Self::OBJ_TYPE),
             coro,
-            waiting_tasks: RefCell::new(Vec::new_in(Gc {
-                token: token().unwrap(),
-            })),
+            waiting_tasks: RefCell::new(Vec::new_in(Gc { token: token() })),
             return_val: Cell::new(Obj::NULL),
         }
     }
@@ -60,10 +58,10 @@ impl Task {
 extern "C" fn task_iternext(self_in: Obj) -> Obj {
     let task = self_in
         .try_as_obj::<Task>()
-        .unwrap_or_else(|| raise_type_error(token().unwrap(), "expected Task"));
+        .unwrap_or_else(|| raise_type_error(token(), "expected Task"));
     if !task.is_complete() {
         self_in
     } else {
-        raise_stop_iteration(token().unwrap(), task.return_val.get())
+        raise_stop_iteration(token(), task.return_val.get())
     }
 }

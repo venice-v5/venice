@@ -74,7 +74,7 @@ fn ai_vision_object_make_new(
     _n_kw: usize,
     _args: &[Obj],
 ) -> Obj {
-    raise_not_implemented_error(token().unwrap(), "inaccessible initializer")
+    raise_not_implemented_error(token(), "inaccessible initializer")
 }
 
 fn ai_vision_object_state_attr(this: &AiVisionObjectObj, attr: Qstr, op: AttrOp) {
