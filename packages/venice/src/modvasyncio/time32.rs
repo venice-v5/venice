@@ -3,14 +3,14 @@ use std::ops::Add;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Nanoseconds(u32);
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Duration {
     secs_hi: u32,
     secs_lo: u32,
     nanos: Nanoseconds,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Instant {
     inner: Duration,
 }
@@ -33,7 +33,7 @@ impl Nanoseconds {
 impl Duration {
     pub const fn new(secs: u64, nanos: Nanoseconds) -> Self {
         Self {
-            secs_hi: (secs << 32) as u32,
+            secs_hi: (secs >> 32) as u32,
             secs_lo: secs as u32,
             nanos,
         }
@@ -48,15 +48,8 @@ impl Duration {
     }
 
     pub const fn from_micros(micros: u64) -> Self {
-        let mut nanos = micros * NANOS_PER_MICROS;
-        let mut secs = micros / MICROS_PER_SEC;
-
-        if nanos >= NANOS_PER_SEC {
-            let overflow = nanos / NANOS_PER_SEC;
-            nanos = nanos % NANOS_PER_SEC;
-            secs += overflow;
-        }
-
+        let secs = micros / MICROS_PER_SEC;
+        let nanos = (micros % MICROS_PER_SEC) * NANOS_PER_MICROS;
         Self::new(secs, Nanoseconds(nanos as u32))
     }
 }
