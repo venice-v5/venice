@@ -7,11 +7,12 @@ use brake::BrakeModeObj;
 use direction::DirectionObj;
 use gearset::GearsetObj;
 use micropython_rs::{
-    const_dict,
+    attr_from_fn, const_dict,
     except::raise_value_error,
     init::token,
     make_new_from_fn,
-    obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
+    obj::{AttrOp, Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
+    qstr::Qstr,
 };
 use vexide_devices::{math::Direction, smart::motor::Motor};
 
@@ -77,6 +78,7 @@ pub(crate) static MOTOR_V5_OBJ_TYPE: ObjFullType = ObjFullType::new(
 )
 .set_make_new(make_new_from_fn!(motor_v5_make_new))
 .set_parent(ABSTRACT_MOTOR_OBJ_TYPE.as_obj_type())
+.set_attr(attr_from_fn!(motor_attr))
 .set_locals_dict(const_dict![
     qstr!(MAX_VOLTAGE) => Obj::from_float(12.0),
     qstr!(set_gearset) => Obj::from_static(&fun2!(motor_set_gearset,&MotorObj, &GearsetObj)),
@@ -86,9 +88,28 @@ pub(crate) static MOTOR_V5_OBJ_TYPE: ObjFullType = ObjFullType::new(
 pub(crate) static MOTOR_EXP_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(MotorExp))
         .set_make_new(make_new_from_fn!(motor_exp_make_new))
+        .set_parent(ABSTRACT_MOTOR_OBJ_TYPE.as_obj_type())
+        .set_attr(attr_from_fn!(motor_attr))
         .set_locals_dict(const_dict![
             qstr!(MAX_VOLTAGE) => Obj::from_float(8.0),
         ]);
+
+fn motor_attr(_this: Obj, attr: Qstr, op: AttrOp) {
+    let AttrOp::Load { result } = op else { return };
+
+    let locals_dict = ABSTRACT_MOTOR_OBJ_TYPE.as_obj_type().locals_dict().unwrap();
+    match locals_dict.map.get(Obj::from_qstr(attr)) {
+        Some(v) => {
+            // WRITE_INTERVAL_MS is the only element in the local dict that isn't a method
+            if attr == qstr!(WRITE_INTERVAL_MS) {
+                result.return_value(v);
+            } else {
+                result.return_method(v);
+            }
+        }
+        None => result.pass(),
+    }
+}
 
 unsafe impl ObjTrait for MotorObj {
     const OBJ_TYPE: &micropython_rs::obj::ObjType = ABSTRACT_MOTOR_OBJ_TYPE.as_obj_type();
