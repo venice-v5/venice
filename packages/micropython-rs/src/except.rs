@@ -36,6 +36,7 @@ unsafe extern "C" {
     fn mp_raise_OSError_with_filename(errno_: c_int, filename: *const u8) -> !;
 
     pub safe static mp_type_BaseException: ObjType;
+    pub safe static mp_type_Exception: ObjType;
     pub safe static mp_type_ImportError: ObjType;
     pub safe static mp_type_RuntimeError: ObjType;
 }
@@ -49,13 +50,13 @@ impl<'a> RomErrorText<'a> {
     }
 }
 
-pub const fn new_exception_type(name: Qstr) -> ObjFullType {
+pub const fn new_exception_type(name: Qstr, parent: &'static ObjType) -> ObjFullType {
     unsafe {
         ObjFullType::new(TypeFlags::empty(), name)
             .set_make_new_raw(mp_obj_exception_make_new)
             .set_print_raw(mp_obj_exception_print)
             .set_attr_raw(mp_obj_exception_attr)
-            .set_parent(&mp_type_BaseException)
+            .set_parent(parent)
     }
 }
 

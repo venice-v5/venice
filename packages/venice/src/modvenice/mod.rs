@@ -8,7 +8,7 @@ pub mod units;
 
 use micropython_rs::{
     const_map,
-    except::{new_exception_type, raise_msg},
+    except::{mp_type_Exception, new_exception_type, raise_msg},
     init::InitToken,
     map::Dict,
     obj::{Obj, ObjFullType, ObjTrait},
@@ -44,7 +44,8 @@ use crate::{
     qstrgen::qstr,
 };
 
-static DEVICE_ERROR_OBJ_TYPE: ObjFullType = new_exception_type(qstr!(DeviceError));
+static DEVICE_ERROR_OBJ_TYPE: ObjFullType =
+    new_exception_type(qstr!(DeviceError), &mp_type_Exception);
 
 fn raise_device_error(token: InitToken, msg: impl AsRef<str>) -> ! {
     raise_msg(token, DEVICE_ERROR_OBJ_TYPE.as_obj_type(), msg)
