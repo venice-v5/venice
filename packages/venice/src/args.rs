@@ -24,6 +24,10 @@ pub struct ArgsReader<'a> {
 pub trait ArgTrait<'a>: Sized {
     fn ty() -> ArgType<'a>;
     fn from_arg_value(v: ArgValue<'a>) -> Option<Self>;
+
+    fn coercable(ty: ArgType<'a>) -> bool {
+        Self::ty() == ty
+    }
 }
 
 impl<'a> ArgTrait<'a> for i32 {
@@ -73,7 +77,15 @@ impl<'a> ArgTrait<'a> for f32 {
     fn from_arg_value(v: ArgValue<'a>) -> Option<Self> {
         match v {
             ArgValue::Float(f) => Some(f),
+            ArgValue::Int(i) => Some(i as f32),
             _ => None,
+        }
+    }
+
+    fn coercable(ty: ArgType<'a>) -> bool {
+        match ty {
+            ArgType::Float | ArgType::Int => true,
+            _ => false,
         }
     }
 }
@@ -85,8 +97,15 @@ impl<'a, O: ObjTrait> ArgTrait<'a> for &'a O {
 
     fn from_arg_value(v: ArgValue<'a>) -> Option<Self> {
         match v {
-            ArgValue::Obj(o) => o.try_as_obj(),
+            ArgValue::Obj(o) => o.try_as_obj_or_coerce(),
             _ => None,
+        }
+    }
+
+    fn coercable(ty: ArgType<'a>) -> bool {
+        match ty {
+            ArgType::Obj(o) => O::OBJ_TYPE == o || O::coercable(o),
+            _ => false,
         }
     }
 }

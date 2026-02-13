@@ -6,7 +6,7 @@ macro_rules! fun1 {
         extern "C" fn trampoline(a: Obj) -> Obj {
             let a_value = ArgValue::from_obj(&a);
 
-            if a_value.ty() != <$a as ArgTrait>::ty() {
+            if !<$a as ArgTrait>::coercable(a_value.ty()) {
                 raise_type_error(
                     token(),
                     format!(
@@ -33,7 +33,7 @@ macro_rules! fun2 {
             let a_value = ArgValue::from_obj(&a);
             let b_value = ArgValue::from_obj(&b);
 
-            if a_value.ty() != <$a as ArgTrait>::ty() {
+            if !<$a as ArgTrait>::coercable(a_value.ty()) {
                 raise_type_error(
                     token(),
                     format!(
@@ -44,7 +44,7 @@ macro_rules! fun2 {
                 );
             }
 
-            if b_value.ty() != <$b as ArgTrait>::ty() {
+            if !<$b as ArgTrait>::coercable(b_value.ty()) {
                 raise_type_error(
                     token(),
                     format!(
@@ -77,7 +77,7 @@ macro_rules! fun3 {
             let b_value = ArgValue::from_obj(&b);
             let c_value = ArgValue::from_obj(&c);
 
-            if a_value.ty() != <$a as ArgTrait>::ty() {
+            if !<$a as ArgTrait>::coercable(a_value.ty()) {
                 raise_type_error(
                     token(),
                     format!(
@@ -88,7 +88,7 @@ macro_rules! fun3 {
                 );
             }
 
-            if b_value.ty() != <$b as ArgTrait>::ty() {
+            if !<$b as ArgTrait>::coercable(b_value.ty()) {
                 raise_type_error(
                     token(),
                     format!(
@@ -99,7 +99,7 @@ macro_rules! fun3 {
                 );
             }
 
-            if c_value.ty() != <$c as ArgTrait>::ty() {
+            if !<$c as ArgTrait>::coercable(c_value.ty()) {
                 raise_type_error(
                     token(),
                     format!(

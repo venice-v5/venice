@@ -247,13 +247,19 @@ pub mod repr_c {
 ///
 /// # Safety
 ///
-/// Type representation must begin with an [`ObjBase`].
-/// All instances of the type must be aligned to exactly 4 bytes in memory, but this is already
+/// - Type representation must begin with an [`ObjBase`].
+/// - All instances of the type must be aligned to exactly 4 bytes in memory, but this is already
 /// guaranteed if the first invariant is true, as a side effect. A higher alignment than this may
 /// cause misalignment when allocated with the garbage collector, since it assumes an alignment of
 /// 4.
+/// - If [`ObjTrait::coercable`] is defined, all instances of types that return `true` must have the same
+/// memory representation as this type.
 pub unsafe trait ObjTrait: Sized {
     const OBJ_TYPE: &ObjType;
+
+    fn coercable(_ty: &ObjType) -> bool {
+        false
+    }
 }
 
 bitflags! {
@@ -997,6 +1003,17 @@ impl Obj {
     /// Returns `None` if it is not.
     pub fn try_as_obj<T: ObjTrait>(&self) -> Option<&T> {
         self.try_as_obj_raw().map(|ptr| unsafe { ptr.as_ref() })
+    }
+
+    /// Returns `Some(&T)` if the [`Obj`] is a pointer object to `T` or is coercable to `T`.
+    /// Returns `None` if it is not.
+    pub fn try_as_obj_or_coerce<T: ObjTrait>(&self) -> Option<&T> {
+        let ty = self.obj_type()?;
+        if ty == T::OBJ_TYPE || T::coercable(ty) {
+            Some(unsafe { &*(self.0 as *const T) })
+        } else {
+            None
+        }
     }
 
     /// Assumes the [`Obj`] is an integer object and extracts the integer value out of it.

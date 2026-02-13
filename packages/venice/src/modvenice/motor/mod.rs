@@ -113,6 +113,14 @@ fn motor_attr(_this: Obj, attr: Qstr, op: AttrOp) {
 
 unsafe impl ObjTrait for MotorObj {
     const OBJ_TYPE: &micropython_rs::obj::ObjType = ABSTRACT_MOTOR_OBJ_TYPE.as_obj_type();
+
+    fn coercable(ty: &ObjType) -> bool {
+        if ty == MOTOR_V5_OBJ_TYPE.as_obj_type() || ty == MOTOR_EXP_OBJ_TYPE.as_obj_type() {
+            true
+        } else {
+            false
+        }
+    }
 }
 
 fn motor_v5_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Obj {
