@@ -1,5 +1,6 @@
 use std::{
     ffi::{c_uint, c_void},
+    mem::ManuallyDrop,
     ptr::null_mut,
 };
 
@@ -25,7 +26,7 @@ unsafe extern "C" {
     fn nlr_pop_jump_callback(run_callback: bool);
 }
 
-pub type NlrJumpCallback = extern "C" fn(ctx: *mut c_void);
+pub type NlrJumpCallback = unsafe extern "C" fn(ctx: *mut c_void);
 
 /// From: `py/nlr.h`
 #[repr(C)]
@@ -57,10 +58,21 @@ pub fn push_nlr<R>(_: InitToken, f: impl FnOnce() -> R) -> Option<R> {
         } else {
             mp_obj_print_exception(
                 &raw const mp_plat_print,
-                Obj::from_raw(nlr_buf.ret_val as u32),
+                Obj::from_raw(nlr_buf.ret_val as usize),
             );
             None
         }
+    }
+}
+
+unsafe extern "C" fn callback_trampoline<C>(ctx_ptr: *mut c_void)
+where
+    C: FnOnce(),
+{
+    let ctx_ptr = ctx_ptr as *const NlrJumpCallbackNode<C>;
+    unsafe {
+        let ctx = core::ptr::read(ctx_ptr);
+        (ctx.data)()
     }
 }
 
@@ -69,28 +81,18 @@ where
     F: FnOnce() -> R,
     C: FnOnce(),
 {
-    // TODO: is bootstrapping necessary after removing the singleton?
-    extern "C" fn callback_bootstrap<C>(ctx_ptr: *mut c_void)
-    where
-        C: FnOnce(),
-    {
-        let ctx_ptr = ctx_ptr as *const NlrJumpCallbackNode<C>;
-        unsafe {
-            let ctx = core::ptr::read(ctx_ptr);
-            (ctx.data)()
-        }
-    }
-
-    let mut node = NlrJumpCallbackNode {
+    let node = NlrJumpCallbackNode {
         prev: core::ptr::null(),
-        fun: callback_bootstrap::<C>,
+        fun: callback_trampoline::<C>,
         data: callback,
     };
+
+    let mut node = ManuallyDrop::new(node);
 
     unsafe {
         nlr_push_jump_callback(
             &raw mut node as *mut NlrJumpCallbackNode<()>,
-            callback_bootstrap::<C>,
+            callback_trampoline::<C>,
         )
     };
 

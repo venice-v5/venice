@@ -7,7 +7,7 @@ use vexide_devices::math::Direction;
 use crate::qstrgen::qstr;
 
 static DIRECTION_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(Direction))
-    .set_slot_locals_dict_from_static(&const_dict![
+    .set_locals_dict(const_dict![
         qstr!(FORWARD) => Obj::from_static(&DirectionObj::FORWARD),
         qstr!(REVERSE) => Obj::from_static(&DirectionObj::REVERSE),
     ]);

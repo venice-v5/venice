@@ -52,10 +52,10 @@ impl<'a> RomErrorText<'a> {
 pub const fn new_exception_type(name: Qstr) -> ObjFullType {
     unsafe {
         ObjFullType::new(TypeFlags::empty(), name)
-            .set_slot_make_new(mp_obj_exception_make_new)
-            .set_slot_print(mp_obj_exception_print)
-            .set_slot_attr(mp_obj_exception_attr)
-            .set_slot_parent(&mp_type_BaseException)
+            .set_make_new_raw(mp_obj_exception_make_new)
+            .set_print_raw(mp_obj_exception_print)
+            .set_attr_raw(mp_obj_exception_attr)
+            .set_parent(&mp_type_BaseException)
     }
 }
 

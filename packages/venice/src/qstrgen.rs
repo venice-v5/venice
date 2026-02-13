@@ -11,9 +11,8 @@ impl GeneratedQstr {
 macro_rules! qstr {
     ($qstr:ident) => {
         ::paste::paste! {
-            $crate::qstrgen::GeneratedQstr::[<MP_QSTR_ $qstr>]
+            $crate::qstrgen::GeneratedQstr::[<MP_QSTR_ $qstr>].as_qstr()
         }
-        .as_qstr()
     };
 }
 

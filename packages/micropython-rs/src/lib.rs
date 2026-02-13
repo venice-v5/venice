@@ -1,3 +1,8 @@
+#[cfg(not(target_pointer_width = "32"))]
+compile_error!(
+    "micropython-rs only supports 32-bit object representation and must be compiled on a 32-bit target"
+);
+
 mod raw;
 
 pub(crate) mod print;

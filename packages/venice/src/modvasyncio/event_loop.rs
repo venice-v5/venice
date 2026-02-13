@@ -9,28 +9,28 @@ use micropython_rs::{
     fun::{Fun1, Fun2},
     generator::{GEN_INSTANCE_TYPE, VmReturnKind, resume_gen},
     init::token,
+    make_new_from_fn,
     nlr::{self, push_nlr_callback},
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
 use vex_sdk::vexTasksRun;
 
-use super::{sleep::Sleep, task::Task};
-use crate::{obj::alloc_obj, qstrgen::qstr};
+use super::{sleep::Sleep, task::Task, time32};
+use crate::{alloc::Gc, obj::alloc_obj, qstrgen::qstr};
 
-pub static EVENT_LOOP_OBJ_TYPE: ObjFullType = unsafe {
+pub static EVENT_LOOP_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(EventLoop))
-        .set_slot_make_new(event_loop_new)
-        .set_slot_locals_dict_from_static({
-            &const_dict![
+        .set_make_new(make_new_from_fn!(event_loop_new))
+        .set_locals_dict({
+            const_dict![
                 qstr!(spawn) => Obj::from_static(&Fun2::new(event_loop_spawn)),
                 qstr!(run) => Obj::from_static(&Fun1::new(event_loop_run)),
             ]
-        })
-};
+        });
 
 struct Sleeper {
     task: Obj,
-    deadline: super::instant::Instant,
+    deadline: time32::Instant,
 }
 
 impl PartialEq for Sleeper {
@@ -56,8 +56,8 @@ impl Ord for Sleeper {
 #[repr(C)]
 pub struct EventLoop {
     base: ObjBase<'static>,
-    ready: RefCell<VecDeque<Obj>>,
-    sleepers: RefCell<BinaryHeap<Sleeper>>,
+    ready: RefCell<VecDeque<Obj, Gc>>,
+    sleepers: RefCell<BinaryHeap<Sleeper, Gc>>,
     current_task: Cell<Obj>,
 }
 
@@ -66,15 +66,16 @@ unsafe impl ObjTrait for EventLoop {
 }
 
 thread_local! {
-    static RUNNING_LOOP: Cell<Obj> = Cell::new(Obj::NONE);
+    static RUNNING_LOOP: Cell<Obj> = const { Cell::new(Obj::NONE) };
 }
 
 impl EventLoop {
     pub fn new() -> Self {
+        let gc = Gc { token: token() };
         Self {
             base: ObjBase::new(Self::OBJ_TYPE),
-            ready: RefCell::new(VecDeque::new()),
-            sleepers: RefCell::new(BinaryHeap::new()),
+            ready: RefCell::new(VecDeque::new_in(gc)),
+            sleepers: RefCell::new(BinaryHeap::new_in(gc)),
             current_task: Cell::new(Obj::NULL),
         }
     }
@@ -91,7 +92,7 @@ impl EventLoop {
             task_obj = self.current_task.get()
         }
 
-        let task = task_obj.try_to_obj::<Task>().unwrap();
+        let task = task_obj.try_as_obj::<Task>().unwrap();
         if coro.is_null() {
             coro = task.coro();
         }
@@ -110,18 +111,18 @@ impl EventLoop {
                 true
             }
             VmReturnKind::Yield => {
-                if let Some(sleep) = result.obj.try_to_obj::<Sleep>() {
+                if let Some(sleep) = result.obj.try_as_obj::<Sleep>() {
                     self.sleepers.borrow_mut().push(Sleeper {
                         task: task_obj,
-                        deadline: sleep.deadline(),
+                        deadline: time32::Instant::now() + sleep.duration(),
                     });
-                } else if let Some(awaited_task) = result.obj.try_to_obj::<Task>() {
+                } else if let Some(awaited_task) = result.obj.try_as_obj::<Task>() {
                     awaited_task.add_waiting_task(task_obj);
                 }
 
                 false
             }
-            VmReturnKind::Exception => nlr::raise(token().unwrap(), result.obj),
+            VmReturnKind::Exception => nlr::raise(token(), result.obj),
         };
 
         self.current_task.set(prev_task_obj);
@@ -136,7 +137,7 @@ impl EventLoop {
         let mut sleepers = self.sleepers.borrow_mut();
 
         if let Some(sleeper) = sleepers.peek()
-            && sleeper.deadline <= super::instant::Instant::now()
+            && sleeper.deadline <= super::time32::Instant::now()
         {
             let sleeper = sleepers.pop().unwrap();
             ready.push_back(sleeper.task);
@@ -160,27 +161,31 @@ impl EventLoop {
     }
 }
 
-extern "C" fn event_loop_new(_: *const ObjType, n_args: usize, n_kw: usize, _: *const Obj) -> Obj {
+fn event_loop_new(_: &ObjType, n_args: usize, n_kw: usize, _args: &[Obj]) -> Obj {
     if n_args != 0 || n_kw != 0 {
-        raise_type_error(token().unwrap(), "function does not accept any arguments");
+        raise_type_error(token(), "function does not accept any arguments");
     }
 
     alloc_obj(EventLoop::new())
 }
 
+// this function can't use a Fun generator because a Generator struct would be needed to write out
+// its type signature, and that struct does not exist
 extern "C" fn event_loop_spawn(self_in: Obj, coro: Obj) -> Obj {
     if !coro.is(GEN_INSTANCE_TYPE) {
-        raise_type_error(token().unwrap(), "expected coroutine");
+        raise_type_error(token(), "expected coroutine");
     }
 
-    self_in.try_to_obj::<EventLoop>().unwrap().spawn(coro)
+    self_in.try_as_obj::<EventLoop>().unwrap().spawn(coro)
 }
 
+// this function can't use a Fun generator because it needs the EventLoop in Obj form, not as a
+// reference, in order to properly replace the static variable
 extern "C" fn event_loop_run(self_in: Obj) -> Obj {
     let prev_loop = RUNNING_LOOP.replace(self_in);
     push_nlr_callback(
-        token().unwrap(),
-        || self_in.try_to_obj::<EventLoop>().unwrap().run(),
+        token(),
+        || self_in.try_as_obj::<EventLoop>().unwrap().run(),
         || RUNNING_LOOP.set(prev_loop),
         true,
     );
@@ -193,7 +198,7 @@ pub extern "C" fn get_running_loop() -> Obj {
 
 pub extern "C" fn vasyncio_run(coro: Obj) -> Obj {
     if !coro.is(GEN_INSTANCE_TYPE) {
-        raise_type_error(token().unwrap(), "expected coroutine");
+        raise_type_error(token(), "expected coroutine");
     }
 
     let eloop = EventLoop::new();
@@ -201,14 +206,12 @@ pub extern "C" fn vasyncio_run(coro: Obj) -> Obj {
     event_loop_run(alloc_obj(eloop))
 }
 
+// this function can't use a Fun generator because a Generator struct would be needed to write out
+// its type signature, and that struct does not exist
 pub extern "C" fn vasyncio_spawn(coro: Obj) -> Obj {
     let eloop = get_running_loop();
     if eloop.is_none() {
-        raise_msg(
-            token().unwrap(),
-            &mp_type_RuntimeError,
-            "no running event loop",
-        );
+        raise_msg(token(), &mp_type_RuntimeError, "no running event loop");
     }
 
     event_loop_spawn(eloop, coro)

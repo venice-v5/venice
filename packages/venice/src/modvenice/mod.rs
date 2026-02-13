@@ -7,7 +7,7 @@ mod rotation_sensor;
 pub mod units;
 
 use micropython_rs::{
-    const_dict,
+    const_map,
     except::{new_exception_type, raise_msg},
     init::InitToken,
     map::Dict,
@@ -36,6 +36,8 @@ use crate::{
                 AI_VISION_COLOR_OBJECT_OBJ_TYPE, AI_VISION_MODEL_OBJECT_OBJ_TYPE,
             },
         },
+        competition::COMPETITION_RUNTIME_OBJ_TYPE,
+        controller::id::ControllerIdObj,
         distance_sensor::{DistanceSensorObj, distance_object::DistanceObjectObj},
         motor::{MOTOR_EXP_OBJ_TYPE, MOTOR_V5_OBJ_TYPE, motor_type::MotorTypeObj},
     },
@@ -50,7 +52,7 @@ fn raise_device_error(token: InitToken, msg: impl AsRef<str>) -> ! {
 
 #[unsafe(no_mangle)]
 #[allow(non_upper_case_globals)]
-static venice_globals: Dict = const_dict![
+static mut venice_globals: Dict = Dict::new(const_map![
     qstr!(__name__) => Obj::from_qstr(qstr!(__name__)),
 
     // motor
@@ -63,6 +65,7 @@ static venice_globals: Dict = const_dict![
     qstr!(MotorType) => Obj::from_static(MotorTypeObj::OBJ_TYPE),
     // controller
     qstr!(Controller) => Obj::from_static(ControllerObj::OBJ_TYPE),
+    qstr!(ControllerId) => Obj::from_static(ControllerIdObj::OBJ_TYPE),
     qstr!(ControllerState) => Obj::from_static(ControllerStateObj::OBJ_TYPE),
     qstr!(ButtonState) => Obj::from_static(ButtonStateObj::OBJ_TYPE),
     qstr!(JoystickState) => Obj::from_static(JoystickStateObj::OBJ_TYPE),
@@ -79,10 +82,12 @@ static venice_globals: Dict = const_dict![
     qstr!(AiVisionCodeObject) => Obj::from_static(&AI_VISION_CODE_OBJECT_OBJ_TYPE),
     qstr!(AiVisionAprilTagObject) => Obj::from_static(&AI_VISION_APRIL_TAG_OBJECT_OBJ_TYPE),
     qstr!(AiVisionModelObject) => Obj::from_static(&AI_VISION_MODEL_OBJECT_OBJ_TYPE),
+    // competition
+    qstr!(CompetitionRuntime) => Obj::from_static(&COMPETITION_RUNTIME_OBJ_TYPE),
     // other devices
     qstr!(RotationSensor) => Obj::from_static(RotationSensorObj::OBJ_TYPE),
 
     // units
     qstr!(RotationUnit) => Obj::from_static(RotationUnitObj::OBJ_TYPE),
     qstr!(TimeUnit) => Obj::from_static(TimeUnitObj::OBJ_TYPE)
-];
+]);

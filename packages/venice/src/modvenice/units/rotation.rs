@@ -20,27 +20,26 @@ pub struct RotationUnitObj {
 }
 
 pub static ROTATION_UNIT_OBJ_TYPE: ObjFullType =
-    ObjFullType::new(TypeFlags::empty(), qstr!(RotationUnit)).set_slot_locals_dict_from_static(
-        &const_dict![
-            qstr!(RADIANS) => Obj::from_static(&RotationUnitObj::RADIANS),
-            qstr!(DEGREES) => Obj::from_static(&RotationUnitObj::DEGREES),
-            qstr!(TURNS) => Obj::from_static(&RotationUnitObj::TURNS),
-        ],
-    );
+    ObjFullType::new(TypeFlags::empty(), qstr!(RotationUnit)).set_locals_dict(const_dict![
+        qstr!(RADIANS) => Obj::from_static(&RotationUnitObj::RADIANS),
+        qstr!(DEGREES) => Obj::from_static(&RotationUnitObj::DEGREES),
+        qstr!(TURNS) => Obj::from_static(&RotationUnitObj::TURNS),
+    ]);
 
 unsafe impl ObjTrait for RotationUnitObj {
     const OBJ_TYPE: &micropython_rs::obj::ObjType = ROTATION_UNIT_OBJ_TYPE.as_obj_type();
 }
 
 impl RotationUnit {
-    pub fn in_angle(self, angle: Angle) -> f32 {
+    pub fn angle_to_float(self, angle: Angle) -> f32 {
         (match self {
             Self::Radians => angle.as_radians(),
             Self::Degrees => angle.as_degrees(),
             Self::Turns => angle.as_turns(),
         }) as f32
     }
-    pub fn from_float(self, value: f32) -> Angle {
+
+    pub fn float_to_angle(self, value: f32) -> Angle {
         let value = value as f64;
         match self {
             Self::Radians => Angle::from_radians(value),

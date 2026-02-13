@@ -3,20 +3,20 @@ use std::cell::{Cell, Ref, RefCell};
 use micropython_rs::{
     except::{raise_stop_iteration, raise_type_error},
     init::token,
-    obj::{IterSlotValue, Obj, ObjBase, ObjFullType, ObjTrait, TypeFlags},
+    obj::{Iter, Obj, ObjBase, ObjFullType, ObjTrait, TypeFlags},
 };
 
-use crate::qstrgen::qstr;
+use crate::{alloc::Gc, qstrgen::qstr};
 
 static TASK_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::ITER_IS_ITERNEXT, qstr!(Task))
-    .set_iter(IterSlotValue::IterNext(task_iternext));
+    .set_iter(Iter::IterNext(task_iternext));
 
 #[repr(C)]
 pub struct Task {
     base: ObjBase<'static>,
     // generator object
     coro: Obj,
-    waiting_tasks: RefCell<Vec<Obj>>,
+    waiting_tasks: RefCell<Vec<Obj, Gc>>,
     return_val: Cell<Obj>,
 }
 
@@ -29,7 +29,7 @@ impl Task {
         Self {
             base: ObjBase::new(Self::OBJ_TYPE),
             coro,
-            waiting_tasks: RefCell::new(Vec::new()),
+            waiting_tasks: RefCell::new(Vec::new_in(Gc { token: token() })),
             return_val: Cell::new(Obj::NULL),
         }
     }
@@ -57,11 +57,11 @@ impl Task {
 
 extern "C" fn task_iternext(self_in: Obj) -> Obj {
     let task = self_in
-        .try_to_obj::<Task>()
-        .unwrap_or_else(|| raise_type_error(token().unwrap(), "expected Task"));
+        .try_as_obj::<Task>()
+        .unwrap_or_else(|| raise_type_error(token(), "expected Task"));
     if !task.is_complete() {
         self_in
     } else {
-        raise_stop_iteration(token().unwrap(), task.return_val.get())
+        raise_stop_iteration(token(), task.return_val.get())
     }
 }

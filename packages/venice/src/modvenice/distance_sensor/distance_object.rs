@@ -42,6 +42,6 @@ fn distance_object_attr(this: &DistanceObjectObj, attr: Qstr, op: AttrOp) {
                 _ => return,
             };
         }
-        _ => return,
+        _ => {}
     }
 }

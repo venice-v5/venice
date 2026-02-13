@@ -50,7 +50,7 @@ fn ai_vision_color_state_attr(this: &AiVisionColorObj, attr: Qstr, op: AttrOp) {
 }
 
 fn ai_vision_color_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Obj {
-    let token = token().unwrap();
+    let token = token();
     let mut reader = Args::new(n_pos, n_kw, args).reader(token);
     reader.assert_npos(5, 5);
     let rgb = Rgb::<u8>::new(

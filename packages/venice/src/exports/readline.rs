@@ -17,10 +17,7 @@ impl Readline {
     pub fn read(&mut self, vstr: &mut Vstr, _prompt: &[u8]) {
         let mut buf = String::new();
         stdin().read_line(&mut buf).expect("couldn't read line");
-        for byte in buf.bytes() {
-            // TODO: add the entire string with once call this is so inefficient
-            vstr.add_byte(byte);
-        }
+        vstr.add_str(buf.as_bytes());
     }
 }
 
