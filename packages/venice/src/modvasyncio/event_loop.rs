@@ -31,6 +31,7 @@ pub static EVENT_LOOP_OBJ_TYPE: ObjFullType =
 struct Sleeper {
     task: Obj,
     deadline: time32::Instant,
+    sleep: Obj,
 }
 
 impl PartialEq for Sleeper {
@@ -115,6 +116,7 @@ impl EventLoop {
                     self.sleepers.borrow_mut().push(Sleeper {
                         task: task_obj,
                         deadline: time32::Instant::now() + sleep.duration(),
+                        sleep: result.obj,
                     });
                 } else if let Some(awaited_task) = result.obj.try_as_obj::<Task>() {
                     awaited_task.add_waiting_task(task_obj);
@@ -140,6 +142,7 @@ impl EventLoop {
             && sleeper.deadline <= super::time32::Instant::now()
         {
             let sleeper = sleepers.pop().unwrap();
+            sleeper.sleep.try_as_obj::<Sleep>().unwrap().complete();
             ready.push_back(sleeper.task);
         }
 

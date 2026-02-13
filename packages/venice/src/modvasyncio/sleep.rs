@@ -43,6 +43,10 @@ impl Sleep {
     pub fn duration(&self) -> time32::Duration {
         self.duration
     }
+
+    pub fn complete(&self) {
+        self.complete.set(true);
+    }
 }
 
 fn sleep_make_new(_: &ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Obj {
