@@ -59,7 +59,7 @@ impl ControllerStateObj {
 }
 
 fn controller_state_attr(this: &ControllerStateObj, attr: Qstr, op: AttrOp) {
-    let AttrOp::Load { dest } = op else { return };
+    let AttrOp::Load { result } = op else { return };
     let state = this.state;
     let attr_bytes = attr.bytes();
     // Even though we can compare qstrs cheaply by their indices, that would mean losing the
@@ -86,40 +86,42 @@ fn controller_state_attr(this: &ControllerStateObj, attr: Qstr, op: AttrOp) {
                 _ => return,
             };
 
-            *dest = alloc_obj(JoystickStateObj {
+            result.return_value(alloc_obj(JoystickStateObj {
                 base: ObjBase::new(JoystickStateObj::OBJ_TYPE),
                 state: joystick_state,
-            });
+            }));
 
             return;
         }
     };
 
-    *dest = alloc_obj(ButtonStateObj {
+    result.return_value(alloc_obj(ButtonStateObj {
         base: ObjBase::new(ButtonStateObj::OBJ_TYPE),
         state: button_state,
-    });
+    }));
 }
 
 fn button_state_attr(this: &ButtonStateObj, attr: Qstr, op: AttrOp) {
-    let AttrOp::Load { dest } = op else { return };
+    let AttrOp::Load { result } = op else { return };
     let state = &this.state;
-    *dest = Obj::from_bool(match attr.bytes() {
+    let ret = Obj::from_bool(match attr.bytes() {
         b"is_pressed" => state.is_pressed(),
         b"is_released" => state.is_released(),
         b"is_now_pressed" => state.is_now_pressed(),
         b"is_now_released" => state.is_now_released(),
         _ => return,
     });
+
+    result.return_value(ret);
 }
 
 fn joystick_state_attr(this: &JoystickStateObj, attr: Qstr, op: AttrOp) {
-    let AttrOp::Load { dest } = op else { return };
-    *dest = match attr.bytes() {
+    let AttrOp::Load { result } = op else { return };
+    result.return_value(match attr.bytes() {
         b"x" => Obj::from_float(this.state.x() as f32),
         b"y" => Obj::from_float(this.state.y() as f32),
         b"x_raw" => Obj::from_int(this.state.x_raw() as i32),
         b"y_raw" => Obj::from_int(this.state.y_raw() as i32),
         _ => return,
-    };
+    });
 }

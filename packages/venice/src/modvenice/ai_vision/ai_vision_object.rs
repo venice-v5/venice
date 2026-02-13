@@ -78,8 +78,8 @@ fn ai_vision_object_make_new(
 }
 
 fn ai_vision_object_state_attr(this: &AiVisionObjectObj, attr: Qstr, op: AttrOp) {
-    let AttrOp::Load { dest } = op else { return };
-    *dest = match attr.bytes() {
+    let AttrOp::Load { result } = op else { return };
+    result.return_value(match attr.bytes() {
         b"id" => {
             let id = match this.object {
                 AiVisionObject::Color { id, .. } => id,
@@ -166,27 +166,23 @@ fn ai_vision_object_state_attr(this: &AiVisionObjectObj, attr: Qstr, op: AttrOp)
             } = this.object
             {
                 let value = match attr.bytes() {
-                    b"top_left_x" => Some(top_left.x),
-                    b"top_left_y" => Some(top_left.y),
-                    b"top_right_x" => Some(top_right.x),
-                    b"top_right_y" => Some(top_right.y),
-                    b"bottom_left_x" => Some(bottom_left.x),
-                    b"bottom_left_y" => Some(bottom_left.y),
-                    b"bottom_right_x" => Some(bottom_right.x),
-                    b"bottom_right_y" => Some(bottom_right.y),
-                    _ => None,
+                    b"top_left_x" => top_left.x,
+                    b"top_left_y" => top_left.y,
+                    b"top_right_x" => top_right.x,
+                    b"top_right_y" => top_right.y,
+                    b"bottom_left_x" => bottom_left.x,
+                    b"bottom_left_y" => bottom_left.y,
+                    b"bottom_right_x" => bottom_right.x,
+                    b"bottom_right_y" => bottom_right.y,
+                    _ => return,
                 };
 
-                if let Some(value) = value {
-                    Obj::from_int(value as _)
-                } else {
-                    Obj::NONE
-                }
+                Obj::from_int(value as _)
             } else {
                 Obj::NONE
             }
-        } // _ => return
-    }
+        }
+    });
 }
 
 fn ai_vision_object_angle(this: &AiVisionObjectObj, angle_unit: &RotationUnitObj) -> Obj {

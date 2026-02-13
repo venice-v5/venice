@@ -31,8 +31,8 @@ use venice_program_table::Vpt;
 use vex_sdk_jumptable as _;
 
 use crate::{
-    module_map::{MODULE_MAP, init_module_map},
     alloc::ALLOCATOR,
+    module_map::{MODULE_MAP, init_module_map},
 };
 
 // TODO: pick another ID
@@ -92,10 +92,7 @@ fn main() {
         {
             let fallback_heap_span =
                 Span::new(&raw mut __fallback_heap_start, &raw mut __fallback_heap_end);
-            ALLOCATOR
-                .lock()
-                .claim(fallback_heap_span)
-                .unwrap();
+            ALLOCATOR.lock().claim(fallback_heap_span).unwrap();
         }
         std::panic::set_hook(Box::new(panic_hook));
 

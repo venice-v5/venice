@@ -38,15 +38,15 @@ impl AiVisionColorObj {
 }
 
 fn ai_vision_color_state_attr(this: &AiVisionColorObj, attr: Qstr, op: AttrOp) {
-    let AttrOp::Load { dest } = op else { return };
-    *dest = match attr.bytes() {
+    let AttrOp::Load { result } = op else { return };
+    result.return_value(match attr.bytes() {
         b"r" => Obj::from_int(this.color.rgb.r as _),
         b"g" => Obj::from_int(this.color.rgb.g as _),
         b"b" => Obj::from_int(this.color.rgb.b as _),
         b"hue_range" => Obj::from_float(this.color.hue_range as _),
         b"saturation_range" => Obj::from_float(this.color.saturation_range as _),
         _ => return,
-    }
+    });
 }
 
 fn ai_vision_color_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Obj {

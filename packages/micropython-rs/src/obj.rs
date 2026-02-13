@@ -7,6 +7,7 @@ use crate::{
     gc::{self},
     init::InitToken,
     map::Dict,
+    obj::sealed::Sealed,
     ops::{BinaryOp, UnaryOp},
     print::{Print, PrintKind},
     qstr::Qstr,
@@ -301,12 +302,70 @@ pub struct Attr {
 
 /// An attribute operation.
 pub enum AttrOp<'a> {
-    /// Load/read the attribute, and store it into the location at `dest`.
-    Load { dest: &'a mut Obj },
-    /// Store/write to the attribute with `src`.
-    Store { src: Obj },
+    /// Load (read) the attribute, and mark the result of the operation with the [`LoadResult`].
+    Load { result: LoadResult<'a> },
+    /// Store (write) to the attribute at [`StoreHandle::value`] and mark the result of the operation
+    Store { src: Obj, result: StoreResult<'a> },
     /// Delete the attribute.
-    Delete,
+    Delete { result: DeleteResult<'a> },
+}
+
+pub struct LoadResult<'a> {
+    self_in: Obj,
+    dest0: &'a mut Obj,
+    dest1: &'a mut Obj,
+}
+
+pub struct StoreResult<'a> {
+    dest0: &'a mut Obj,
+}
+
+pub struct DeleteResult<'a> {
+    dest0: &'a mut Obj,
+}
+
+impl<'a> LoadResult<'a> {
+    #[doc(hidden)]
+    pub fn new(self_in: Obj, dest0: &'a mut Obj, dest1: &'a mut Obj) -> Self {
+        Self {
+            self_in,
+            dest0,
+            dest1,
+        }
+    }
+
+    pub fn pass(self) {
+        *self.dest1 = Obj::SENTINEL;
+    }
+
+    pub fn return_value(self, value: Obj) {
+        *self.dest0 = value;
+    }
+
+    pub fn return_method(self, method: Obj) {
+        *self.dest0 = method;
+        *self.dest1 = self.self_in;
+    }
+}
+
+impl<'a> StoreResult<'a> {
+    pub fn new(dest0: &'a mut Obj) -> Self {
+        Self { dest0 }
+    }
+
+    pub fn success(self) {
+        *self.dest0 = Obj::NULL;
+    }
+}
+
+impl<'a> DeleteResult<'a> {
+    pub fn new(dest0: &'a mut Obj) -> Self {
+        Self { dest0 }
+    }
+
+    pub fn sucess(self) {
+        *self.dest0 = Obj::NULL;
+    }
 }
 
 impl MakeNew {
@@ -384,6 +443,44 @@ macro_rules! make_new_from_fn {
     }};
 }
 
+mod sealed {
+    use super::*;
+
+    pub trait Sealed<O> {}
+
+    impl<F, O> Sealed<O> for F
+    where
+        F: Fn(&O, Qstr, AttrOp),
+        O: ObjTrait,
+    {
+    }
+
+    impl<F> Sealed<Obj> for F where F: Fn(Obj, Qstr, AttrOp) {}
+}
+
+pub trait TrampolineAttrFn<O>: Sealed<O> {
+    fn call(&self, self_in: Obj, attr: Qstr, op: AttrOp);
+}
+
+impl<F, O> TrampolineAttrFn<O> for F
+where
+    F: Fn(&O, Qstr, AttrOp),
+    O: ObjTrait,
+{
+    fn call(&self, self_in: Obj, attr: Qstr, op: AttrOp) {
+        self(self_in.try_as_obj().unwrap(), attr, op);
+    }
+}
+
+impl<F> TrampolineAttrFn<Obj> for F
+where
+    F: Fn(Obj, Qstr, AttrOp),
+{
+    fn call(&self, self_in: Obj, attr: Qstr, op: AttrOp) {
+        self(self_in, attr, op);
+    }
+}
+
 /// Generates an [`Attr`] from a safe Rust function.
 ///
 /// # Usage
@@ -401,18 +498,25 @@ macro_rules! attr_from_fn {
     ($f:expr) => {{
         unsafe extern "C" fn trampoline(self_in: Obj, attr: Qstr, dest: *mut Obj) {
             let op = unsafe {
+                let dest1 = dest.add(1);
                 if (*dest).is_null() {
-                    $crate::obj::AttrOp::Load { dest: &mut *dest }
+                    $crate::obj::AttrOp::Load {
+                        result: $crate::obj::LoadResult::new(self_in, &mut *dest, &mut *dest1),
+                    }
                 } else {
-                    let dest_1 = dest.add(1);
-                    if (*dest_1).is_null() {
-                        $crate::obj::AttrOp::Delete
+                    if (*dest1).is_null() {
+                        $crate::obj::AttrOp::Delete {
+                            result: $crate::obj::DeleteResult::new(&mut *dest),
+                        }
                     } else {
-                        $crate::obj::AttrOp::Store { src: *dest_1 }
+                        $crate::obj::AttrOp::Store {
+                            src: *dest1,
+                            result: $crate::obj::StoreResult::new(&mut *dest),
+                        }
                     }
                 }
             };
-            $f(self_in.try_as_obj().unwrap(), attr, op)
+            $crate::obj::TrampolineAttrFn::call(&$f, self_in, attr, op);
         }
 
         unsafe { $crate::obj::Attr::new(trampoline) }
@@ -499,6 +603,11 @@ impl ObjType {
             let slot_ptr = base.add(index as usize - 1);
             Some(*slot_ptr)
         }
+    }
+
+    pub fn locals_dict(&self) -> Option<&Dict> {
+        self.slot_value_raw(Slot::LocalsDict)
+            .map(|ptr| unsafe { &*(ptr as *const Dict) })
     }
 }
 

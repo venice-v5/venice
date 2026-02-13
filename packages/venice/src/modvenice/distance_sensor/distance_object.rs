@@ -31,17 +31,12 @@ impl DistanceObjectObj {
 }
 
 fn distance_object_attr(this: &DistanceObjectObj, attr: Qstr, op: AttrOp) {
-    match op {
-        AttrOp::Load { dest } => {
-            let attr_bytes = attr.bytes();
-            *dest = match attr_bytes {
-                b"confidence" => Obj::from_float(this.object.confidence as _),
-                b"distance" => Obj::from_int(this.object.distance as _),
-                b"relative_size" => Obj::from_int(this.object.relative_size as _),
-                b"velocity" => Obj::from_float(this.object.velocity as _),
-                _ => return,
-            };
-        }
-        _ => {}
-    }
+    let AttrOp::Load { result } = op else { return };
+    result.return_value(match attr.bytes() {
+        b"confidence" => Obj::from_float(this.object.confidence as _),
+        b"distance" => Obj::from_int(this.object.distance as _),
+        b"relative_size" => Obj::from_int(this.object.relative_size as _),
+        b"velocity" => Obj::from_float(this.object.velocity as _),
+        _ => return,
+    });
 }
