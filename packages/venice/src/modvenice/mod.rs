@@ -4,13 +4,15 @@ mod controller;
 mod distance_sensor;
 mod motor;
 mod rotation_sensor;
-pub mod units;
+mod units;
+mod vasyncio;
 
 use std::ffi::CStr;
 
 use micropython_rs::{
     const_map,
     except::{mp_type_Exception, new_exception_type, raise_msg},
+    fun::{Fun0, Fun1},
     init::InitToken,
     map::Dict,
     obj::{Obj, ObjFullType, ObjTrait},
@@ -42,6 +44,10 @@ use crate::{
         controller::id::ControllerIdObj,
         distance_sensor::{DistanceSensorObj, distance_object::DistanceObjectObj},
         motor::{MOTOR_EXP_OBJ_TYPE, MOTOR_V5_OBJ_TYPE, motor_type::MotorTypeObj},
+        vasyncio::{
+            event_loop::{EVENT_LOOP_OBJ_TYPE, get_running_loop, vasyncio_run, vasyncio_spawn},
+            sleep::SLEEP_OBJ_TYPE,
+        },
     },
     qstrgen::qstr,
 };
@@ -67,7 +73,7 @@ pub(crate) use raise_port_error;
 #[unsafe(no_mangle)]
 #[allow(non_upper_case_globals)]
 static mut venice_globals: Dict = Dict::new(const_map![
-    qstr!(__name__) => Obj::from_qstr(qstr!(__name__)),
+    qstr!(__name__) => Obj::from_qstr(qstr!(venice)),
 
     // motor
     qstr!(AbstractMotor) => Obj::from_static(MotorObj::OBJ_TYPE),
@@ -101,6 +107,13 @@ static mut venice_globals: Dict = Dict::new(const_map![
     qstr!(CompetitionRuntime) => Obj::from_static(&COMPETITION_RUNTIME_OBJ_TYPE),
     // other devices
     qstr!(RotationSensor) => Obj::from_static(RotationSensorObj::OBJ_TYPE),
+
+    // async
+    qstr!(EventLoop) => Obj::from_static(&EVENT_LOOP_OBJ_TYPE),
+    qstr!(Sleep) => Obj::from_static(&SLEEP_OBJ_TYPE),
+    qstr!(get_running_loop) => Obj::from_static(&Fun0::new(get_running_loop)),
+    qstr!(run) => Obj::from_static(&Fun1::new(vasyncio_run)),
+    qstr!(spawn) => Obj::from_static(&Fun1::new(vasyncio_spawn)),
 
     // units
     qstr!(RotationUnit) => Obj::from_static(RotationUnitObj::OBJ_TYPE),

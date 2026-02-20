@@ -42,6 +42,23 @@ pub struct Module {
     globals: *mut Dict,
 }
 
+unsafe impl ObjTrait for Module {
+    const OBJ_TYPE: &ObjType = unsafe { &mp_type_module };
+}
+
+impl Module {
+    pub const fn new(globals: &'static Dict) -> Self {
+        Self {
+            base: ObjBase::new(Module::OBJ_TYPE),
+            globals: globals as *const Dict as *mut Dict,
+        }
+    }
+
+    pub fn globals(&self) -> &Dict {
+        unsafe { &*self.globals }
+    }
+}
+
 /// From: `py/bc.h`
 #[repr(C)]
 pub struct ModuleConstants {

@@ -14,7 +14,7 @@ use crate::{
     args::ArgType,
     error_msg::error_msg,
     fun::fun1,
-    modvasyncio::event_loop::{self, EventLoop},
+    modvenice::vasyncio::event_loop::{self, EventLoop},
     obj::alloc_obj,
     qstrgen::qstr,
 };

@@ -90,6 +90,11 @@ impl Map {
             table: ptr as *mut MapElem,
         }
     }
+
+    pub fn is_fixed(&self) -> bool {
+        self.used & 0b10 != 0
+    }
+
     pub fn get(&self, index: Obj) -> Option<Obj> {
         unsafe {
             let elem = mp_map_lookup(self as *const Self as *mut Self, index, LookupKind::Lookup);

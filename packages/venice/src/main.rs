@@ -12,7 +12,7 @@ pub mod registry;
 mod alloc;
 mod exports;
 mod module_map;
-mod modvasyncio;
+//mod modvasyncio;
 mod modvenice;
 mod stubs;
 
