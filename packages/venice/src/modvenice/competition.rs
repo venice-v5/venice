@@ -2,6 +2,7 @@ use std::cell::Cell;
 
 use bitflags::bitflags;
 use micropython_rs::{
+    const_dict,
     except::raise_type_error,
     generator::GEN_INSTANCE_TYPE,
     init::token,
@@ -12,6 +13,7 @@ use micropython_rs::{
 use crate::{
     args::ArgType,
     error_msg::error_msg,
+    fun::fun1,
     modvasyncio::event_loop::{self, EventLoop},
     obj::alloc_obj,
     qstrgen::qstr,
@@ -76,6 +78,17 @@ impl Phase {
 }
 
 #[repr(C)]
+pub struct Competition {
+    base: ObjBase<'static>,
+
+    connected: Obj,
+    disconnected: Obj,
+    driver: Obj,
+    autonomous: Obj,
+    disabled: Obj,
+}
+
+#[repr(C)]
 pub struct CompetitionRuntime {
     base: ObjBase<'static>,
 
@@ -93,10 +106,20 @@ pub struct CompetitionRuntime {
     coro: Cell<Obj>,
 }
 
+pub static COMPETITION_OBJ_TYPE: ObjFullType =
+    ObjFullType::new(TypeFlags::empty(), qstr!(Competition))
+        .set_make_new(make_new_from_fn!(competition_make_new))
+        .set_locals_dict(const_dict![
+            qstr!(run) => Obj::from_static(&fun1!(competition_run, &Competition)),
+        ]);
+
 pub static COMPETITION_RUNTIME_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::ITER_IS_ITERNEXT, qstr!(CompetitionRuntime))
-        .set_iter(Iter::IterNext(runtime_iternext))
-        .set_make_new(make_new_from_fn!(runtime_make_new));
+        .set_iter(Iter::IterNext(runtime_iternext));
+
+unsafe impl ObjTrait for Competition {
+    const OBJ_TYPE: &micropython_rs::obj::ObjType = COMPETITION_RUNTIME_OBJ_TYPE.as_obj_type();
+}
 
 unsafe impl ObjTrait for CompetitionRuntime {
     const OBJ_TYPE: &micropython_rs::obj::ObjType = COMPETITION_RUNTIME_OBJ_TYPE.as_obj_type();
@@ -191,23 +214,19 @@ impl CompetitionRuntime {
     }
 }
 
-fn runtime_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Obj {
+fn competition_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Obj {
     if n_pos > 0 {
         raise_type_error(token(), c"function does not accept positional arguments");
     }
 
-    let mut runtime = CompetitionRuntime {
+    let mut comp = Competition {
         base: ObjBase::new(ty),
-        status: Cell::new(status()),
-        phase: Cell::new(Phase::Disconnected),
 
         connected: Obj::NULL,
         disconnected: Obj::NULL,
         driver: Obj::NULL,
         autonomous: Obj::NULL,
         disabled: Obj::NULL,
-
-        coro: Cell::new(Obj::NULL),
     };
 
     for i in 0..n_kw {
@@ -215,11 +234,11 @@ fn runtime_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj
         let v = args[i * 2 + 1];
 
         let routine = match k {
-            b"driver" => &mut runtime.driver,
-            b"autonomous" => &mut runtime.autonomous,
-            b"connected" => &mut runtime.connected,
-            b"disconnected" => &mut runtime.disconnected,
-            b"disabled" => &mut runtime.disabled,
+            b"driver" => &mut comp.driver,
+            b"autonomous" => &mut comp.autonomous,
+            b"connected" => &mut comp.connected,
+            b"disconnected" => &mut comp.disconnected,
+            b"disabled" => &mut comp.disabled,
             _ => raise_type_error(
                 token(),
                 error_msg!(
@@ -242,7 +261,25 @@ fn runtime_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj
         *routine = v;
     }
 
-    alloc_obj(runtime)
+    alloc_obj(comp)
+}
+
+fn competition_run(comp: &Competition) -> Obj {
+    alloc_obj(CompetitionRuntime {
+        base: ObjBase::new(CompetitionRuntime::OBJ_TYPE),
+
+        status: Cell::new(status()),
+        // TODO: maybe this should be made an option since we haven't computed the phase yet
+        phase: Cell::new(Phase::Disconnected),
+
+        connected: comp.connected,
+        disconnected: comp.disconnected,
+        driver: comp.driver,
+        autonomous: comp.autonomous,
+        disabled: comp.disabled,
+
+        coro: Cell::new(Obj::NULL),
+    })
 }
 
 extern "C" fn runtime_iternext(self_in: Obj) -> Obj {

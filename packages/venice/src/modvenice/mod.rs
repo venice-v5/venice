@@ -38,7 +38,7 @@ use crate::{
                 AI_VISION_COLOR_OBJECT_OBJ_TYPE, AI_VISION_MODEL_OBJECT_OBJ_TYPE,
             },
         },
-        competition::COMPETITION_RUNTIME_OBJ_TYPE,
+        competition::{COMPETITION_OBJ_TYPE, COMPETITION_RUNTIME_OBJ_TYPE},
         controller::id::ControllerIdObj,
         distance_sensor::{DistanceSensorObj, distance_object::DistanceObjectObj},
         motor::{MOTOR_EXP_OBJ_TYPE, MOTOR_V5_OBJ_TYPE, motor_type::MotorTypeObj},
@@ -97,6 +97,7 @@ static mut venice_globals: Dict = Dict::new(const_map![
     qstr!(AiVisionAprilTagObject) => Obj::from_static(&AI_VISION_APRIL_TAG_OBJECT_OBJ_TYPE),
     qstr!(AiVisionModelObject) => Obj::from_static(&AI_VISION_MODEL_OBJECT_OBJ_TYPE),
     // competition
+    qstr!(Competition) => Obj::from_static(&COMPETITION_OBJ_TYPE),
     qstr!(CompetitionRuntime) => Obj::from_static(&COMPETITION_RUNTIME_OBJ_TYPE),
     // other devices
     qstr!(RotationSensor) => Obj::from_static(RotationSensorObj::OBJ_TYPE),
