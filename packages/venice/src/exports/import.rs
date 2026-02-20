@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use micropython_rs::{
-    except::{mp_type_ImportError, raise_msg},
+    except::{mp_type_ImportError, raise_msg, raise_value_error},
     init::{InitToken, token},
     module::{builtin_module, exec_module},
     obj::Obj,
@@ -88,7 +88,7 @@ pub fn import(token: InitToken, module_name_qstr: Qstr, _fromtuple: Obj, level: 
 
     if module_name.is_empty() {
         // TODO: Add exception API
-        panic!("module name cannot be empty");
+        raise_value_error(token, c"module name cannot be empty");
     }
 
     let mut outer_module_obj = Obj::NULL;
@@ -117,13 +117,14 @@ pub fn import(token: InitToken, module_name_qstr: Qstr, _fromtuple: Obj, level: 
 #[unsafe(no_mangle)]
 unsafe extern "C" fn venice_import(arg_count: usize, args: *const Obj) -> Obj {
     let args = unsafe { core::slice::from_raw_parts(args, arg_count) };
+    let token = token();
 
     let module_name_obj = args[0];
     let (fromtuple, level) = if args.len() >= 4 {
         let level = args[4].try_to_int().unwrap();
         if level < 0 {
             // TODO: Add exception API
-            panic!("level cannot be negative")
+            raise_value_error(token, c"level cannot be negative");
         } else {
             (args[3], level)
         }
@@ -132,7 +133,7 @@ unsafe extern "C" fn venice_import(arg_count: usize, args: *const Obj) -> Obj {
     };
 
     import(
-        token(),
+        token,
         Qstr::from_bytes(module_name_obj.get_str().unwrap()),
         fromtuple,
         level,
