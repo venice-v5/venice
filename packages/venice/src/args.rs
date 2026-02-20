@@ -7,6 +7,8 @@ use micropython_rs::{
     str::Str,
 };
 
+use crate::error_msg::error_msg;
+
 #[derive(Clone, Copy)]
 pub struct Args<'a> {
     n_pos: usize,
@@ -306,11 +308,11 @@ impl<'a> ArgsReader<'a> {
     pub fn assert_npos(&self, min: usize, max: usize) -> &Self {
         if self.args.n_pos < min || self.args.n_pos > max {
             if max == 0 {
-                raise_type_error(self.token, "function does not accept positional arguments")
+                raise_type_error(self.token, c"function does not accept positional arguments")
             } else {
                 raise_type_error(
                     self.token,
-                    format!(
+                    error_msg!(
                         "function expects at least {min} positional arguments and at most {max}"
                     ),
                 )
@@ -322,11 +324,13 @@ impl<'a> ArgsReader<'a> {
     pub fn assert_nkw(&self, min: usize, max: usize) -> &Self {
         if self.args.n_kw < min || self.args.n_kw > max {
             if max == 0 {
-                raise_type_error(self.token, "function does not accept keyword arguments")
+                raise_type_error(self.token, c"function does not accept keyword arguments")
             } else {
                 raise_type_error(
                     self.token,
-                    format!("function expects at least {min} keyword arguments and at most {max}"),
+                    error_msg!(
+                        "function expects at least {min} keyword arguments and at most {max}"
+                    ),
                 )
             }
         }
@@ -482,11 +486,11 @@ impl ArgError<'_> {
             Self::PositionalsExhuasted { n } => raise_type_error(
                 token,
                 // TODO: this may be confusing when a function accepts more than n + 1 arguments
-                format!("expected at least {} positional arguments", n + 1),
+                error_msg!("expected at least {} positional arguments", n + 1),
             ),
             Self::TypeMismatch { n, expected, found } => raise_type_error(
                 token,
-                format!(
+                error_msg!(
                     "expected type <{expected}> for argument #{}, found type <{found}>",
                     n + 1
                 ),
@@ -499,19 +503,19 @@ impl ArgError<'_> {
         match self {
             Self::TypeMismatch { n, expected, found } => raise_type_error(
                 token,
-                format!(
+                error_msg!(
                     "expected type <{expected}> for argument #{}, found <{found}>",
                     n + 1
                 ),
             ),
             Self::NotPresent => raise_type_error(
                 token,
-                format!("expected keyword argument '{}'", arg_name.as_ref()),
+                error_msg!("expected keyword argument '{}'", arg_name.as_ref()),
             ),
             Self::ExpectedKeyword => {
-                raise_type_error(token, "expected keyword argument instead of positional")
+                raise_type_error(token, c"expected keyword argument instead of positional")
             }
-            Self::KeywordsExhuasted => raise_type_error(token, "expected keyword argument"),
+            Self::KeywordsExhuasted => raise_type_error(token, c"expected keyword argument"),
             _ => panic!("invalid kw arg error"),
         }
     }

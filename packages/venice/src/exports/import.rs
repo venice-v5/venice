@@ -10,6 +10,7 @@ use micropython_rs::{
 };
 
 use crate::{
+    error_msg::error_msg,
     module_map::{MODULE_MAP, VptModuleFlags},
     qstrgen::qstr,
 };
@@ -73,7 +74,7 @@ pub fn process_import_at_level(
         raise_msg(
             token,
             &mp_type_ImportError,
-            format!("no module named '{name}'"),
+            error_msg!("no module named '{name}'"),
         );
     }
 }

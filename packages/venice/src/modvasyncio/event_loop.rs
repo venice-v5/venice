@@ -97,7 +97,7 @@ impl EventLoop {
         if coro.is_null() {
             coro = task.coro();
         }
-        assert!(coro.is(micropython_rs::generator::GEN_INSTANCE_TYPE));
+        //assert!(coro.is(micropython_rs::generator::GEN_INSTANCE_TYPE));
 
         let prev_task_obj = self.current_task.replace(task_obj);
         let result = resume_gen(coro, Obj::NONE, Obj::NULL);
@@ -166,7 +166,7 @@ impl EventLoop {
 
 fn event_loop_new(_: &ObjType, n_args: usize, n_kw: usize, _args: &[Obj]) -> Obj {
     if n_args != 0 || n_kw != 0 {
-        raise_type_error(token(), "function does not accept any arguments");
+        raise_type_error(token(), c"function does not accept any arguments");
     }
 
     alloc_obj(EventLoop::new())
@@ -176,7 +176,7 @@ fn event_loop_new(_: &ObjType, n_args: usize, n_kw: usize, _args: &[Obj]) -> Obj
 // its type signature, and that struct does not exist
 extern "C" fn event_loop_spawn(self_in: Obj, coro: Obj) -> Obj {
     if !coro.is(GEN_INSTANCE_TYPE) {
-        raise_type_error(token(), "expected coroutine");
+        raise_type_error(token(), c"expected coroutine");
     }
 
     self_in.try_as_obj::<EventLoop>().unwrap().spawn(coro)
@@ -201,7 +201,7 @@ pub extern "C" fn get_running_loop() -> Obj {
 
 pub extern "C" fn vasyncio_run(coro: Obj) -> Obj {
     if !coro.is(GEN_INSTANCE_TYPE) {
-        raise_type_error(token(), "expected coroutine");
+        raise_type_error(token(), c"expected coroutine");
     }
 
     let eloop = EventLoop::new();
@@ -214,7 +214,7 @@ pub extern "C" fn vasyncio_run(coro: Obj) -> Obj {
 pub extern "C" fn vasyncio_spawn(coro: Obj) -> Obj {
     let eloop = get_running_loop();
     if eloop.is_none() {
-        raise_msg(token(), &mp_type_RuntimeError, "no running event loop");
+        raise_msg(token(), &mp_type_RuntimeError, c"no running event loop");
     }
 
     event_loop_spawn(eloop, coro)

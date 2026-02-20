@@ -10,6 +10,7 @@ use micropython_rs::{
 use super::time32;
 use crate::{
     args::{ArgValue, Args},
+    error_msg::error_msg,
     modvenice::units::time::TimeUnitObj,
     obj::alloc_obj,
     qstrgen::qstr,
@@ -60,7 +61,7 @@ fn sleep_make_new(_: &ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Obj {
             ArgValue::Int(int) => int as f32,
             _ => raise_type_error(
                 token,
-                format!(
+                error_msg!(
                     "expected <float> or <int> for argument #1, found <{}>",
                     arg.ty()
                 ),

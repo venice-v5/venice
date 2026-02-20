@@ -6,6 +6,8 @@ mod motor;
 mod rotation_sensor;
 pub mod units;
 
+use std::ffi::CStr;
+
 use micropython_rs::{
     const_map,
     except::{mp_type_Exception, new_exception_type, raise_msg},
@@ -47,9 +49,20 @@ use crate::{
 static DEVICE_ERROR_OBJ_TYPE: ObjFullType =
     new_exception_type(qstr!(DeviceError), &mp_type_Exception);
 
-fn raise_device_error(token: InitToken, msg: impl AsRef<str>) -> ! {
+pub fn raise_device_error(token: InitToken, msg: impl AsRef<CStr>) -> ! {
     raise_msg(token, DEVICE_ERROR_OBJ_TYPE.as_obj_type(), msg)
 }
+
+macro_rules! raise_port_error {
+    ($e:expr) => {
+        $crate::modvenice::raise_device_error(
+            ::micropython_rs::init::token(),
+            $crate::error_msg::error_msg!("{}", $e),
+        )
+    };
+}
+
+pub(crate) use raise_port_error;
 
 #[unsafe(no_mangle)]
 #[allow(non_upper_case_globals)]

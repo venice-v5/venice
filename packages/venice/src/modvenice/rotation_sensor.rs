@@ -13,7 +13,7 @@ use crate::{
     fun::{fun1, fun2, fun3},
     modvenice::{
         motor::direction::DirectionObj,
-        raise_device_error,
+        raise_port_error,
         units::{rotation::RotationUnitObj, time::TimeUnitObj},
     },
     obj::alloc_obj,
@@ -55,7 +55,7 @@ fn rotation_sensor_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, arg
     reader.assert_npos(1, 2).assert_nkw(0, 0);
 
     let port = PortNumber::from_i32(reader.next_positional())
-        .unwrap_or_else(|_| raise_value_error(token, "port number must be between 1 and 21"));
+        .unwrap_or_else(|_| raise_value_error(token, c"port number must be between 1 and 21"));
 
     let direction = reader
         .next_positional_or(&DirectionObj::FORWARD)
@@ -74,7 +74,7 @@ fn rotation_sensor_angle(this: &RotationSensorObj, unit: &RotationUnitObj) -> Ob
         .guard
         .borrow_mut()
         .angle()
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::from_float(unit.unit().angle_to_float(angle))
 }
 
@@ -83,7 +83,7 @@ fn rotation_sensor_position(this: &RotationSensorObj, unit: &RotationUnitObj) ->
         .guard
         .borrow_mut()
         .position()
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::from_float(unit.unit().angle_to_float(position))
 }
 
@@ -96,7 +96,7 @@ fn rotation_sensor_set_position(
     this.guard
         .borrow_mut()
         .set_position(angle)
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::NONE
 }
 
@@ -105,7 +105,7 @@ fn rotation_sensor_velocity(this: &RotationSensorObj) -> Obj {
         .guard
         .borrow_mut()
         .velocity()
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::from_float(velocity as f32)
 }
 
@@ -113,7 +113,7 @@ fn rotation_sensor_reset_position(this: &RotationSensorObj) -> Obj {
     this.guard
         .borrow_mut()
         .reset_position()
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::NONE
 }
 
@@ -121,7 +121,7 @@ fn rotation_sensor_set_direction(this: &RotationSensorObj, direction: &Direction
     this.guard
         .borrow_mut()
         .set_direction(direction.direction())
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::NONE
 }
 
@@ -138,7 +138,7 @@ fn rotation_sensor_status(this: &RotationSensorObj) -> Obj {
         .guard
         .borrow()
         .status()
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::from_int(status as i32)
 }
 
@@ -150,7 +150,7 @@ fn rotation_sensor_set_data_interval(
     this.guard
         .borrow_mut()
         .set_data_interval(unit.unit().float_to_dur(interval))
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::NONE
 }
 

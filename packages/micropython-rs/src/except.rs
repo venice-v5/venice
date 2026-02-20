@@ -1,5 +1,5 @@
 use std::{
-    ffi::{CStr, CString, c_int},
+    ffi::{CStr, c_int},
     marker::PhantomData,
 };
 
@@ -60,24 +60,20 @@ pub const fn new_exception_type(name: Qstr, parent: &'static ObjType) -> ObjFull
     }
 }
 
-pub fn raise_msg(_: InitToken, exc_type: &ObjType, msg: impl AsRef<str>) -> ! {
-    let cstring = CString::new(msg.as_ref()).unwrap();
-    unsafe { mp_raise_msg(exc_type, RomErrorText::new(cstring.as_c_str())) };
+pub fn raise_msg(_: InitToken, exc_type: &ObjType, msg: impl AsRef<CStr>) -> ! {
+    unsafe { mp_raise_msg(exc_type, RomErrorText::new(msg.as_ref())) };
 }
 
-pub fn raise_value_error(_: InitToken, msg: impl AsRef<str>) -> ! {
-    let cstring = CString::new(msg.as_ref()).unwrap();
-    unsafe { mp_raise_ValueError(RomErrorText::new(cstring.as_c_str())) };
+pub fn raise_value_error(_: InitToken, msg: impl AsRef<CStr>) -> ! {
+    unsafe { mp_raise_ValueError(RomErrorText::new(msg.as_ref())) };
 }
 
-pub fn raise_type_error(_: InitToken, msg: impl AsRef<str>) -> ! {
-    let cstring = CString::new(msg.as_ref()).unwrap();
-    unsafe { mp_raise_TypeError(RomErrorText::new(cstring.as_c_str())) };
+pub fn raise_type_error(_: InitToken, msg: impl AsRef<CStr>) -> ! {
+    unsafe { mp_raise_TypeError(RomErrorText::new(msg.as_ref())) };
 }
 
-pub fn raise_not_implemented_error(_: InitToken, msg: impl AsRef<str>) -> ! {
-    let cstring = CString::new(msg.as_ref()).unwrap();
-    unsafe { mp_raise_NotImplementedError(RomErrorText::new(cstring.as_c_str())) };
+pub fn raise_not_implemented_error(_: InitToken, msg: impl AsRef<CStr>) -> ! {
+    unsafe { mp_raise_NotImplementedError(RomErrorText::new(msg.as_ref())) };
 }
 
 pub fn raise_stop_iteration(_: InitToken, arg: Obj) -> ! {
@@ -88,7 +84,6 @@ pub fn raise_os_error(_: InitToken, errno: c_int) -> ! {
     unsafe { mp_raise_OSError(errno) };
 }
 
-pub fn raise_os_error_with_filename(_: InitToken, errno: c_int, filename: impl AsRef<str>) -> ! {
-    let cstring = CString::new(filename.as_ref()).unwrap();
-    unsafe { mp_raise_OSError_with_filename(errno, cstring.as_ptr()) };
+pub fn raise_os_error_with_filename(_: InitToken, errno: c_int, filename: impl AsRef<CStr>) -> ! {
+    unsafe { mp_raise_OSError_with_filename(errno, filename.as_ref().as_ptr()) };
 }

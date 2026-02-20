@@ -3,6 +3,7 @@
 
 pub mod args;
 pub mod devices;
+pub mod error_msg;
 pub mod fun;
 pub mod obj;
 pub mod qstrgen;

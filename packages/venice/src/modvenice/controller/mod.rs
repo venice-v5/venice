@@ -10,12 +10,11 @@ use micropython_rs::{
 use vexide_devices::controller::Controller;
 
 use self::state::ControllerStateObj;
-use super::raise_device_error;
 use crate::{
     args::Args,
     devices,
     fun::{fun1, fun2},
-    modvenice::controller::id::ControllerIdObj,
+    modvenice::{controller::id::ControllerIdObj, raise_port_error},
     obj::alloc_obj,
     qstrgen::qstr,
     registry::ControllerGuard,
@@ -62,7 +61,7 @@ fn controller_read_state(this: &ControllerObj) -> Obj {
         .guard
         .borrow()
         .state()
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     alloc_obj(ControllerStateObj::new(state))
 }
 

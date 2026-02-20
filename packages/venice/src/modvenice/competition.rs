@@ -10,6 +10,8 @@ use micropython_rs::{
 };
 
 use crate::{
+    args::ArgType,
+    error_msg::error_msg,
     modvasyncio::event_loop::{self, EventLoop},
     obj::alloc_obj,
     qstrgen::qstr,
@@ -167,7 +169,20 @@ impl CompetitionRuntime {
                 .unwrap(); // object is verified to be callable in make_new
 
                 if !coro.is(GEN_INSTANCE_TYPE) && !coro.is_null() {
-                    raise_type_error(token(), "object is not a coroutine");
+                    let phase_name = match self.phase.get() {
+                        Phase::Connected => "connected",
+                        Phase::Disconnected => "disconnected",
+                        Phase::Mode(Mode::Driver) => "driver",
+                        Phase::Mode(Mode::Autonomous) => "autonomous",
+                        Phase::Mode(Mode::Disabled) => "disabled",
+                    };
+                    raise_type_error(
+                        token(),
+                        error_msg!(
+                            "expected coroutine return value from {phase_name} routine, got <{}>",
+                            ArgType::of(&coro)
+                        ),
+                    );
                 }
 
                 coro
@@ -178,7 +193,7 @@ impl CompetitionRuntime {
 
 fn runtime_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Obj {
     if n_pos > 0 {
-        raise_type_error(token(), "function does not accept positional arguments");
+        raise_type_error(token(), c"function does not accept positional arguments");
     }
 
     let mut runtime = CompetitionRuntime {
@@ -205,11 +220,24 @@ fn runtime_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj
             b"connected" => &mut runtime.connected,
             b"disconnected" => &mut runtime.disconnected,
             b"disabled" => &mut runtime.disabled,
-            _ => raise_type_error(token(), "no such competition routine"),
+            _ => raise_type_error(
+                token(),
+                error_msg!(
+                    "no such competition routine '{}'",
+                    // python strings are utf8, right?
+                    str::from_utf8(k).unwrap()
+                ),
+            ),
         };
 
         if !v.is_callable() {
-            raise_type_error(token(), "routine value is not callable");
+            raise_type_error(
+                token(),
+                error_msg!(
+                    "{} routine value is not callable",
+                    str::from_utf8(k).unwrap()
+                ),
+            );
         }
         *routine = v;
     }

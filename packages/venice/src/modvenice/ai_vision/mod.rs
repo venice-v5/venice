@@ -24,7 +24,7 @@ use crate::{
             ai_vision_detection_mode::AiVisionDetectionModeObj, ai_vision_flags::AiVisionFlagsObj,
             ai_vision_object::AiVisionObjectObj, april_tag_family::AprilTagFamilyObj,
         },
-        raise_device_error,
+        raise_port_error,
     },
     obj::alloc_obj,
     qstrgen::qstr,
@@ -74,7 +74,7 @@ fn ai_vision_sensor_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, ar
     reader.assert_npos(1, 1).assert_nkw(0, 0);
 
     let port = PortNumber::from_i32(reader.next_positional())
-        .unwrap_or_else(|_| raise_value_error(token, "port number must be between 1 and 21"));
+        .unwrap_or_else(|_| raise_value_error(token, c"port number must be between 1 and 21"));
 
     let guard = devices::lock_port(port, AiVisionSensor::new);
 
@@ -89,7 +89,7 @@ fn ai_vision_sensor_temperature(this: &AiVisionSensorObj) -> Obj {
         .guard
         .borrow()
         .temperature()
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::from_float(temp as f32)
 }
 
@@ -101,7 +101,7 @@ fn ai_vision_sensor_set_color_code(
     this.guard
         .borrow_mut()
         .set_color_code(id as _, &code.code())
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::NONE
 }
 
@@ -110,7 +110,7 @@ fn ai_vision_sensor_color_code(this: &AiVisionSensorObj, id: i32) -> Obj {
         .guard
         .borrow()
         .color_code(id as _)
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     if let Some(code) = code {
         alloc_obj(AiVisionColorCodeObj::new(code))
     } else {
@@ -122,7 +122,7 @@ fn ai_vision_sensor_set_color(this: &AiVisionSensorObj, id: i32, color: &AiVisio
     this.guard
         .borrow_mut()
         .set_color(id as _, color.color())
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::NONE
 }
 
@@ -131,7 +131,7 @@ fn ai_vision_sensor_color(this: &AiVisionSensorObj, id: i32) -> Obj {
         .guard
         .borrow()
         .color(id as _)
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     if let Some(color) = color {
         alloc_obj(AiVisionColorObj::new(color))
     } else {
@@ -146,7 +146,7 @@ fn ai_vision_sensor_set_detection_mode(
     this.guard
         .borrow_mut()
         .set_detection_mode(mode.mode())
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::NONE
 }
 
@@ -155,7 +155,7 @@ fn ai_vision_sensor_flags(this: &AiVisionSensorObj) -> Obj {
         .guard
         .borrow()
         .flags()
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     alloc_obj(AiVisionFlagsObj::new(flags))
 }
 
@@ -163,7 +163,7 @@ fn ai_vision_sensor_set_flags(this: &AiVisionSensorObj, flags: &AiVisionFlagsObj
     this.guard
         .borrow_mut()
         .set_flags(flags.flags())
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::NONE
 }
 
@@ -171,7 +171,7 @@ fn ai_vision_sensor_start_awb(this: &AiVisionSensorObj) -> Obj {
     this.guard
         .borrow_mut()
         .start_awb()
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::NONE
 }
 
@@ -179,7 +179,7 @@ fn ai_vision_sensor_enable_test(this: &AiVisionSensorObj, test: i32) -> Obj {
     this.guard
         .borrow_mut()
         .enable_test(test as u8)
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::NONE
 }
 
@@ -190,7 +190,7 @@ fn ai_vision_sensor_set_apriltag_family(
     this.guard
         .borrow_mut()
         .set_apriltag_family(family.family())
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::NONE
 }
 
@@ -199,7 +199,7 @@ fn ai_vision_sensor_object_count(this: &AiVisionSensorObj) -> Obj {
         .guard
         .borrow()
         .object_count()
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::from_int(count as i32)
 }
 
@@ -208,7 +208,7 @@ fn ai_vision_sensor_objects(this: &AiVisionSensorObj) -> Obj {
         .guard
         .borrow()
         .objects()
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     let objects = objects
         .into_iter()
         .map(AiVisionObjectObj::create_obj)
@@ -219,10 +219,7 @@ fn ai_vision_sensor_objects(this: &AiVisionSensorObj) -> Obj {
 fn ai_vision_sensor_color_codes(this: &AiVisionSensorObj) -> Obj {
     let this = this.guard.borrow();
     let codes = (0..7)
-        .map(|n| {
-            this.color_code(n)
-                .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")))
-        })
+        .map(|n| this.color_code(n).unwrap_or_else(|e| raise_port_error!(e)))
         .map(|code| {
             if let Some(code) = code {
                 alloc_obj(AiVisionColorCodeObj::new(code))

@@ -9,7 +9,7 @@ macro_rules! fun1 {
             if !<$a as ArgTrait>::coercable(a_value.ty()) {
                 raise_type_error(
                     token(),
-                    format!(
+                    $crate::error_msg::error_msg!(
                         "expected <{}> for argument #1, found <{}>",
                         <$a as ArgTrait>::ty(),
                         a_value.ty()
@@ -36,7 +36,7 @@ macro_rules! fun2 {
             if !<$a as ArgTrait>::coercable(a_value.ty()) {
                 raise_type_error(
                     token(),
-                    format!(
+                    $crate::error_msg::error_msg!(
                         "expected <{}> for argument #1, found <{}>",
                         <$a as ArgTrait>::ty(),
                         a_value.ty()
@@ -47,7 +47,7 @@ macro_rules! fun2 {
             if !<$b as ArgTrait>::coercable(b_value.ty()) {
                 raise_type_error(
                     token(),
-                    format!(
+                    $crate::error_msg::error_msg!(
                         "expected <{}> for argument #2, found <{}>",
                         <$b as ArgTrait>::ty(),
                         b_value.ty()
@@ -80,7 +80,7 @@ macro_rules! fun3 {
             if !<$a as ArgTrait>::coercable(a_value.ty()) {
                 raise_type_error(
                     token(),
-                    format!(
+                    $crate::error_msg::error_msg!(
                         "expected <{}> for argument #1, found <{}>",
                         <$a as ArgTrait>::ty(),
                         a_value.ty()
@@ -91,7 +91,7 @@ macro_rules! fun3 {
             if !<$b as ArgTrait>::coercable(b_value.ty()) {
                 raise_type_error(
                     token(),
-                    format!(
+                    $crate::error_msg::error_msg!(
                         "expected <{}> for argument #2, found <{}>",
                         <$b as ArgTrait>::ty(),
                         b_value.ty()
@@ -102,7 +102,7 @@ macro_rules! fun3 {
             if !<$c as ArgTrait>::coercable(c_value.ty()) {
                 raise_type_error(
                     token(),
-                    format!(
+                    $crate::error_msg::error_msg!(
                         "expected <{}> for argument #3, found <{}>",
                         <$c as ArgTrait>::ty(),
                         c_value.ty()

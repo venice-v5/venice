@@ -7,7 +7,7 @@ use micropython_rs::{
 };
 use vexide_devices::smart::ai_vision::AiVisionFlags;
 
-use crate::{args::ArgType, obj::alloc_obj, qstrgen::qstr};
+use crate::{args::ArgType, error_msg::error_msg, obj::alloc_obj, qstrgen::qstr};
 
 static AI_VISION_FLAGS_OBJ_TYPE: ObjFullType = ObjFullType::new(
     TypeFlags::empty(),
@@ -64,7 +64,7 @@ extern "C" fn ai_vision_flags_binary_op(op: BinaryOp, obj_1: Obj, obj_2: Obj) ->
         .unwrap_or_else(|| {
             raise_type_error(
                 token(),
-                format!(
+                error_msg!(
                     "expected <AiVisionFlags> for argument #1, found <{}>",
                     ArgType::of(&obj_1)
                 ),
@@ -76,7 +76,7 @@ extern "C" fn ai_vision_flags_binary_op(op: BinaryOp, obj_1: Obj, obj_2: Obj) ->
         .unwrap_or_else(|| {
             raise_type_error(
                 token(),
-                format!(
+                error_msg!(
                     "expected <AiVisionFlags> for argument #2, found <{}>",
                     ArgType::of(&obj_2)
                 ),

@@ -13,7 +13,7 @@ use crate::{
     args::Args,
     devices::{self, PortNumber},
     fun::fun1,
-    modvenice::{distance_sensor::distance_object::DistanceObjectObj, raise_device_error},
+    modvenice::{distance_sensor::distance_object::DistanceObjectObj, raise_port_error},
     obj::alloc_obj,
     qstrgen::qstr,
     registry::RegistryGuard,
@@ -44,7 +44,7 @@ fn distance_sensor_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, arg
     reader.assert_npos(1, 1).assert_nkw(0, 0);
 
     let port = PortNumber::from_i32(reader.next_positional())
-        .unwrap_or_else(|_| raise_value_error(token, "port number must be between 1 and 21"));
+        .unwrap_or_else(|_| raise_value_error(token, c"port number must be between 1 and 21"));
 
     let guard = devices::lock_port(port, DistanceSensor::new);
 
@@ -59,7 +59,7 @@ fn distance_sensor_status(this: &DistanceSensorObj) -> Obj {
         .guard
         .borrow()
         .status()
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::from_int(status as i32)
 }
 
@@ -68,7 +68,7 @@ fn distance_sensor_object(this: &DistanceSensorObj) -> Obj {
         .guard
         .borrow()
         .object()
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     match status {
         Some(state) => alloc_obj(DistanceObjectObj::new(state)),
         None => Obj::NONE,

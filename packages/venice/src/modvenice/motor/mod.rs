@@ -21,7 +21,9 @@ use crate::{
     args::Args,
     devices::{self, PortNumber},
     fun::{fun_var, fun1, fun2, fun3},
-    modvenice::{motor::motor_type::MotorTypeObj, units::rotation::RotationUnitObj},
+    modvenice::{
+        motor::motor_type::MotorTypeObj, raise_port_error, units::rotation::RotationUnitObj,
+    },
     obj::alloc_obj,
     qstrgen::qstr,
     registry::RegistryGuard,
@@ -129,7 +131,7 @@ fn motor_v5_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Ob
     reader.assert_npos(3, 3);
 
     let port = PortNumber::from_i32(reader.next_positional())
-        .unwrap_or_else(|_| raise_value_error(token, "port number must be between 1 and 21"));
+        .unwrap_or_else(|_| raise_value_error(token, c"port number must be between 1 and 21"));
 
     let direction: &DirectionObj = reader.next_positional();
 
@@ -140,7 +142,7 @@ fn motor_v5_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Ob
     });
 
     if guard.borrow().is_exp() {
-        raise_device_error(token, "Invalid motor type, expected V5, found Exp")
+        raise_device_error(token, c"Invalid motor type, expected V5, found Exp")
     }
 
     alloc_obj(MotorObj {
@@ -155,14 +157,14 @@ fn motor_exp_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[O
     reader.assert_npos(2, 2);
 
     let port = PortNumber::from_i32(reader.next_positional())
-        .unwrap_or_else(|_| raise_value_error(token, "port number must be between 1 and 21"));
+        .unwrap_or_else(|_| raise_value_error(token, c"port number must be between 1 and 21"));
 
     let direction: &DirectionObj = reader.next_positional();
 
     let guard = devices::lock_port(port, |port| Motor::new_exp(port, direction.direction()));
 
     if guard.borrow().is_v5() {
-        raise_device_error(token, "Invalid motor type, expected Exp, found V5")
+        raise_device_error(token, c"Invalid motor type, expected Exp, found V5")
     }
 
     alloc_obj(MotorObj {
@@ -175,7 +177,7 @@ fn motor_set_voltage(this: &MotorObj, volts: f32) -> Obj {
     this.guard
         .borrow_mut()
         .set_voltage(volts as f64)
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::NONE
 }
 
@@ -183,7 +185,7 @@ fn motor_set_velocity(this: &MotorObj, rpm: i32) -> Obj {
     this.guard
         .borrow_mut()
         .set_velocity(rpm)
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
 
     Obj::NONE
 }
@@ -192,7 +194,7 @@ fn motor_brake(this: &MotorObj, mode: &BrakeModeObj) -> Obj {
     this.guard
         .borrow_mut()
         .brake(mode.mode())
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::NONE
 }
 
@@ -200,7 +202,7 @@ fn motor_set_gearset(this: &MotorObj, gearset: &GearsetObj) -> Obj {
     this.guard
         .borrow_mut()
         .set_gearset(gearset.gearset())
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::NONE
 }
 
@@ -221,7 +223,7 @@ fn motor_gearset(this: &MotorObj) -> Obj {
         .guard
         .borrow()
         .gearset()
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::from_static(GearsetObj::new_static(gearset))
 }
 
@@ -242,7 +244,7 @@ fn motor_set_position_target(args: &[Obj]) -> Obj {
         .guard
         .borrow_mut()
         .set_position_target(angle, velocity_val)
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
 
     Obj::NONE
 }
@@ -252,7 +254,7 @@ fn motor_velocity(this: &MotorObj) -> Obj {
         .guard
         .borrow()
         .velocity()
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::from_float(vel as f32)
 }
 
@@ -261,7 +263,7 @@ fn motor_power(this: &MotorObj) -> Obj {
         .guard
         .borrow()
         .power()
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::from_float(pwr as f32)
 }
 
@@ -270,7 +272,7 @@ fn motor_torque(this: &MotorObj) -> Obj {
         .guard
         .borrow()
         .torque()
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::from_float(trq as f32)
 }
 
@@ -279,7 +281,7 @@ fn motor_voltage(this: &MotorObj) -> Obj {
         .guard
         .borrow()
         .voltage()
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::from_float(volt as f32)
 }
 
@@ -288,7 +290,7 @@ fn motor_raw_position(this: &MotorObj) -> Obj {
         .guard
         .borrow()
         .raw_position()
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::from_int(pos)
 }
 
@@ -297,7 +299,7 @@ fn motor_current(this: &MotorObj) -> Obj {
         .guard
         .borrow()
         .current()
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::from_float(curr as f32)
 }
 
@@ -306,7 +308,7 @@ fn motor_efficiency(this: &MotorObj) -> Obj {
         .guard
         .borrow()
         .efficiency()
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::from_float(eff as f32)
 }
 
@@ -315,7 +317,7 @@ fn motor_current_limit(this: &MotorObj) -> Obj {
         .guard
         .borrow()
         .current_limit()
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::from_float(lim as f32)
 }
 
@@ -324,7 +326,7 @@ fn motor_voltage_limit(this: &MotorObj) -> Obj {
         .guard
         .borrow()
         .voltage_limit()
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::from_float(lim as f32)
 }
 
@@ -333,7 +335,7 @@ fn motor_temperature(this: &MotorObj) -> Obj {
         .guard
         .borrow()
         .temperature()
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::from_float(temp as f32)
 }
 
@@ -341,7 +343,7 @@ fn motor_set_profiled_velocity(this: &MotorObj, velocity: i32) -> Obj {
     this.guard
         .borrow_mut()
         .set_profiled_velocity(velocity)
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::NONE
 }
 
@@ -349,7 +351,7 @@ fn motor_reset_position(this: &MotorObj) -> Obj {
     this.guard
         .borrow_mut()
         .reset_position()
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::NONE
 }
 
@@ -357,7 +359,7 @@ fn motor_set_current_limit(this: &MotorObj, limit: f32) -> Obj {
     this.guard
         .borrow_mut()
         .set_current_limit(limit as f64)
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::NONE
 }
 
@@ -365,7 +367,7 @@ fn motor_set_voltage_limit(this: &MotorObj, limit: f32) -> Obj {
     this.guard
         .borrow_mut()
         .set_voltage_limit(limit as f64)
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::NONE
 }
 
@@ -374,7 +376,7 @@ fn motor_is_over_temperature(this: &MotorObj) -> Obj {
         .guard
         .borrow()
         .is_over_temperature()
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::from_bool(is_over)
 }
 
@@ -383,7 +385,7 @@ fn motor_is_over_current(this: &MotorObj) -> Obj {
         .guard
         .borrow()
         .is_over_current()
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::from_bool(is_over)
 }
 
@@ -392,7 +394,7 @@ fn motor_is_driver_fault(this: &MotorObj) -> Obj {
         .guard
         .borrow()
         .is_driver_fault()
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::from_bool(is_fault)
 }
 
@@ -401,7 +403,7 @@ fn motor_is_driver_over_current(this: &MotorObj) -> Obj {
         .guard
         .borrow()
         .is_driver_over_current()
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::from_bool(is_over)
 }
 
@@ -415,7 +417,7 @@ fn motor_position(this: &MotorObj, unit: &RotationUnitObj) -> Obj {
         .guard
         .borrow()
         .position()
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::from_float(unit.unit().angle_to_float(angle))
 }
 
@@ -424,7 +426,7 @@ fn motor_set_position(this: &MotorObj, position: f32, unit: &RotationUnitObj) ->
     this.guard
         .borrow_mut()
         .set_position(angle)
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::NONE
 }
 
@@ -432,7 +434,7 @@ fn motor_set_direction(this: &MotorObj, direction: &DirectionObj) -> Obj {
     this.guard
         .borrow_mut()
         .set_direction(direction.direction())
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::NONE
 }
 
@@ -441,7 +443,7 @@ fn motor_direction(this: &MotorObj) -> Obj {
         .guard
         .borrow()
         .direction()
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     match dir {
         Direction::Forward => Obj::from_static(&DirectionObj::FORWARD),
         Direction::Reverse => Obj::from_static(&DirectionObj::REVERSE),
@@ -453,7 +455,7 @@ fn motor_status(this: &MotorObj) -> Obj {
         .guard
         .borrow()
         .status()
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::from_int(status.bits() as i32)
 }
 
@@ -462,7 +464,7 @@ fn motor_faults(this: &MotorObj) -> Obj {
         .guard
         .borrow()
         .faults()
-        .unwrap_or_else(|e| raise_device_error(token(), format!("{e}")));
+        .unwrap_or_else(|e| raise_port_error!(e));
     Obj::from_int(faults.bits() as i32)
 }
 
