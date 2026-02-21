@@ -97,7 +97,7 @@ impl EventLoop {
         if coro.is_null() {
             coro = task.coro();
         }
-        //assert!(coro.is(micropython_rs::generator::GEN_INSTANCE_TYPE));
+        assert!(coro.is(micropython_rs::generator::GEN_INSTANCE_TYPE));
 
         let prev_task_obj = self.current_task.replace(task_obj);
         let result = resume_gen(coro, Obj::NONE, Obj::NULL);
