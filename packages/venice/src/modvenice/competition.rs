@@ -4,6 +4,7 @@ use bitflags::bitflags;
 use micropython_rs::{
     const_dict,
     except::raise_type_error,
+    fun::Fun2,
     generator::GEN_INSTANCE_TYPE,
     init::token,
     make_new_from_fn,
@@ -81,11 +82,11 @@ impl Phase {
 pub struct Competition {
     base: ObjBase<'static>,
 
-    connected: Obj,
-    disconnected: Obj,
-    driver: Obj,
-    autonomous: Obj,
-    disabled: Obj,
+    connected: Cell<Obj>,
+    disconnected: Cell<Obj>,
+    driver: Cell<Obj>,
+    autonomous: Cell<Obj>,
+    disabled: Cell<Obj>,
 }
 
 #[repr(C)]
@@ -111,6 +112,11 @@ pub static COMPETITION_OBJ_TYPE: ObjFullType =
         .set_make_new(make_new_from_fn!(competition_make_new))
         .set_locals_dict(const_dict![
             qstr!(run) => Obj::from_static(&fun1!(competition_run, &Competition)),
+            qstr!(connected) => Obj::from_static(&Fun2::new(competition_connected)),
+            qstr!(disconnected) => Obj::from_static(&Fun2::new(competition_disconnected)),
+            qstr!(driver) => Obj::from_static(&Fun2::new(competition_driver)),
+            qstr!(autonomous) => Obj::from_static(&Fun2::new(competition_autonomous)),
+            qstr!(disabled) => Obj::from_static(&Fun2::new(competition_disabled)),
         ]);
 
 pub static COMPETITION_RUNTIME_OBJ_TYPE: ObjFullType =
@@ -118,7 +124,7 @@ pub static COMPETITION_RUNTIME_OBJ_TYPE: ObjFullType =
         .set_iter(Iter::IterNext(runtime_iternext));
 
 unsafe impl ObjTrait for Competition {
-    const OBJ_TYPE: &micropython_rs::obj::ObjType = COMPETITION_RUNTIME_OBJ_TYPE.as_obj_type();
+    const OBJ_TYPE: &micropython_rs::obj::ObjType = COMPETITION_OBJ_TYPE.as_obj_type();
 }
 
 unsafe impl ObjTrait for CompetitionRuntime {
@@ -214,55 +220,44 @@ impl CompetitionRuntime {
     }
 }
 
-fn competition_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Obj {
-    if n_pos > 0 {
-        raise_type_error(token(), c"function does not accept positional arguments");
+fn competition_make_new(ty: &'static ObjType, _n_pos: usize, _n_kw: usize, args: &[Obj]) -> Obj {
+    if args.len() != 0 {
+        raise_type_error(token(), c"function does not accept arguments");
     }
 
-    let mut comp = Competition {
+    alloc_obj(Competition {
         base: ObjBase::new(ty),
 
-        connected: Obj::NULL,
-        disconnected: Obj::NULL,
-        driver: Obj::NULL,
-        autonomous: Obj::NULL,
-        disabled: Obj::NULL,
-    };
-
-    for i in 0..n_kw {
-        let k = args[i * 2].get_str().unwrap();
-        let v = args[i * 2 + 1];
-
-        let routine = match k {
-            b"driver" => &mut comp.driver,
-            b"autonomous" => &mut comp.autonomous,
-            b"connected" => &mut comp.connected,
-            b"disconnected" => &mut comp.disconnected,
-            b"disabled" => &mut comp.disabled,
-            _ => raise_type_error(
-                token(),
-                error_msg!(
-                    "no such competition routine '{}'",
-                    // python strings are utf8, right?
-                    str::from_utf8(k).unwrap()
-                ),
-            ),
-        };
-
-        if !v.is_callable() {
-            raise_type_error(
-                token(),
-                error_msg!(
-                    "{} routine value is not callable",
-                    str::from_utf8(k).unwrap()
-                ),
-            );
-        }
-        *routine = v;
-    }
-
-    alloc_obj(comp)
+        connected: Cell::new(Obj::NULL),
+        disconnected: Cell::new(Obj::NULL),
+        driver: Cell::new(Obj::NULL),
+        autonomous: Cell::new(Obj::NULL),
+        disabled: Cell::new(Obj::NULL),
+    })
 }
+
+fn assert_callable(routine: Obj) {
+    if !routine.is_callable() {
+        raise_type_error(token(), c"routine object is not callable");
+    }
+}
+
+macro_rules! routine_decorator {
+    ($fn_name:ident, $routine_name:ident) => {
+        extern "C" fn $fn_name(self_in: Obj, routine: Obj) -> Obj {
+            let comp = self_in.try_as_obj::<Competition>().unwrap();
+            assert_callable(routine);
+            comp.$routine_name.set(routine);
+            routine
+        }
+    };
+}
+
+routine_decorator!(competition_connected, connected);
+routine_decorator!(competition_disconnected, disconnected);
+routine_decorator!(competition_driver, driver);
+routine_decorator!(competition_autonomous, autonomous);
+routine_decorator!(competition_disabled, disabled);
 
 fn competition_run(comp: &Competition) -> Obj {
     alloc_obj(CompetitionRuntime {
@@ -272,11 +267,11 @@ fn competition_run(comp: &Competition) -> Obj {
         // TODO: maybe this should be made an option since we haven't computed the phase yet
         phase: Cell::new(Phase::Disconnected),
 
-        connected: comp.connected,
-        disconnected: comp.disconnected,
-        driver: comp.driver,
-        autonomous: comp.autonomous,
-        disabled: comp.disabled,
+        connected: comp.connected.get(),
+        disconnected: comp.disconnected.get(),
+        driver: comp.driver.get(),
+        autonomous: comp.autonomous.get(),
+        disabled: comp.disabled.get(),
 
         coro: Cell::new(Obj::NULL),
     })
