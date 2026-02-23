@@ -8,7 +8,7 @@ use micropython_rs::{
 
 use crate::{alloc::Gc, qstrgen::qstr};
 
-static TASK_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::ITER_IS_ITERNEXT, qstr!(Task))
+pub static TASK_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::ITER_IS_ITERNEXT, qstr!(Task))
     .set_iter(Iter::IterNext(task_iternext));
 
 #[repr(C)]

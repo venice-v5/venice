@@ -55,6 +55,22 @@ impl Ord for Sleeper {
 }
 
 #[repr(C)]
+pub struct WakeSignal {
+    base: ObjBase<'static>,
+}
+
+pub static WAKE_SIGNAL_OBJ_TYPE: ObjFullType =
+    ObjFullType::new(TypeFlags::empty(), qstr!(WakeSignal));
+
+unsafe impl ObjTrait for WakeSignal {
+    const OBJ_TYPE: &ObjType = WAKE_SIGNAL_OBJ_TYPE.as_obj_type();
+}
+
+pub static WAKE_SIGNAL: WakeSignal = WakeSignal {
+    base: ObjBase::new(WakeSignal::OBJ_TYPE),
+};
+
+#[repr(C)]
 pub struct EventLoop {
     base: ObjBase<'static>,
     ready: RefCell<VecDeque<Obj, Gc>>,
@@ -120,6 +136,8 @@ impl EventLoop {
                     });
                 } else if let Some(awaited_task) = result.obj.try_as_obj::<Task>() {
                     awaited_task.add_waiting_task(task_obj);
+                } else if result.obj.is(WakeSignal::OBJ_TYPE) {
+                    self.ready.borrow_mut().push_back(task_obj);
                 }
 
                 false
