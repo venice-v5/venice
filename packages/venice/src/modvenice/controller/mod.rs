@@ -7,7 +7,7 @@ use micropython_rs::{
     make_new_from_fn,
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
-use vexide_devices::controller::Controller;
+use vexide_devices::controller::{Controller, ControllerError, ControllerId};
 
 use self::state::ControllerStateObj;
 use crate::{
@@ -65,8 +65,25 @@ fn controller_read_state(this: &ControllerObj) -> Obj {
     alloc_obj(ControllerStateObj::new(state))
 }
 
+enum ControllerFuture {
+    WaitingForIdle {
+        line: u8,
+        column: u8,
+        text: Obj,
+        controller_id: ControllerId,
+        enforce_visible: bool,
+    },
+    Complete {
+        result: Result<(), ControllerError>,
+    },
+}
+
+struct ControllerFutureObj {
+    base: ObjBase<'static>,
+    future: ControllerFuture,
+}
+
 fn controller_rumble(this: &ControllerObj, pattern: &[u8]) -> Obj {
-    // TODO: execute in event loop
     // sound to unwrap because python strings are always valid UTF-8
     let pattern_str = str::from_utf8(pattern).unwrap();
     let _result = this.guard.borrow_mut().rumble(pattern_str);
