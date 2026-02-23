@@ -79,8 +79,8 @@ fn ai_vision_object_make_new(
 
 fn ai_vision_object_state_attr(this: &AiVisionObjectObj, attr: Qstr, op: AttrOp) {
     let AttrOp::Load { result } = op else { return };
-    result.return_value(match attr.bytes() {
-        b"id" => {
+    result.return_value(match attr.as_str() {
+        "id" => {
             let id = match this.object {
                 AiVisionObject::Color { id, .. } => id,
                 AiVisionObject::Code { id, .. } => id,
@@ -89,7 +89,7 @@ fn ai_vision_object_state_attr(this: &AiVisionObjectObj, attr: Qstr, op: AttrOp)
             };
             Obj::from_int(id as _)
         }
-        b"position_x" => {
+        "position_x" => {
             let pos = match this.object {
                 AiVisionObject::Color { position, .. } => Some(position.x),
                 AiVisionObject::Code { position, .. } => Some(position.x),
@@ -102,7 +102,7 @@ fn ai_vision_object_state_attr(this: &AiVisionObjectObj, attr: Qstr, op: AttrOp)
                 Obj::NONE
             }
         }
-        b"position_y" => {
+        "position_y" => {
             let pos = match this.object {
                 AiVisionObject::Color { position, .. } => Some(position.y),
                 AiVisionObject::Code { position, .. } => Some(position.y),
@@ -115,7 +115,7 @@ fn ai_vision_object_state_attr(this: &AiVisionObjectObj, attr: Qstr, op: AttrOp)
                 Obj::NONE
             }
         }
-        b"width" => {
+        "width" => {
             let width = match this.object {
                 AiVisionObject::Color { width, .. } => Some(width),
                 AiVisionObject::Code { width, .. } => Some(width),
@@ -128,7 +128,7 @@ fn ai_vision_object_state_attr(this: &AiVisionObjectObj, attr: Qstr, op: AttrOp)
                 Obj::NONE
             }
         }
-        b"height" => {
+        "height" => {
             let height = match this.object {
                 AiVisionObject::Color { height, .. } => Some(height),
                 AiVisionObject::Code { height, .. } => Some(height),
@@ -141,14 +141,14 @@ fn ai_vision_object_state_attr(this: &AiVisionObjectObj, attr: Qstr, op: AttrOp)
                 Obj::NONE
             }
         }
-        b"classification" => {
+        "classification" => {
             if let AiVisionObject::Model { classification, .. } = &this.object {
-                Obj::from_qstr(Qstr::from_bytes(classification.as_bytes()))
+                Obj::from_qstr(Qstr::from_str(classification.as_str()))
             } else {
                 Obj::NONE
             }
         }
-        b"confidence" => {
+        "confidence" => {
             if let AiVisionObject::Model { confidence, .. } = this.object {
                 Obj::from_int(confidence as _)
             } else {
@@ -165,15 +165,15 @@ fn ai_vision_object_state_attr(this: &AiVisionObjectObj, attr: Qstr, op: AttrOp)
                 ..
             } = this.object
             {
-                let value = match attr.bytes() {
-                    b"top_left_x" => top_left.x,
-                    b"top_left_y" => top_left.y,
-                    b"top_right_x" => top_right.x,
-                    b"top_right_y" => top_right.y,
-                    b"bottom_left_x" => bottom_left.x,
-                    b"bottom_left_y" => bottom_left.y,
-                    b"bottom_right_x" => bottom_right.x,
-                    b"bottom_right_y" => bottom_right.y,
+                let value = match attr.as_str() {
+                    "top_left_x" => top_left.x,
+                    "top_left_y" => top_left.y,
+                    "top_right_x" => top_right.x,
+                    "top_right_y" => top_right.y,
+                    "bottom_left_x" => bottom_left.x,
+                    "bottom_left_y" => bottom_left.y,
+                    "bottom_right_x" => bottom_right.x,
+                    "bottom_right_y" => bottom_right.y,
                     _ => return,
                 };
 

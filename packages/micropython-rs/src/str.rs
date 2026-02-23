@@ -18,8 +18,8 @@ impl Str {
         self.len
     }
 
-    pub fn data(&self) -> &[u8] {
-        unsafe { core::slice::from_raw_parts(self.data, self.len) }
+    pub fn data(&self) -> &str {
+        unsafe { str::from_utf8_unchecked(core::slice::from_raw_parts(self.data, self.len)) }
     }
 }
 

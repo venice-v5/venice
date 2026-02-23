@@ -34,7 +34,7 @@ static CONTROLLER_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), q
         qstr!(MAX_LINES) => Obj::from_int(Controller::MAX_LINES as i32),
 
         qstr!(read_state) => Obj::from_static(&fun1!(controller_read_state, &ControllerObj)),
-        qstr!(rumble) => Obj::from_static(&fun2!(controller_rumble, &ControllerObj, &[u8])),
+        qstr!(rumble) => Obj::from_static(&fun2!(controller_rumble, &ControllerObj, &str)),
         qstr!(free) => Obj::from_static(&fun1!(controller_free, &ControllerObj))
     ]);
 
@@ -83,10 +83,8 @@ struct ControllerFutureObj {
     future: ControllerFuture,
 }
 
-fn controller_rumble(this: &ControllerObj, pattern: &[u8]) -> Obj {
-    // sound to unwrap because python strings are always valid UTF-8
-    let pattern_str = str::from_utf8(pattern).unwrap();
-    let _result = this.guard.borrow_mut().rumble(pattern_str);
+fn controller_rumble(this: &ControllerObj, pattern: &str) -> Obj {
+    let _result = this.guard.borrow_mut().rumble(pattern);
 
     Obj::NONE
 }

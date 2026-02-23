@@ -1037,9 +1037,9 @@ impl Obj {
 
     /// Returns the string contained within the [`Obj`] if it is a [`Qstr`] or a [`Str`] object.
     /// Returns None if it is neither.
-    pub fn get_str(&self) -> Option<&[u8]> {
+    pub fn get_str(&self) -> Option<&str> {
         if let Some(qstr) = self.try_to_qstr() {
-            return Some(qstr.bytes());
+            return Some(qstr.as_str());
         }
 
         if let Some(str) = Self::try_as_obj::<Str>(self) {

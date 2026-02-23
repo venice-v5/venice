@@ -33,19 +33,19 @@ impl Qstr {
         Self(index)
     }
 
-    pub fn from_bytes(bytes: &[u8]) -> Self {
-        unsafe { qstr_from_strn(bytes.as_ptr(), bytes.len()) }
+    pub fn from_str(str: &str) -> Self {
+        unsafe { qstr_from_strn(str.as_ptr(), str.len()) }
     }
 
     pub const fn index(self) -> usize {
         self.0
     }
 
-    pub fn bytes(self) -> &'static [u8] {
+    pub fn as_str(self) -> &'static str {
         let mut len = 0;
         unsafe {
             let ptr = qstr_data(self, &raw mut len);
-            core::slice::from_raw_parts(ptr, len)
+            str::from_utf8_unchecked(core::slice::from_raw_parts(ptr, len))
         }
     }
 }

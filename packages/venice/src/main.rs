@@ -67,12 +67,12 @@ fn init_main(token: InitToken) {
         })
         .payload();
 
-    let entrypoint_qstr = Qstr::from_bytes(entrypoint_name);
+    let entrypoint_qstr = Qstr::from_str(str::from_utf8(entrypoint_name).unwrap());
 
     let entrypoint = MODULE_MAP
         .get()
         .unwrap()
-        .get(entrypoint_qstr.bytes())
+        .get(entrypoint_qstr.as_str().as_bytes())
         .unwrap_or_else(|| {
             panic!(
                 "malformed VPT: package '{}' not present",

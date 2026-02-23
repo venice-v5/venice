@@ -61,28 +61,28 @@ impl ControllerStateObj {
 fn controller_state_attr(this: &ControllerStateObj, attr: Qstr, op: AttrOp) {
     let AttrOp::Load { result } = op else { return };
     let state = this.state;
-    let attr_bytes = attr.bytes();
+    let attr_bytes = attr.as_str();
     // Even though we can compare qstrs cheaply by their indices, that would mean losing the
     // ability to match them. So, we just match the underlying strings.
     let button_state = match attr_bytes {
-        b"button_a" => state.button_a,
-        b"button_b" => state.button_b,
-        b"button_x" => state.button_x,
-        b"button_y" => state.button_y,
+        "button_a" => state.button_a,
+        "button_b" => state.button_b,
+        "button_x" => state.button_x,
+        "button_y" => state.button_y,
 
-        b"button_up" => state.button_up,
-        b"button_down" => state.button_down,
-        b"button_right" => state.button_right,
-        b"button_left" => state.button_left,
+        "button_up" => state.button_up,
+        "button_down" => state.button_down,
+        "button_right" => state.button_right,
+        "button_left" => state.button_left,
 
-        b"button_l1" => state.button_l1,
-        b"button_l2" => state.button_l2,
-        b"button_r1" => state.button_r1,
-        b"button_r2" => state.button_r2,
+        "button_l1" => state.button_l1,
+        "button_l2" => state.button_l2,
+        "button_r1" => state.button_r1,
+        "button_r2" => state.button_r2,
         _ => {
             let joystick_state = match attr_bytes {
-                b"left_stick" => state.left_stick,
-                b"right_stick" => state.right_stick,
+                "left_stick" => state.left_stick,
+                "right_stick" => state.right_stick,
                 _ => return,
             };
 
@@ -104,11 +104,11 @@ fn controller_state_attr(this: &ControllerStateObj, attr: Qstr, op: AttrOp) {
 fn button_state_attr(this: &ButtonStateObj, attr: Qstr, op: AttrOp) {
     let AttrOp::Load { result } = op else { return };
     let state = &this.state;
-    let ret = Obj::from_bool(match attr.bytes() {
-        b"is_pressed" => state.is_pressed(),
-        b"is_released" => state.is_released(),
-        b"is_now_pressed" => state.is_now_pressed(),
-        b"is_now_released" => state.is_now_released(),
+    let ret = Obj::from_bool(match attr.as_str() {
+        "is_pressed" => state.is_pressed(),
+        "is_released" => state.is_released(),
+        "is_now_pressed" => state.is_now_pressed(),
+        "is_now_released" => state.is_now_released(),
         _ => return,
     });
 
@@ -117,11 +117,11 @@ fn button_state_attr(this: &ButtonStateObj, attr: Qstr, op: AttrOp) {
 
 fn joystick_state_attr(this: &JoystickStateObj, attr: Qstr, op: AttrOp) {
     let AttrOp::Load { result } = op else { return };
-    result.return_value(match attr.bytes() {
-        b"x" => Obj::from_float(this.state.x() as f32),
-        b"y" => Obj::from_float(this.state.y() as f32),
-        b"x_raw" => Obj::from_int(this.state.x_raw() as i32),
-        b"y_raw" => Obj::from_int(this.state.y_raw() as i32),
+    result.return_value(match attr.as_str() {
+        "x" => Obj::from_float(this.state.x() as f32),
+        "y" => Obj::from_float(this.state.y() as f32),
+        "x_raw" => Obj::from_int(this.state.x_raw() as i32),
+        "y_raw" => Obj::from_int(this.state.y_raw() as i32),
         _ => return,
     });
 }

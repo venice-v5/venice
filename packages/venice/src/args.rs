@@ -45,7 +45,7 @@ impl<'a> ArgTrait<'a> for i32 {
     }
 }
 
-impl<'a> ArgTrait<'a> for &'a [u8] {
+impl<'a> ArgTrait<'a> for &'a str {
     fn ty() -> ArgType<'static> {
         ArgType::Str
     }
@@ -125,7 +125,7 @@ pub enum ArgType<'a> {
 #[derive(Clone, Copy)]
 pub enum ArgValue<'a> {
     Int(i32),
-    Str(&'a [u8]),
+    Str(&'a str),
     None,
     Bool(bool),
     Float(f32),
@@ -134,13 +134,13 @@ pub enum ArgValue<'a> {
 
 #[derive(Clone, Copy)]
 pub struct KwArg<'a> {
-    pub kw: &'a [u8],
+    pub kw: &'a str,
     pub value: ArgValue<'a>,
 }
 
 #[derive(Clone, Copy)]
 pub struct GenericKwArg<'a, A: ArgTrait<'a>> {
-    pub kw: &'a [u8],
+    pub kw: &'a str,
     pub value: A,
 }
 
@@ -221,7 +221,7 @@ impl<'a> ArgValue<'a> {
         }
     }
 
-    pub fn as_str(self) -> &'a [u8] {
+    pub fn as_str(self) -> &'a str {
         match self {
             Self::Str(str) => str,
             _ => panic!(),
@@ -386,7 +386,7 @@ impl<'a> ArgsReader<'a> {
             .unwrap_or_else(|e| e.raise_positional(token))
     }
 
-    pub fn try_get_kw<A: ArgTrait<'a>>(&self, kw: &[u8]) -> Result<A, ArgError<'a>> {
+    pub fn try_get_kw<A: ArgTrait<'a>>(&self, kw: &str) -> Result<A, ArgError<'a>> {
         for i in 0..self.args.n_kw {
             let arg = self.args.nth(self.args.n_pos + i).unwrap();
             match arg {
@@ -401,7 +401,7 @@ impl<'a> ArgsReader<'a> {
         Err(ArgError::NotPresent)
     }
 
-    pub fn try_get_kw_or<A: ArgTrait<'a>>(&self, kw: &[u8], default: A) -> Result<A, ArgError<'a>> {
+    pub fn try_get_kw_or<A: ArgTrait<'a>>(&self, kw: &str, default: A) -> Result<A, ArgError<'a>> {
         match self.try_get_kw(kw) {
             Ok(arg) => Ok(arg),
             Err(err) => match err {
@@ -411,14 +411,14 @@ impl<'a> ArgsReader<'a> {
         }
     }
 
-    pub fn get_kw<A: ArgTrait<'a>>(&self, kw: &[u8]) -> A {
+    pub fn get_kw<A: ArgTrait<'a>>(&self, kw: &str) -> A {
         self.try_get_kw(kw)
-            .unwrap_or_else(|e| e.raise_kw(self.token, str::from_utf8(kw).unwrap()))
+            .unwrap_or_else(|e| e.raise_kw(self.token, kw))
     }
 
-    pub fn get_kw_or<A: ArgTrait<'a>>(&self, kw: &[u8], default: A) -> A {
+    pub fn get_kw_or<A: ArgTrait<'a>>(&self, kw: &str, default: A) -> A {
         self.try_get_kw_or(kw, default)
-            .unwrap_or_else(|e| e.raise_kw(self.token, str::from_utf8(kw).unwrap()))
+            .unwrap_or_else(|e| e.raise_kw(self.token, kw))
     }
 
     pub fn try_next_kw_untyped(&mut self) -> Result<KwArg<'a>, ArgError<'a>> {
@@ -471,11 +471,7 @@ impl Display for ArgType<'_> {
             Self::None => write!(f, "None"),
             Self::Bool => write!(f, "bool"),
             Self::Float => write!(f, "float"),
-            Self::Obj(ty) => write!(
-                f,
-                "{}",
-                str::from_utf8(ty.name().bytes()).expect("invalid utf8 type name wtf")
-            ),
+            Self::Obj(ty) => write!(f, "{}", ty.name().as_str()),
         }
     }
 }
