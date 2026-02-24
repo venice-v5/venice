@@ -1,18 +1,15 @@
 pub mod id;
 pub mod state;
 
-use std::{
-    cell::RefCell,
-    ffi::{CStr, CString, NulError},
-    ops::RangeInclusive,
-};
+use std::{cell::RefCell, ffi::CStr, ops::RangeInclusive};
 
 use micropython_rs::{
-    const_dict,
+    attr_from_fn, const_dict,
     except::raise_value_error,
     init::token,
     make_new_from_fn,
-    obj::{Iter, Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
+    obj::{AttrOp, Iter, Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
+    qstr::Qstr,
 };
 use vex_sdk::{
     V5_ControllerId, V5_ControllerStatus, vexControllerConnectionStatusGet, vexControllerTextSet,
@@ -43,6 +40,7 @@ pub struct ControllerObj {
 
 static CONTROLLER_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(Controller))
     .set_make_new(make_new_from_fn!(controller_make_new))
+    .set_attr(attr_from_fn!(controller_attr))
     .set_locals_dict(const_dict![
         qstr!(UPDATE_INTERVAL_MS) => Obj::from_int(Controller::UPDATE_INTERVAL.as_micros() as i32),
         qstr!(MAX_COLUMNS) => Obj::from_int(Controller::MAX_COLUMNS as i32),
@@ -73,6 +71,17 @@ fn controller_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[
     alloc_obj(ControllerObj {
         base: ObjBase::new(ty),
         guard,
+    })
+}
+
+fn controller_attr(this: &ControllerObj, attr: Qstr, op: AttrOp) {
+    let AttrOp::Load { result } = op else { return };
+    result.return_value(match attr.as_str() {
+        "id" => Obj::from_static(match this.guard.borrow().id() {
+            ControllerId::Primary => &ControllerIdObj::PRIMARY,
+            ControllerId::Partner => &ControllerIdObj::PARTNER,
+        }),
+        _ => return,
     })
 }
 
