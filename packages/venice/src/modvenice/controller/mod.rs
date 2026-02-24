@@ -42,7 +42,7 @@ static CONTROLLER_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), q
     .set_make_new(make_new_from_fn!(controller_make_new))
     .set_attr(attr_from_fn!(controller_attr))
     .set_locals_dict(const_dict![
-        qstr!(UPDATE_INTERVAL_MS) => Obj::from_int(Controller::UPDATE_INTERVAL.as_micros() as i32),
+        qstr!(UPDATE_INTERVAL_MS) => Obj::from_int(Controller::UPDATE_INTERVAL.as_millis() as i32),
         qstr!(MAX_COLUMNS) => Obj::from_int(Controller::MAX_COLUMNS as i32),
         qstr!(MAX_LINES) => Obj::from_int(Controller::MAX_LINES as i32),
 
