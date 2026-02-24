@@ -1,7 +1,11 @@
 pub mod id;
 pub mod state;
 
-use std::cell::RefCell;
+use std::{
+    cell::RefCell,
+    ffi::{CStr, CString, NulError},
+    ops::RangeInclusive,
+};
 
 use micropython_rs::{
     const_dict,
@@ -21,7 +25,7 @@ use crate::{
     args::Args,
     devices,
     error_msg::error_msg,
-    fun::{fun1, fun2},
+    fun::{fun_var, fun1, fun2},
     modvenice::{
         controller::id::ControllerIdObj, raise_device_error, raise_port_error,
         vasyncio::event_loop::WAKE_SIGNAL,
@@ -45,7 +49,12 @@ static CONTROLLER_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), q
         qstr!(MAX_LINES) => Obj::from_int(Controller::MAX_LINES as i32),
 
         qstr!(read_state) => Obj::from_static(&fun1!(controller_read_state, &ControllerObj)),
+
         qstr!(rumble) => Obj::from_static(&fun2!(controller_rumble, &ControllerObj, &str)),
+        qstr!(clear_line) => Obj::from_static(&fun2!(controller_clear_line, &ControllerObj, i32)),
+        qstr!(clear_screen) => Obj::from_static(&fun1!(controller_clear_screen, &ControllerObj)),
+        qstr!(set_text) => Obj::from_static(&fun_var!(controller_set_text)),
+
         qstr!(free) => Obj::from_static(&fun1!(controller_free, &ControllerObj))
     ]);
 
@@ -78,8 +87,8 @@ fn controller_read_state(this: &ControllerObj) -> Obj {
 
 enum ControllerFuture {
     WaitingForIdle {
-        line: u8,
-        column: u8,
+        line: i32,
+        column: i32,
         text: Vec<u8, Gc>, // CString doesn't support custom allocators
         controller_id: ControllerId,
         enforce_visible: bool,
@@ -124,24 +133,29 @@ extern "C" fn controller_future_iternext(self_in: Obj) -> Obj {
         enforce_visible,
     } = &*future
     {
+        const LINE_RANGE: RangeInclusive<i32> = 1..=Controller::MAX_LINES as i32;
+        const COLUMN_RANGE: RangeInclusive<i32> = 1..=Controller::MAX_COLUMNS as i32;
+
         if *enforce_visible {
-            if *line == 0 || *line > Controller::MAX_LINES as u8 {
+            if !LINE_RANGE.contains(line) {
                 raise_value_error(
                     token(),
                     error_msg!(
-                        "line number ({line}) is greater than the maximum number of lines ({})",
-                        Controller::MAX_COLUMNS
+                        "line number ({line}) must be between ({}) and ({})",
+                        LINE_RANGE.start(),
+                        LINE_RANGE.end(),
                     ),
                 );
             }
         }
 
-        if *column != 0 && *column <= Controller::MAX_COLUMNS as u8 {
+        if !COLUMN_RANGE.contains(column) {
             raise_value_error(
                 token(),
                 error_msg!(
-                    "Invalid column number ({column}) is greater than the maximum number of columns ({})",
-                    Controller::MAX_COLUMNS
+                    "column number ({column}) must be between ({}) and ({})",
+                    COLUMN_RANGE.start(),
+                    COLUMN_RANGE.end(),
                 ),
             )
         }
@@ -153,8 +167,8 @@ extern "C" fn controller_future_iternext(self_in: Obj) -> Obj {
                 let result = unsafe {
                     vexControllerTextSet(
                         u32::from(id.0),
-                        u32::from(*line),
-                        u32::from(*column - 1),
+                        *line as u32,
+                        (*column - 1) as u32,
                         text.as_ptr().cast(),
                     )
                 };
@@ -173,26 +187,77 @@ extern "C" fn controller_future_iternext(self_in: Obj) -> Obj {
     Obj::from_static(&WAKE_SIGNAL)
 }
 
-fn str_to_cstring_vec(str: &str) -> Result<Vec<u8, Gc>, ()> {
+fn str_to_cstring_vec(str: &str, error_msg: impl AsRef<CStr>) -> Vec<u8, Gc> {
     if let Some(_) = str.find('\0') {
-        return Err(());
+        raise_value_error(token(), error_msg);
     }
 
     let mut vec = Vec::with_capacity_in(str.len() + 1, Gc { token: token() });
     vec.extend_from_slice(str.as_bytes());
     vec.push(0);
-    Ok(vec)
+    vec
 }
 
 fn controller_rumble(this: &ControllerObj, pattern: &str) -> Obj {
-    let text = str_to_cstring_vec(pattern)
-        .unwrap_or_else(|_| raise_value_error(token(), c"rumble pattern has forbidden null byte"));
+    let text = str_to_cstring_vec(pattern, c"rumble pattern has forbidden nul byte");
 
     alloc_obj(ControllerFutureObj {
         future: RefCell::new(ControllerFuture::WaitingForIdle {
             line: 4,
             column: 1,
             text,
+            controller_id: this.guard.borrow().id(),
+            enforce_visible: false,
+        }),
+        base: ObjBase::new(ControllerFutureObj::OBJ_TYPE),
+    })
+}
+
+fn empty_cstring_vec() -> Vec<u8, Gc> {
+    let mut vec = Vec::new_in(Gc { token: token() });
+    vec.push(0);
+    vec
+}
+
+fn controller_clear_line(this: &ControllerObj, line: i32) -> Obj {
+    alloc_obj(ControllerFutureObj {
+        future: RefCell::new(ControllerFuture::WaitingForIdle {
+            line,
+            column: 1,
+            text: empty_cstring_vec(),
+            controller_id: this.guard.borrow().id(),
+            enforce_visible: true,
+        }),
+        base: ObjBase::new(ControllerFutureObj::OBJ_TYPE),
+    })
+}
+
+fn controller_clear_screen(this: &ControllerObj) -> Obj {
+    alloc_obj(ControllerFutureObj {
+        future: RefCell::new(ControllerFuture::WaitingForIdle {
+            line: 0,
+            column: 1,
+            text: empty_cstring_vec(),
+            controller_id: this.guard.borrow().id(),
+            enforce_visible: false,
+        }),
+        base: ObjBase::new(ControllerFutureObj::OBJ_TYPE),
+    })
+}
+
+fn controller_set_text(args: &[Obj]) -> Obj {
+    let mut reader = Args::new(args.len(), 0, args).reader(token());
+    reader.assert_npos(4, 4);
+    let this = reader.next_positional::<&ControllerObj>();
+    let text = reader.next_positional::<&str>();
+    let line = reader.next_positional::<i32>();
+    let column = reader.next_positional::<i32>();
+
+    alloc_obj(ControllerFutureObj {
+        future: RefCell::new(ControllerFuture::WaitingForIdle {
+            line,
+            column,
+            text: str_to_cstring_vec(text, c"text has forbidden nul byte"),
             controller_id: this.guard.borrow().id(),
             enforce_visible: false,
         }),
