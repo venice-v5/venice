@@ -71,10 +71,7 @@ impl Status {
 
 impl Phase {
     pub const fn interruptable(self) -> bool {
-        match self {
-            Self::Connected | Self::Disconnected => false,
-            _ => true,
-        }
+        !matches!(self, Self::Connected | Self::Disconnected)
     }
 }
 
@@ -146,24 +143,21 @@ impl CompetitionRuntime {
     pub fn tick(&self) {
         let mut phase_updated = false;
 
-        match self.poll_update() {
-            Some(prev_status) => {
-                let new_status = self.status.get();
-                if !self.phase.get().interruptable() {
-                    self.phase
-                        .set(if prev_status.connected() != new_status.connected() {
-                            match new_status.connected() {
-                                true => Phase::Connected,
-                                false => Phase::Disconnected,
-                            }
-                        } else {
-                            Phase::Mode(new_status.mode())
-                        });
+        if let Some(prev_status) = self.poll_update() {
+            let new_status = self.status.get();
+            if !self.phase.get().interruptable() {
+                self.phase
+                    .set(if prev_status.connected() != new_status.connected() {
+                        match new_status.connected() {
+                            true => Phase::Connected,
+                            false => Phase::Disconnected,
+                        }
+                    } else {
+                        Phase::Mode(new_status.mode())
+                    });
 
-                    phase_updated = true;
-                }
+                phase_updated = true;
             }
-            None => {}
         }
 
         if !self.coro.get().is_null() {
@@ -221,7 +215,7 @@ impl CompetitionRuntime {
 }
 
 fn competition_make_new(ty: &'static ObjType, _n_pos: usize, _n_kw: usize, args: &[Obj]) -> Obj {
-    if args.len() != 0 {
+    if !args.is_empty() {
         raise_type_error(token(), c"function does not accept arguments");
     }
 

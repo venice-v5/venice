@@ -87,7 +87,7 @@ impl Map {
                 | ((fixed as usize) << 1)
                 | (all_qstr_keys as usize),
             alloc,
-            table: ptr as *mut MapElem,
+            table: ptr,
         }
     }
 

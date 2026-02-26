@@ -249,11 +249,11 @@ pub mod repr_c {
 ///
 /// - Type representation must begin with an [`ObjBase`].
 /// - All instances of the type must be aligned to exactly 4 bytes in memory, but this is already
-/// guaranteed if the first invariant is true, as a side effect. A higher alignment than this may
-/// cause misalignment when allocated with the garbage collector, since it assumes an alignment of
-/// 4.
+///   guaranteed if the first invariant is true, as a side effect. A higher alignment than this may
+///   cause misalignment when allocated with the garbage collector, since it assumes an alignment of
+///   4.
 /// - If [`ObjTrait::coercable`] is defined, all instances of types that return `true` must have the same
-/// memory representation as this type.
+///   memory representation as this type.
 pub unsafe trait ObjTrait: Sized {
     const OBJ_TYPE: &ObjType;
 
@@ -567,7 +567,7 @@ macro_rules! subscr_from_fn {
 impl PartialEq for ObjType {
     fn eq(&self, other: &Self) -> bool {
         // reference equality should suffice
-        self as *const _ == other as *const _
+        std::ptr::eq(self, other)
     }
 }
 

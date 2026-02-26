@@ -10,7 +10,7 @@ use std::{
 use regex::bytes::Regex;
 
 fn collect_dir_files(dir: &Path, extension: &OsStr, recursive: bool, vec: &mut Vec<PathBuf>) {
-    std::fs::read_dir(&dir)
+    std::fs::read_dir(dir)
         .expect("couldn't ls directory")
         .map(|entry| entry.expect("couldn't ls directory"))
         .for_each(|entry| {
@@ -95,7 +95,7 @@ impl Builder {
         .expect("couldn't write to qstrdefs file");
 
         for qstr in qstrs.iter() {
-            write!(
+            writeln!(
                 &mut qstrdefs_file,
                 "Q({})\n",
                 str::from_utf8(qstr).expect("non-utf8 qstr")

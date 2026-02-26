@@ -117,11 +117,7 @@ unsafe impl ObjTrait for MotorObj {
     const OBJ_TYPE: &micropython_rs::obj::ObjType = ABSTRACT_MOTOR_OBJ_TYPE.as_obj_type();
 
     fn coercable(ty: &ObjType) -> bool {
-        if ty == MOTOR_V5_OBJ_TYPE.as_obj_type() || ty == MOTOR_EXP_OBJ_TYPE.as_obj_type() {
-            true
-        } else {
-            false
-        }
+        ty == MOTOR_V5_OBJ_TYPE.as_obj_type() || ty == MOTOR_EXP_OBJ_TYPE.as_obj_type()
     }
 }
 

@@ -27,7 +27,7 @@ pub struct InitToken(());
 pub struct AlreadyInit;
 
 pub unsafe fn init_mp(heap_start: *mut u8, heap_end: *mut u8) -> Result<InitToken, AlreadyInit> {
-    if let Err(_) = INIT.compare_exchange(false, true, Ordering::Relaxed, Ordering::Relaxed) {
+    if INIT.swap(true, Ordering::Relaxed) {
         return Err(AlreadyInit);
     }
 

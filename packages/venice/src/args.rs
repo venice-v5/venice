@@ -85,10 +85,7 @@ impl<'a> ArgTrait<'a> for f32 {
     }
 
     fn coercable(ty: ArgType<'a>) -> bool {
-        match ty {
-            ArgType::Float | ArgType::Int => true,
-            _ => false,
-        }
+        matches!(ty, ArgType::Float | ArgType::Int)
     }
 }
 

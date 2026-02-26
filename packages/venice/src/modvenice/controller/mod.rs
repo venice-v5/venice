@@ -145,17 +145,15 @@ extern "C" fn controller_future_iternext(self_in: Obj) -> Obj {
         const LINE_RANGE: RangeInclusive<i32> = 1..=Controller::MAX_LINES as i32;
         const COLUMN_RANGE: RangeInclusive<i32> = 1..=Controller::MAX_COLUMNS as i32;
 
-        if *enforce_visible {
-            if !LINE_RANGE.contains(line) {
-                raise_value_error(
-                    token(),
-                    error_msg!(
-                        "line number ({line}) must be between ({}) and ({})",
-                        LINE_RANGE.start(),
-                        LINE_RANGE.end(),
-                    ),
-                );
-            }
+        if *enforce_visible && !LINE_RANGE.contains(line) {
+            raise_value_error(
+                token(),
+                error_msg!(
+                    "line number ({line}) must be between ({}) and ({})",
+                    LINE_RANGE.start(),
+                    LINE_RANGE.end(),
+                ),
+            );
         }
 
         if !COLUMN_RANGE.contains(column) {
@@ -197,7 +195,7 @@ extern "C" fn controller_future_iternext(self_in: Obj) -> Obj {
 }
 
 fn str_to_cstring_vec(str: &str, error_msg: impl AsRef<CStr>) -> Vec<u8, Gc> {
-    if let Some(_) = str.find('\0') {
+    if str.find('\0').is_some() {
         raise_value_error(token(), error_msg);
     }
 
