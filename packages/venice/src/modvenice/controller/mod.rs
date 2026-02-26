@@ -5,7 +5,7 @@ use std::{cell::RefCell, ffi::CStr, ops::RangeInclusive};
 
 use micropython_rs::{
     attr_from_fn, const_dict,
-    except::raise_value_error,
+    except::{raise_stop_iteration, raise_value_error},
     init::token,
     make_new_from_fn,
     obj::{AttrOp, Iter, Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
@@ -182,6 +182,7 @@ extern "C" fn controller_future_iternext(self_in: Obj) -> Obj {
 
                 if result == 1 {
                     *future = ControllerFuture::Complete;
+                    raise_stop_iteration(token(), Obj::NONE);
                 }
             }
             Err(e) => {
