@@ -1,4 +1,4 @@
-use std::ops::Add;
+use std::ops::{Add, Sub};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Nanoseconds(u32);
@@ -64,6 +64,25 @@ impl Add for Duration {
     }
 }
 
+impl Sub for Duration {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        // self_secs
+        let mut self_secs = self.secs();
+
+        let nanos = Nanoseconds(if self.nanos >= rhs.nanos {
+            self.nanos.0 - rhs.nanos.0
+        } else {
+            self_secs -= 1;
+            self.nanos.0 + NANOS_PER_SEC as u32 - rhs.nanos.0
+        });
+
+        let secs = self_secs - rhs.secs();
+        Self::new(secs, nanos)
+    }
+}
+
 impl Instant {
     const fn from_duration(dur: Duration) -> Self {
         Self { inner: dur }
@@ -83,5 +102,13 @@ impl Add<Duration> for Instant {
         Self {
             inner: self.inner + rhs,
         }
+    }
+}
+
+impl Sub<Instant> for Instant {
+    type Output = Duration;
+
+    fn sub(self, rhs: Instant) -> Self::Output {
+        self.inner - rhs.inner
     }
 }

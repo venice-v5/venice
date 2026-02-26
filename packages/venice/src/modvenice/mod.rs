@@ -2,6 +2,8 @@ mod ai_vision;
 mod competition;
 mod controller;
 mod distance_sensor;
+mod imu;
+mod math;
 mod motor;
 mod rotation_sensor;
 mod units;
@@ -43,6 +45,8 @@ use crate::{
         competition::{COMPETITION_OBJ_TYPE, COMPETITION_RUNTIME_OBJ_TYPE},
         controller::id::ControllerIdObj,
         distance_sensor::{DistanceSensorObj, distance_object::DistanceObjectObj},
+        imu::{InertialOrientationObj, InertialSensorObj},
+        math::{EulerAngles, Quaternion, Vec3},
         motor::{MOTOR_EXP_OBJ_TYPE, MOTOR_V5_OBJ_TYPE, motor_type::MotorTypeObj},
         vasyncio::{
             event_loop::{EVENT_LOOP_OBJ_TYPE, get_running_loop, vasyncio_run, vasyncio_spawn},
@@ -105,6 +109,9 @@ static mut venice_globals: Dict = Dict::new(const_map![
     // competition
     qstr!(Competition) => Obj::from_static(&COMPETITION_OBJ_TYPE),
     qstr!(CompetitionRuntime) => Obj::from_static(&COMPETITION_RUNTIME_OBJ_TYPE),
+    // imu
+    qstr!(InertialSensor) => Obj::from_static(InertialSensorObj::OBJ_TYPE),
+    qstr!(InertialOrientation) => Obj::from_static(InertialOrientationObj::OBJ_TYPE),
     // other devices
     qstr!(RotationSensor) => Obj::from_static(RotationSensorObj::OBJ_TYPE),
 
@@ -114,6 +121,11 @@ static mut venice_globals: Dict = Dict::new(const_map![
     qstr!(get_running_loop) => Obj::from_static(&Fun0::new(get_running_loop)),
     qstr!(run) => Obj::from_static(&Fun1::new(vasyncio_run)),
     qstr!(spawn) => Obj::from_static(&Fun1::new(vasyncio_spawn)),
+
+    // math
+    qstr!(Vec3) => Obj::from_static(Vec3::OBJ_TYPE),
+    qstr!(Quaternion) => Obj::from_static(Quaternion::OBJ_TYPE),
+    qstr!(EulerAngles) => Obj::from_static(EulerAngles::OBJ_TYPE),
 
     // units
     qstr!(RotationUnit) => Obj::from_static(RotationUnitObj::OBJ_TYPE),
