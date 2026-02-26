@@ -14,7 +14,7 @@ use micropython_rs::{
 use vex_sdk::{
     V5_ControllerId, V5_ControllerStatus, vexControllerConnectionStatusGet, vexControllerTextSet,
 };
-use vexide_devices::controller::{Controller, ControllerError, ControllerId};
+use vexide_devices::controller::{Controller, ControllerConnection, ControllerError, ControllerId};
 
 use self::state::ControllerStateObj;
 use crate::{
@@ -47,11 +47,19 @@ static CONTROLLER_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), q
         qstr!(MAX_LINES) => Obj::from_int(Controller::MAX_LINES as i32),
 
         qstr!(read_state) => Obj::from_static(&fun1!(controller_read_state, &ControllerObj)),
+        qstr!(connection) => Obj::from_static(&fun1!(controller_connection, &ControllerObj)),
+        qstr!(battery_capacity) => Obj::from_static(&fun1!(controller_battery_capacity, &ControllerObj)),
+        qstr!(battery_level) => Obj::from_static(&fun1!(controller_battery_level, &ControllerObj)),
+        qstr!(flags) => Obj::from_static(&fun1!(controller_flags, &ControllerObj)),
 
         qstr!(rumble) => Obj::from_static(&fun2!(controller_rumble, &ControllerObj, &str)),
+        qstr!(try_rumble) => Obj::from_static(&fun2!(controller_try_rumble, &ControllerObj, &str)),
         qstr!(clear_line) => Obj::from_static(&fun2!(controller_clear_line, &ControllerObj, i32)),
+        qstr!(try_clear_line) => Obj::from_static(&fun2!(controller_try_clear_line, &ControllerObj, i32)),
         qstr!(clear_screen) => Obj::from_static(&fun1!(controller_clear_screen, &ControllerObj)),
+        qstr!(try_clear_screen) => Obj::from_static(&fun1!(controller_try_clear_screen, &ControllerObj)),
         qstr!(set_text) => Obj::from_static(&fun_var!(controller_set_text)),
+        qstr!(try_set_text) => Obj::from_static(&fun_var!(controller_try_set_text)),
 
         qstr!(free) => Obj::from_static(&fun1!(controller_free, &ControllerObj))
     ]);
@@ -94,6 +102,73 @@ fn controller_read_state(this: &ControllerObj) -> Obj {
     alloc_obj(ControllerStateObj::new(state))
 }
 
+#[repr(C)]
+pub struct ControllerConnectionObj {
+    base: ObjBase<'static>,
+}
+
+impl ControllerConnectionObj {
+    const fn new() -> Self {
+        Self {
+            base: ObjBase::new(Self::OBJ_TYPE),
+        }
+    }
+}
+
+mod connection_statics {
+    use super::*;
+
+    pub static OFFLINE: ControllerConnectionObj = ControllerConnectionObj::new();
+    pub static TETHERED: ControllerConnectionObj = ControllerConnectionObj::new();
+    pub static VEX_NET: ControllerConnectionObj = ControllerConnectionObj::new();
+}
+
+pub static CONTROLLER_CONNECTION_OBJ_TYPE: ObjFullType =
+    ObjFullType::new(TypeFlags::empty(), qstr!(MotorV5)).set_locals_dict(const_dict![
+        qstr!(OFFLINE) => Obj::from_static(&connection_statics::OFFLINE),
+        qstr!(TETHERED) => Obj::from_static(&connection_statics::TETHERED),
+        qstr!(VEX_NET) => Obj::from_static(&connection_statics::VEX_NET),
+    ]);
+
+unsafe impl ObjTrait for ControllerConnectionObj {
+    const OBJ_TYPE: &ObjType = CONTROLLER_CONNECTION_OBJ_TYPE.as_obj_type();
+}
+
+fn controller_connection(this: &ControllerObj) -> Obj {
+    match this.guard.borrow().connection() {
+        ControllerConnection::Offline => Obj::from_static(&connection_statics::OFFLINE),
+        ControllerConnection::Tethered => Obj::from_static(&connection_statics::TETHERED),
+        ControllerConnection::VexNet => Obj::from_static(&connection_statics::VEX_NET),
+    }
+}
+
+fn controller_battery_capacity(this: &ControllerObj) -> Obj {
+    Obj::from_float(
+        this.guard
+            .borrow()
+            .battery_capacity()
+            .unwrap_or_else(|e| raise_port_error!(e)) as f32,
+    )
+}
+
+fn controller_battery_level(this: &ControllerObj) -> Obj {
+    Obj::from_int(
+        this.guard
+            .borrow()
+            .battery_level()
+            .unwrap_or_else(|e| raise_port_error!(e)),
+    )
+}
+
+fn controller_flags(this: &ControllerObj) -> Obj {
+    Obj::from_int(
+        this.guard
+            .borrow()
+            .flags()
+            .unwrap_or_else(|e| raise_port_error!(e)),
+    )
+}
+
 enum ControllerFuture {
     WaitingForIdle {
         line: i32,
@@ -130,6 +205,34 @@ fn validate_connection(id: ControllerId) -> Result<(), ControllerError> {
     Ok(())
 }
 
+fn validate_line(line: &i32) {
+    const LINE_RANGE: RangeInclusive<i32> = 1..=Controller::MAX_LINES as i32;
+    if !LINE_RANGE.contains(line) {
+        raise_value_error(
+            token(),
+            error_msg!(
+                "line number ({line}) must be between ({}) and ({})",
+                LINE_RANGE.start(),
+                LINE_RANGE.end(),
+            ),
+        );
+    }
+}
+
+fn validate_column(column: &i32) {
+    const COLUMN_RANGE: RangeInclusive<i32> = 1..=Controller::MAX_COLUMNS as i32;
+    if !COLUMN_RANGE.contains(column) {
+        raise_value_error(
+            token(),
+            error_msg!(
+                "column number ({column}) must be between ({}) and ({})",
+                COLUMN_RANGE.start(),
+                COLUMN_RANGE.end(),
+            ),
+        )
+    }
+}
+
 extern "C" fn controller_future_iternext(self_in: Obj) -> Obj {
     let this = self_in.try_as_obj::<ControllerFutureObj>().unwrap();
     let mut future = this.future.borrow_mut();
@@ -142,30 +245,11 @@ extern "C" fn controller_future_iternext(self_in: Obj) -> Obj {
         enforce_visible,
     } = &*future
     {
-        const LINE_RANGE: RangeInclusive<i32> = 1..=Controller::MAX_LINES as i32;
-        const COLUMN_RANGE: RangeInclusive<i32> = 1..=Controller::MAX_COLUMNS as i32;
-
-        if *enforce_visible && !LINE_RANGE.contains(line) {
-            raise_value_error(
-                token(),
-                error_msg!(
-                    "line number ({line}) must be between ({}) and ({})",
-                    LINE_RANGE.start(),
-                    LINE_RANGE.end(),
-                ),
-            );
+        if *enforce_visible {
+            validate_line(line);
         }
 
-        if !COLUMN_RANGE.contains(column) {
-            raise_value_error(
-                token(),
-                error_msg!(
-                    "column number ({column}) must be between ({}) and ({})",
-                    COLUMN_RANGE.start(),
-                    COLUMN_RANGE.end(),
-                ),
-            )
-        }
+        validate_column(column);
 
         match validate_connection(*controller_id) {
             Ok(()) => {
@@ -221,6 +305,14 @@ fn controller_rumble(this: &ControllerObj, pattern: &str) -> Obj {
     })
 }
 
+fn controller_try_rumble(this: &ControllerObj, pattern: &str) -> Obj {
+    this.guard
+        .borrow_mut()
+        .try_rumble(pattern)
+        .unwrap_or_else(|e| raise_port_error!(e));
+    Obj::NONE
+}
+
 fn empty_cstring_vec() -> Vec<u8, Gc> {
     let mut vec = Vec::new_in(Gc { token: token() });
     vec.push(0);
@@ -240,6 +332,15 @@ fn controller_clear_line(this: &ControllerObj, line: i32) -> Obj {
     })
 }
 
+fn controller_try_clear_line(this: &ControllerObj, line: i32) -> Obj {
+    validate_line(&line);
+    this.guard
+        .borrow_mut()
+        .try_clear_line(line as u8)
+        .unwrap_or_else(|e| raise_port_error!(e));
+    Obj::NONE
+}
+
 fn controller_clear_screen(this: &ControllerObj) -> Obj {
     alloc_obj(ControllerFutureObj {
         future: RefCell::new(ControllerFuture::WaitingForIdle {
@@ -253,13 +354,27 @@ fn controller_clear_screen(this: &ControllerObj) -> Obj {
     })
 }
 
-fn controller_set_text(args: &[Obj]) -> Obj {
+fn controller_try_clear_screen(this: &ControllerObj) -> Obj {
+    this.guard
+        .borrow_mut()
+        .try_clear_screen()
+        .unwrap_or_else(|e| raise_port_error!(e));
+    Obj::NONE
+}
+
+fn set_text_prelude(args: &[Obj]) -> (&ControllerObj, &str, i32, i32) {
     let mut reader = Args::new(args.len(), 0, args).reader(token());
     reader.assert_npos(4, 4);
     let this = reader.next_positional::<&ControllerObj>();
     let text = reader.next_positional::<&str>();
     let line = reader.next_positional::<i32>();
     let column = reader.next_positional::<i32>();
+
+    (this, text, line, column)
+}
+
+fn controller_set_text(args: &[Obj]) -> Obj {
+    let (this, text, line, column) = set_text_prelude(args);
 
     alloc_obj(ControllerFutureObj {
         future: RefCell::new(ControllerFuture::WaitingForIdle {
@@ -271,6 +386,19 @@ fn controller_set_text(args: &[Obj]) -> Obj {
         }),
         base: ObjBase::new(ControllerFutureObj::OBJ_TYPE),
     })
+}
+
+fn controller_try_set_text(args: &[Obj]) -> Obj {
+    let (this, text, line, column) = set_text_prelude(args);
+
+    validate_line(&line);
+    validate_column(&column);
+
+    this.guard
+        .borrow_mut()
+        .try_set_text(text, line as u8, column as u8)
+        .unwrap_or_else(|e| raise_port_error!(e)); // technically not PortError but the macro works
+    Obj::NONE
 }
 
 fn controller_free(this: &ControllerObj) -> Obj {
