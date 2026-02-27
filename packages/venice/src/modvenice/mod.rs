@@ -5,6 +5,7 @@ mod distance_sensor;
 mod imu;
 mod math;
 mod motor;
+mod optical;
 mod rotation_sensor;
 mod units;
 mod vasyncio;
@@ -48,6 +49,11 @@ use crate::{
         imu::{InertialOrientationObj, InertialSensorObj},
         math::{EulerAngles, Quaternion, Vec3},
         motor::{MOTOR_EXP_OBJ_TYPE, MOTOR_V5_OBJ_TYPE, motor_type::MotorTypeObj},
+        optical::{
+            OpticalSensorObj,
+            gesture::{GestureDirectionObj, GestureObj},
+            rgb::{OpticalRawObj, OpticalRgbObj},
+        },
         vasyncio::{
             event_loop::{EVENT_LOOP_OBJ_TYPE, get_running_loop, vasyncio_run, vasyncio_spawn},
             sleep::SLEEP_OBJ_TYPE,
@@ -112,6 +118,12 @@ static mut venice_globals: Dict = Dict::new(const_map![
     // imu
     qstr!(InertialSensor) => Obj::from_static(InertialSensorObj::OBJ_TYPE),
     qstr!(InertialOrientation) => Obj::from_static(InertialOrientationObj::OBJ_TYPE),
+    // optical
+    qstr!(OpticalSensor) => Obj::from_static(OpticalSensorObj::OBJ_TYPE),
+    qstr!(OpticalRgb) => Obj::from_static(OpticalRgbObj::OBJ_TYPE),
+    qstr!(OpticalRaw) => Obj::from_static(OpticalRawObj::OBJ_TYPE),
+    qstr!(Gesture) => Obj::from_static(GestureObj::OBJ_TYPE),
+    qstr!(GestureDirection) => Obj::from_static(GestureDirectionObj::OBJ_TYPE),
     // other devices
     qstr!(RotationSensor) => Obj::from_static(RotationSensorObj::OBJ_TYPE),
 
