@@ -22,7 +22,7 @@ use crate::{
     args::Args,
     devices,
     error_msg::error_msg,
-    fun::{fun_var, fun1, fun2},
+    fun::{fun_var_between, fun1, fun2},
     modvenice::{
         controller::id::ControllerIdObj, raise_device_error, raise_port_error,
         vasyncio::event_loop::WAKE_SIGNAL,
@@ -58,8 +58,8 @@ static CONTROLLER_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), q
         qstr!(try_clear_line) => Obj::from_static(&fun2!(controller_try_clear_line, &ControllerObj, i32)),
         qstr!(clear_screen) => Obj::from_static(&fun1!(controller_clear_screen, &ControllerObj)),
         qstr!(try_clear_screen) => Obj::from_static(&fun1!(controller_try_clear_screen, &ControllerObj)),
-        qstr!(set_text) => Obj::from_static(&fun_var!(controller_set_text)),
-        qstr!(try_set_text) => Obj::from_static(&fun_var!(controller_try_set_text)),
+        qstr!(set_text) => Obj::from_static(&fun_var_between!(controller_set_text, 4, 4)),
+        qstr!(try_set_text) => Obj::from_static(&fun_var_between!(controller_try_set_text, 4, 4)),
 
         qstr!(free) => Obj::from_static(&fun1!(controller_free, &ControllerObj))
     ]);

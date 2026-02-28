@@ -20,7 +20,7 @@ use super::raise_device_error;
 use crate::{
     args::Args,
     devices::{self, PortNumber},
-    fun::{fun_var, fun1, fun2, fun3},
+    fun::{fun_var_between, fun1, fun2, fun3},
     modvenice::{
         motor::motor_type::MotorTypeObj, raise_port_error, units::rotation::RotationUnitObj,
     },
@@ -42,7 +42,7 @@ pub(crate) static ABSTRACT_MOTOR_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFl
         qstr!(set_voltage) => Obj::from_static(&fun2!(motor_set_voltage,&MotorObj, f32)),
         qstr!(set_velocity) => Obj::from_static(&fun2!(motor_set_velocity,&MotorObj, i32)),
         qstr!(brake) => Obj::from_static(&fun2!(motor_brake,&MotorObj, &BrakeModeObj)),
-        qstr!(set_position_target) => Obj::from_static(&fun_var!(motor_set_position_target)),
+        qstr!(set_position_target) => Obj::from_static(&fun_var_between!(motor_set_position_target, 4, 4)),
         qstr!(is_exp) => Obj::from_static(&fun1!(motor_is_exp, &MotorObj)),
         qstr!(is_v5) => Obj::from_static(&fun1!(motor_is_v5, &MotorObj)),
         qstr!(max_voltage) => Obj::from_static(&fun1!(motor_max_voltage, &MotorObj)),

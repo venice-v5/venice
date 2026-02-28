@@ -4,6 +4,7 @@ use micropython_rs::{
     except::{mp_type_ImportError, raise_msg, raise_value_error},
     init::{InitToken, token},
     module::{builtin_module, exec_module},
+    nlr::push_nlr_callback,
     obj::Obj,
     qstr::Qstr,
     state::{globals, loaded_modules},
@@ -71,14 +72,30 @@ pub fn process_import_at_level(
     }
 
     if let Some(module) = MODULE_MAP.get().unwrap().get(full_name.as_str().as_bytes()) {
-        exec_module(token, full_name, module.payload())
-    } else {
-        raise_msg(
+        return push_nlr_callback(
             token,
-            &mp_type_ImportError,
-            error_msg!("no module named '{}'", full_name.as_str()),
+            || exec_module(token, full_name, module.payload()),
+            || {
+                unsafe { &mut *loaded_modules(token) }
+                    .map
+                    .remove(Obj::from_qstr(full_name));
+            },
+            false,
         );
     }
+
+    if outer_module_obj.is_null() {
+        let extensible = builtin_module(token, level_name, true);
+        if !extensible.is_null() {
+            return extensible;
+        }
+    }
+
+    raise_msg(
+        token,
+        &mp_type_ImportError,
+        error_msg!("no module named '{}'", full_name.as_str()),
+    );
 }
 
 pub fn import(token: InitToken, module_name_qstr: Qstr, _fromtuple: Obj, level: i32) -> Obj {

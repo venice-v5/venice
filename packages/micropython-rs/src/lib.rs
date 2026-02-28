@@ -7,6 +7,7 @@ mod raw;
 
 pub(crate) mod print;
 
+pub mod errno;
 pub mod except;
 pub mod fun;
 pub mod gc;
@@ -21,5 +22,6 @@ pub mod ops;
 pub mod qstr;
 pub mod state;
 pub mod str;
+pub mod stream;
 pub mod tuple;
 pub mod vstr;
