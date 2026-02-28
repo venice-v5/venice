@@ -9,6 +9,10 @@ use crate::{
 
 pub const STREAM_ERROR: usize = usize::MAX;
 
+pub const SEEK_SET: c_int = 0;
+pub const SEEK_CUR: c_int = 1;
+pub const SEEK_END: c_int = 2;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
 pub struct Seek {
