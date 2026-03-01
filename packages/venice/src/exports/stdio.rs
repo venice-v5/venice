@@ -1,4 +1,8 @@
-use std::io::{Read, Write, stdin, stdout};
+use std::{
+    ffi::{CStr, c_int},
+    io::{Read, Write, stdin, stdout},
+    os::raw::c_char,
+};
 
 use micropython_rs::{
     const_dict,
@@ -12,6 +16,7 @@ use micropython_rs::{
     },
     write_from_fn,
 };
+use vex_sdk_jumptable::vexSerialReadChar;
 
 use crate::qstrgen::qstr;
 
@@ -21,13 +26,13 @@ const STDIN_STREAM: Stream = Stream {
             .read(buf)
             .map_err(|e| e.raw_os_error().unwrap_or(MP_EIO))
     }),
-    write: write_from_fn!(|_, _| { Err(MP_EINVAL) }),
-    ioctl: ioctl_from_fn!(|_, _| { Err(MP_EINVAL) }),
+    write: write_from_fn!(|_, _| Err(MP_EINVAL)),
+    ioctl: ioctl_from_fn!(|_, _| Err(MP_EINVAL)),
     is_text: 1,
 };
 
 const STDOUT_STREAM: Stream = Stream {
-    read: read_from_fn!(|_, _| { Err(MP_EINVAL) }),
+    read: read_from_fn!(|_, _| Err(MP_EINVAL)),
     write: write_from_fn!(|_, buf| {
         stdout()
             .write(buf)
@@ -95,3 +100,28 @@ pub static mut mp_sys_stdout_obj: Stdout = Stdout {
 pub static mut mp_sys_stderr_obj: Stdout = Stdout {
     base: ObjBase::new(Stdout::OBJ_TYPE),
 };
+
+#[unsafe(no_mangle)]
+unsafe extern "C" fn mp_hal_stdout_tx_strn_cooked(str: *const c_char, len: u32) {
+    let slice = unsafe { core::slice::from_raw_parts(str, len as usize) };
+    stdout().write_all(slice).expect("couldn't write to stdout");
+}
+
+#[unsafe(no_mangle)]
+unsafe extern "C" fn mp_hal_stdout_tx_strn(str: *const c_char, len: u32) -> usize {
+    let slice = unsafe { core::slice::from_raw_parts(str, len as usize) };
+    stdout().write(slice).expect("couldn't write to stdout")
+}
+
+#[unsafe(no_mangle)]
+unsafe extern "C" fn mp_hal_stdout_tx_str(str: *const c_char) {
+    let cstr = unsafe { CStr::from_ptr(str) };
+    stdout()
+        .write_all(cstr.to_bytes())
+        .expect("couldn't write to stdout");
+}
+
+#[unsafe(no_mangle)]
+unsafe extern "C" fn mp_hal_stdin_rx_chr() -> c_int {
+    unsafe { vexSerialReadChar(1) }
+}

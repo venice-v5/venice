@@ -20,6 +20,13 @@
 #define MICROPY_LONGINT_IMPL MICROPY_LONGINT_IMPL_MPZ
 #define MICROPY_FLOAT_IMPL MICROPY_FLOAT_IMPL_FLOAT
 
+#define MICROPY_READLINE_HISTORY_SIZE (8)
+struct venice_port_state {
+    const char* readline_hist[MICROPY_READLINE_HISTORY_SIZE];
+};
+extern struct venice_port_state venice_port_state;
+#define MP_STATE_PORT(x) (venice_port_state.x)
+
 typedef int32_t mp_int_t; // must be pointer size
 typedef uint32_t mp_uint_t; // must be pointer size
 typedef long mp_off_t;

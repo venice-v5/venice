@@ -44,6 +44,7 @@ impl Builder {
         let mut c_srcs = Vec::new();
         collect_dir_files(Path::new(&py_dir), OsStr::new("c"), false, &mut c_srcs);
         collect_dir_files(Path::new(&port_dir), OsStr::new("c"), false, &mut c_srcs);
+        c_srcs.push(format!("{mp_dir}/shared/readline/readline.c").into());
 
         let mut rust_srcs = Vec::new();
         collect_dir_files(
