@@ -26,6 +26,11 @@ struct ActiveRegistryGuard<'a, D: PortDevice> {
     guard: MutexGuard<'a, RegistryDevice>,
 }
 
+pub struct UpgradeGuard<'a, D> {
+    device: D,
+    guard: MutexGuard<'a, RegistryDevice>,
+}
+
 #[must_use]
 pub struct RegistryGuard<'a, D: PortDevice> {
     guard: RefCell<Option<ActiveRegistryGuard<'a, D>>>,
@@ -109,6 +114,26 @@ impl<'a, D: PortDevice> RegistryGuard<'a, D> {
             .unwrap_or_else(|_| raise_value_error(token(), c"attempt to use device after free"))
     }
 
+    pub fn start_upgrade(mut self) -> Result<UpgradeGuard<'a, D>, DeviceFreedError> {
+        let guard = std::mem::replace(self.guard.get_mut(), None);
+        match guard {
+            Some(guard) => Ok(UpgradeGuard {
+                device: guard.device,
+                guard: guard.guard,
+            }),
+            None => Err(DeviceFreedError),
+        }
+    }
+
+    pub fn finish_upgrade(upgrade: UpgradeGuard<'a, D>) -> Self {
+        Self {
+            guard: RefCell::new(Some(ActiveRegistryGuard {
+                device: upgrade.device,
+                guard: upgrade.guard,
+            })),
+        }
+    }
+
     pub fn free(&self) -> Result<(), DeviceFreedError> {
         let guard = self.guard.replace(None);
         match guard {
@@ -123,6 +148,22 @@ impl<'a, D: PortDevice> RegistryGuard<'a, D> {
     pub fn free_or_raise(&self) {
         self.free()
             .unwrap_or_else(|_| raise_value_error(token(), c"attempt to free device twice"))
+    }
+}
+
+impl<'a, D> UpgradeGuard<'a, D> {
+    pub fn map<E, F>(self, f: F) -> UpgradeGuard<'a, E>
+    where
+        F: FnOnce(D) -> E,
+    {
+        UpgradeGuard {
+            device: f(self.device),
+            guard: self.guard,
+        }
+    }
+
+    pub fn as_mut(&mut self) -> &mut D {
+        &mut self.device
     }
 }
 
@@ -149,7 +190,7 @@ mod impls {
         ($($device:ty),*) => {
             $(
                 impl PortDevice for $device {
-                    fn take_port(self) -> vexide_devices::smart::SmartPort
+                    fn take_port(self) -> SmartPort
                     where
                         Self: Sized,
                     {
@@ -172,7 +213,8 @@ mod impls {
         AiVisionSensor,
         VisionSensor,
         SerialPort,
-        OpticalSensor
+        OpticalSensor,
+        SmartPort
     );
 }
 

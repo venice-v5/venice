@@ -7,6 +7,7 @@ mod math;
 mod motor;
 mod optical;
 mod rotation_sensor;
+mod serial;
 mod units;
 mod vasyncio;
 
@@ -54,6 +55,7 @@ use crate::{
             gesture::{GestureDirectionObj, GestureObj},
             rgb::{OpticalRawObj, OpticalRgbObj},
         },
+        serial::{SerialPortObj, SerialPortOpenFutureObj},
         vasyncio::{
             event_loop::{EVENT_LOOP_OBJ_TYPE, get_running_loop, vasyncio_run, vasyncio_spawn},
             sleep::SLEEP_OBJ_TYPE,
@@ -124,6 +126,9 @@ static mut venice_globals: Dict = Dict::new(const_map![
     qstr!(OpticalRaw) => Obj::from_static(OpticalRawObj::OBJ_TYPE),
     qstr!(Gesture) => Obj::from_static(GestureObj::OBJ_TYPE),
     qstr!(GestureDirection) => Obj::from_static(GestureDirectionObj::OBJ_TYPE),
+    // serial
+    qstr!(SerialPort) => Obj::from_static(SerialPortObj::OBJ_TYPE),
+    qstr!(SerialPortOpenFuture) => Obj::from_static(SerialPortOpenFutureObj::OBJ_TYPE),
     // other devices
     qstr!(RotationSensor) => Obj::from_static(RotationSensorObj::OBJ_TYPE),
 
