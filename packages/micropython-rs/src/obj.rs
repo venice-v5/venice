@@ -707,7 +707,7 @@ impl ObjFullType {
     pub const fn set_iter(mut self, iter: Iter) -> Self {
         match iter {
             Iter::IterNext(f) => {
-                self.flags |= TypeFlags::ITER_IS_GETITER.bits();
+                self.flags |= TypeFlags::ITER_IS_ITERNEXT.bits();
                 // SAFETY: f is safe to use as the iter slot value for the given iter type
                 unsafe { self.set_iter_raw(f as *const c_void) }
             }
