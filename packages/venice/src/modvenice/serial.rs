@@ -10,8 +10,9 @@ use micropython_rs::{
     const_dict,
     errno::{MP_EINVAL, MP_EIO},
     except::{raise_stop_iteration, raise_value_error},
+    fun::StaticMethod,
     init::token,
-    ioctl_from_fn, make_new_from_fn,
+    ioctl_from_fn,
     obj::{Iter, Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
     read_from_fn,
     stream::{IoctlReq, Poll, Stream},
@@ -20,8 +21,8 @@ use micropython_rs::{
 use vexide_devices::smart::serial::{SerialPort, SerialPortOpenFuture};
 
 use crate::{
-    args::Args,
     devices::{PortNumber, lock_port},
+    fun::fun2,
     modvenice::vasyncio::event_loop::WAKE_SIGNAL,
     obj::alloc_obj,
     qstrgen::qstr,
@@ -41,9 +42,10 @@ pub struct SerialPortOpenFutureObj {
 }
 
 pub static SERIAL_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(SerialPort))
-    .set_make_new(make_new_from_fn!(serial_make_new))
     .set_stream(&SERIAL_STREAM)
-    .set_locals_dict(const_dict![]); // TODO
+    .set_locals_dict(const_dict![
+        qstr!(open) => Obj::from_static(&StaticMethod::new(&fun2!(serial_open, i32, i32))),
+    ]);
 
 pub static SERIAL_FUTURE_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(SerialPortOpenFuture))
@@ -57,17 +59,14 @@ unsafe impl ObjTrait for SerialPortOpenFutureObj {
     const OBJ_TYPE: &ObjType = SERIAL_FUTURE_OBJ_TYPE.as_obj_type();
 }
 
-fn serial_make_new(_: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Obj {
-    let token = token();
-    let mut reader = Args::new(n_pos, n_kw, args).reader(token);
-    let port = PortNumber::from_i32(reader.next_positional())
-        .unwrap_or_else(|_| raise_value_error(token, c"port number must be between 1 and 21"));
-    let baud_rate = reader.next_positional::<i32>() as u32;
+fn serial_open(port: i32, baud_rate: i32) -> Obj {
+    let port_number = PortNumber::from_i32(port)
+        .unwrap_or_else(|_| raise_value_error(token(), c"port number must be between 1 and 21"));
 
-    let upgrade = lock_port(port, |p| p)
+    let upgrade = lock_port(port_number, |p| p)
         .start_upgrade()
         .unwrap()
-        .map(|p| SerialPort::open(p, baud_rate));
+        .map(|p| SerialPort::open(p, baud_rate as u32));
 
     alloc_obj(SerialPortOpenFutureObj {
         base: ObjBase::new(SerialPortOpenFutureObj::OBJ_TYPE),
