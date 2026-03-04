@@ -1,3 +1,4 @@
 /target
 # for stubs
 __pycache__
+\.DS_Store
