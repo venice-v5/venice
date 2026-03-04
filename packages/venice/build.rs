@@ -25,39 +25,39 @@ fn collect_dir_files(dir: &Path, extension: &OsStr, recursive: bool, vec: &mut V
 }
 
 struct Builder {
-    out_dir: String,
-    mp_dir: String,
-    py_dir: String,
-    port_dir: String,
-    genhdr_dir: String,
+    out_dir: PathBuf,
+    mp_dir: PathBuf,
+    py_dir: PathBuf,
+    port_dir: PathBuf,
+    genhdr_dir: PathBuf,
     c_srcs: Vec<PathBuf>,
     rust_srcs: Vec<PathBuf>,
 }
 
 impl Builder {
     fn new(manifest_dir: &str) -> Self {
-        let out_dir = std::env::var("OUT_DIR").unwrap();
-        let mp_dir = format!("{manifest_dir}/micropython");
-        let py_dir = format!("{mp_dir}/py");
-        let port_dir = format!("{manifest_dir}/port");
+        let out_dir = PathBuf::from(std::env::var("OUT_DIR").unwrap());
+        let mp_dir = Path::new(manifest_dir).join("micropython");
+        let py_dir = mp_dir.join("py");
+        let port_dir = Path::new(manifest_dir).join("port");
 
         let mut c_srcs = Vec::new();
-        collect_dir_files(Path::new(&py_dir), OsStr::new("c"), false, &mut c_srcs);
-        collect_dir_files(Path::new(&port_dir), OsStr::new("c"), false, &mut c_srcs);
+        collect_dir_files(&py_dir, OsStr::new("c"), false, &mut c_srcs);
+        collect_dir_files(&port_dir, OsStr::new("c"), false, &mut c_srcs);
 
         let mut rust_srcs = Vec::new();
         collect_dir_files(
-            Path::new(&format!("{manifest_dir}/src")),
+            &Path::new(manifest_dir).join("src"),
             OsStr::new("rs"),
             true,
             &mut rust_srcs,
         );
 
-        let genhdr_dir = format!("{out_dir}/genhdr");
+        let genhdr_dir = out_dir.join("genhdr");
         std::fs::create_dir_all(&genhdr_dir).expect("couldn't create genhdr dir");
 
         Builder {
-            py_dir: format!("{mp_dir}/py"),
+            py_dir,
             out_dir,
             mp_dir,
             port_dir,
@@ -69,14 +69,14 @@ impl Builder {
 
     fn gen_version_header(&self) {
         Command::new("python3")
-            .arg(format!("{}/makeversionhdr.py", self.py_dir))
-            .arg(format!("{}/mpversion.h", self.genhdr_dir))
+            .arg(self.py_dir.join("makeversionhdr.py"))
+            .arg(self.genhdr_dir.join("mpversion.h"))
             .status()
             .expect("couldn't generate mp version header");
     }
 
     fn gen_qstrdefs(&self, qstrs: &[Vec<u8>]) {
-        let qstrdefs_file_path = format!("{}/qstrdefs.preprocessed.h", self.genhdr_dir);
+        let qstrdefs_file_path = self.genhdr_dir.join("qstrdefs.preprocessed.h");
         let mut qstrdefs_file = OpenOptions::new()
             .write(true)
             .truncate(true)
@@ -104,21 +104,21 @@ impl Builder {
         }
 
         let generated_qstrs = Command::new("python3")
-            .arg(format!("{}/makeqstrdata.py", self.py_dir))
+            .arg(self.py_dir.join("makeqstrdata.py"))
             .arg(&qstrdefs_file_path)
             .output()
             .expect("coulnd't process qstr data")
             .stdout;
 
         std::fs::write(
-            format!("{}/qstrdefs.generated.h", self.genhdr_dir),
+            self.genhdr_dir.join("qstrdefs.generated.h"),
             generated_qstrs,
         )
         .expect("couldn't write out qstr data");
     }
 
     fn gen_moduledefs(&self, moduledefs: &[Vec<u8>]) {
-        let moduledefs_collected_path = format!("{}/moduledefs.collected", self.genhdr_dir);
+        let moduledefs_collected_path = self.genhdr_dir.join("moduledefs.collected");
         let mut moduledefs_collected = OpenOptions::new()
             .write(true)
             .truncate(true)
@@ -136,13 +136,13 @@ impl Builder {
         }
 
         let moduledefs_h = Command::new("python3")
-            .arg(format!("{}/makemoduledefs.py", self.py_dir))
+            .arg(self.py_dir.join("makemoduledefs.py"))
             .arg(&moduledefs_collected_path)
             .output()
             .expect("couldn't generate moduledefs")
             .stdout;
 
-        std::fs::write(format!("{}/moduledefs.h", self.genhdr_dir), &moduledefs_h)
+        std::fs::write(self.genhdr_dir.join("moduledefs.h"), &moduledefs_h)
             .expect("couldn't write out moduledefs");
     }
 
@@ -151,7 +151,7 @@ impl Builder {
             .write(true)
             .truncate(true)
             .create(true)
-            .open(format!("{}/root_pointers.h", self.genhdr_dir))
+            .open(self.genhdr_dir.join("root_pointers.h"))
             .expect("couldn't open root pointers file");
 
         for root_pointer in root_pointers.iter() {
@@ -176,8 +176,8 @@ impl Builder {
         let c_root_pointer_re = Regex::new(r#"MP_REGISTER_ROOT_POINTER\((.*?)\);"#).unwrap();
 
         let config_headers = [
-            PathBuf::from(format!("{}/mpconfig.h", self.mp_dir)),
-            PathBuf::from(format!("{}/mpconfigport.h", self.port_dir)),
+            self.mp_dir.join("mpconfig.h"),
+            self.port_dir.join("mpconfigport.h"),
         ];
         let c_qstr_src = self.c_srcs.iter().chain(config_headers.iter());
 
@@ -225,7 +225,7 @@ impl Builder {
 
     fn gen_qstrs_rs(&self) {
         let qstrdefs_generated_h =
-            std::fs::read_to_string(format!("{}/qstrdefs.generated.h", self.genhdr_dir))
+            std::fs::read_to_string(self.genhdr_dir.join("qstrdefs.generated.h"))
                 .expect("couldn't read generated qstrdefs");
 
         let qdef0_re =
@@ -244,7 +244,7 @@ impl Builder {
             defs.push(qdef1_cap[1].to_string());
         }
 
-        let generated_qstrs_rs_path = format!("{}/generated_qstrs.rs", self.out_dir);
+        let generated_qstrs_rs_path = self.out_dir.join("generated_qstrs.rs");
         let mut generated_qstrs_rs = OpenOptions::new()
             .write(true)
             .truncate(true)
@@ -274,7 +274,7 @@ impl Builder {
 
         println!(
             "cargo::rustc-env=GENERATED_QSTRS_RS={}",
-            generated_qstrs_rs_path
+            generated_qstrs_rs_path.display()
         );
     }
 
@@ -292,14 +292,18 @@ impl Builder {
 
 fn rerun_if_changed(manifest_dir: &str) {
     let paths = ["port", "link", "micropython/py"];
+    let manifest_path = Path::new(manifest_dir);
 
-    for path in paths.iter().map(|p| format!("{manifest_dir}/{p}")) {
-        println!("cargo::rerun-if-changed={path}");
+    for path in paths.iter().map(|p| manifest_path.join(p)) {
+        println!("cargo::rerun-if-changed={}", path.display());
     }
 }
 
 fn link_objects(manifest_dir: &str) {
-    println!("cargo::rustc-link-search=native={}/link", manifest_dir);
+    println!(
+        "cargo::rustc-link-search=native={}",
+        Path::new(manifest_dir).join("link").display()
+    );
     println!("cargo::rustc-link-arg=-Tvenice.ld");
     // needed for the following symbols as of 2026-01-03: acoshf, asinhf, nearbyintf, atanhf, lgammaf
     println!("cargo::rustc-link-lib=m");
