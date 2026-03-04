@@ -15,14 +15,17 @@ use micropython_rs::{
     ioctl_from_fn,
     obj::{Iter, Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
     read_from_fn,
-    stream::{IoctlReq, Poll, Stream},
+    stream::{
+        IoctlReq, Poll, Stream, mp_stream_flush_obj, mp_stream_ioctl_obj, mp_stream_read_obj,
+        mp_stream_read1_obj, mp_stream_write_obj, mp_stream_write1_obj,
+    },
     write_from_fn,
 };
 use vexide_devices::smart::serial::{SerialPort, SerialPortOpenFuture};
 
 use crate::{
     devices::{PortNumber, lock_port},
-    fun::fun2,
+    fun::{fun1, fun2},
     modvenice::vasyncio::event_loop::WAKE_SIGNAL,
     obj::alloc_obj,
     qstrgen::qstr,
@@ -44,7 +47,21 @@ pub struct SerialPortOpenFutureObj {
 pub static SERIAL_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(SerialPort))
     .set_stream(&SERIAL_STREAM)
     .set_locals_dict(const_dict![
+        qstr!(INTERNAL_BUFFER_SIZE) => Obj::from_int(SerialPort::INTERNAL_BUFFER_SIZE as i32),
+        qstr!(MAX_BAUD_RATE) => Obj::from_int(SerialPort::MAX_BAUD_RATE as i32),
+
         qstr!(open) => Obj::from_static(&StaticMethod::new(&fun2!(serial_open, i32, i32))),
+        qstr!(set_baud_rate) => Obj::from_static(&fun2!(serial_set_baud_rate, &SerialPortObj, i32)),
+        qstr!(clear_buffers) => Obj::from_static(&fun1!(serial_clear_buffers, &SerialPortObj)),
+
+        qstr!(read) => Obj::from_static(&mp_stream_read_obj),
+        qstr!(read1) => Obj::from_static(&mp_stream_read1_obj),
+        qstr!(write) => Obj::from_static(&mp_stream_write_obj),
+        qstr!(write1) => Obj::from_static(&mp_stream_write1_obj),
+        qstr!(flush) => Obj::from_static(&mp_stream_flush_obj),
+        qstr!(ioctl) => Obj::from_static(&mp_stream_ioctl_obj),
+
+        qstr!(free) => Obj::from_static(&fun1!(serial_free, &SerialPortObj)),
     ]);
 
 pub static SERIAL_FUTURE_OBJ_TYPE: ObjFullType =
@@ -100,6 +117,21 @@ extern "C" fn serial_future_iternext(self_in: Obj) -> Obj {
             Obj::from_static(&WAKE_SIGNAL)
         }
     }
+}
+
+fn serial_set_baud_rate(this: &SerialPortObj, baud_rate: i32) -> Obj {
+    this.guard.borrow_mut().set_baud_rate(baud_rate as u32);
+    Obj::NONE
+}
+
+fn serial_clear_buffers(this: &SerialPortObj) -> Obj {
+    this.guard.borrow_mut().clear_buffers();
+    Obj::NONE
+}
+
+fn serial_free(this: &SerialPortObj) -> Obj {
+    this.guard.free_or_raise();
+    Obj::NONE
 }
 
 fn err_to_code(_err: std::io::Error) -> c_int {
