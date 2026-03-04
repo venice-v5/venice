@@ -5,7 +5,10 @@ use micropython_rs::{
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
 
-use crate::qstrgen::qstr;
+use crate::{
+    modvenice::vasyncio::time32::{MILLIS_PER_SEC, NANOS_PER_MILLI},
+    qstrgen::qstr,
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TimeUnit {
@@ -20,6 +23,16 @@ impl TimeUnit {
             Self::Second => value,
         };
         Duration::from_secs_f32(secs)
+    }
+
+    pub fn dur_to_float(self, dur: Duration) -> f32 {
+        match self {
+            Self::Second => dur.as_secs_f32(),
+            Self::Millis => {
+                (dur.as_secs() as f32) * (MILLIS_PER_SEC as f32)
+                    + (dur.subsec_nanos() as f32) / (NANOS_PER_MILLI as f32)
+            }
+        }
     }
 }
 

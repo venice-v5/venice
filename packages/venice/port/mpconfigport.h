@@ -7,10 +7,11 @@
 #define MICROPY_PERSISTENT_CODE_LOAD (1)
 
 #define MICROPY_ENABLE_EXTERNAL_IMPORT (0)
-#define MICROPY_PY_IO (0)
+#define MICROPY_PY_IO (1)
 
 #define MICROPY_ERROR_REPORTING MICROPY_ERROR_REPORTING_DETAILED
 #define MICROPY_WARNINGS (1)
+#define MICROPY_USE_INTERNAL_ERRNO (1)
 
 // Literally the devil
 #define MICROPY_STACK_CHECK (0)
@@ -18,6 +19,13 @@
 #define MICROPY_OBJ_REPR MICROPY_OBJ_REPR_C
 #define MICROPY_LONGINT_IMPL MICROPY_LONGINT_IMPL_MPZ
 #define MICROPY_FLOAT_IMPL MICROPY_FLOAT_IMPL_FLOAT
+
+#define MICROPY_READLINE_HISTORY_SIZE (8)
+struct venice_port_state {
+    const char* readline_hist[MICROPY_READLINE_HISTORY_SIZE];
+};
+extern struct venice_port_state venice_port_state;
+#define MP_STATE_PORT(x) (venice_port_state.x)
 
 typedef int32_t mp_int_t; // must be pointer size
 typedef uint32_t mp_uint_t; // must be pointer size

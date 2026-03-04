@@ -123,20 +123,37 @@ macro_rules! fun3 {
     }};
 }
 
-macro_rules! fun_var {
-    ($f:expr) => {{
-        use ::micropython_rs::fun::FunVar;
+macro_rules! fun_var_between {
+    ($f:expr, $args_min:expr, $args_max:expr) => {{
+        use ::micropython_rs::{fun::FunVarBetween, obj::Obj};
 
-        unsafe extern "C" fn trampoline(n_args: usize, ptr: *const Obj) -> Obj {
+        unsafe extern "C" fn trampoline<'a>(n_args: usize, ptr: *const Obj) -> Obj {
+            let f: fn(&'a [Obj]) -> Obj = $f;
             let args = unsafe { ::std::slice::from_raw_parts(ptr, n_args) };
-            $f(args)
+            f(args)
         }
 
-        FunVar::new(trampoline)
+        FunVarBetween::new(trampoline, $args_min, $args_max)
     }};
 }
 
-pub(crate) use fun_var;
+macro_rules! fun_var_kw {
+    ($f:expr, $args_min:expr) => {{
+        use ::micropython_rs::fun::FunVarKw;
+
+        unsafe extern "C" fn trampoline<'a>(n_args: usize, ptr: *const Obj, map: *mut Map) -> Obj {
+            let f: fn(&'a [Obj], &'a Map) -> Obj = $f;
+            let pos_args = unsafe { ::std::slice::from_raw_parts(ptr, n_args) };
+            let kw_map = unsafe { &*map };
+            f(pos_args, kw_map)
+        }
+
+        FunVarKw::new(trampoline, $args_min)
+    }};
+}
+
+pub(crate) use fun_var_between;
+pub(crate) use fun_var_kw;
 pub(crate) use fun1;
 pub(crate) use fun2;
 pub(crate) use fun3;

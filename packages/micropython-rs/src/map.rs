@@ -95,6 +95,10 @@ impl Map {
         self.used & 0b10 != 0
     }
 
+    pub fn len(&self) -> usize {
+        self.used & 0x1fffffff
+    }
+
     pub fn get(&self, index: Obj) -> Option<Obj> {
         unsafe {
             let elem = mp_map_lookup(self as *const Self as *mut Self, index, LookupKind::Lookup);

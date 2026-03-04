@@ -42,8 +42,10 @@ impl Builder {
         let port_dir = Path::new(manifest_dir).join("port");
 
         let mut c_srcs = Vec::new();
+
         collect_dir_files(&py_dir, OsStr::new("c"), false, &mut c_srcs);
         collect_dir_files(&port_dir, OsStr::new("c"), false, &mut c_srcs);
+        c_srcs.push(mp_dir.join("shared/readline/readline.c"));
 
         let mut rust_srcs = Vec::new();
         collect_dir_files(

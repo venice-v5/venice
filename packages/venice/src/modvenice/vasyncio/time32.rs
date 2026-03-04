@@ -15,9 +15,13 @@ pub struct Instant {
     inner: Duration,
 }
 
-const NANOS_PER_MICROS: u64 = 1000;
-const MICROS_PER_SEC: u64 = 1_000_000;
-const NANOS_PER_SEC: u64 = NANOS_PER_MICROS * MICROS_PER_SEC;
+pub const NANOS_PER_MICROS: u64 = 1000;
+pub const MICROS_PER_MILLI: u64 = 1000;
+pub const MILLIS_PER_SEC: u64 = 1000;
+
+pub const NANOS_PER_MILLI: u64 = NANOS_PER_MICROS * MICROS_PER_MILLI;
+pub const NANOS_PER_SEC: u64 = NANOS_PER_MICROS * MICROS_PER_SEC;
+pub const MICROS_PER_SEC: u64 = MICROS_PER_MILLI * MILLIS_PER_SEC;
 
 impl Nanoseconds {
     pub const fn overflowing_add(self, rhs: Self) -> (Self, bool) {
