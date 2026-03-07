@@ -418,7 +418,7 @@ pub enum SubscrOp {
     Delete,
 }
 
-pub unsafe extern "C" fn make_new_trampoline<'a, F, O>(
+pub unsafe fn make_new_trampoline<F, O>(
     f: F,
     ty: *const ObjType,
     n_pos: usize,
@@ -426,7 +426,7 @@ pub unsafe extern "C" fn make_new_trampoline<'a, F, O>(
     ptr: *const Obj,
 ) -> Obj
 where
-    F: FnOnce(&'static ObjType, usize, usize, &'a [Obj]) -> O,
+    F: for<'a> FnOnce(&'static ObjType, usize, usize, &'a [Obj]) -> O,
     O: Into<Obj>,
 {
     // TODO: safe?
@@ -462,7 +462,7 @@ macro_rules! make_new_from_fn {
     }};
 }
 
-pub unsafe extern "C" fn attr_trampoline<F, O>(f: F, self_in: Obj, attr: Qstr, dest: *mut Obj)
+pub unsafe fn attr_trampoline<F, O>(f: F, self_in: Obj, attr: Qstr, dest: *mut Obj)
 where
     F: FnOnce(&O, Qstr, AttrOp),
     Obj: AsRef<O>,
@@ -516,7 +516,7 @@ macro_rules! attr_from_fn {
     }};
 }
 
-pub extern "C" fn subscr_trampoline<F, O, R>(f: F, self_in: Obj, index: Obj, value: Obj) -> Obj
+pub fn subscr_trampoline<F, O, R>(f: F, self_in: Obj, index: Obj, value: Obj) -> Obj
 where
     F: FnOnce(&O, i32, SubscrOp) -> R,
     Obj: AsRef<O>,
