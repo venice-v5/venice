@@ -6,3 +6,4 @@ edition = "2024"
 [dependencies]
 bitflags = "2.9.2"
 thiserror = { version = "2.0.14", default-features = false }
+micropython-macros.path = "../micropython-macros"

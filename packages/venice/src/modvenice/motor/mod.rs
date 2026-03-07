@@ -96,7 +96,7 @@ pub(crate) static MOTOR_EXP_OBJ_TYPE: ObjFullType =
             qstr!(MAX_VOLTAGE) => Obj::from_float(8.0),
         ]);
 
-fn motor_attr(_this: Obj, attr: Qstr, op: AttrOp) {
+fn motor_attr(_this: &Obj, attr: Qstr, op: AttrOp) {
     let AttrOp::Load { result } = op else { return };
 
     let locals_dict = ABSTRACT_MOTOR_OBJ_TYPE.as_obj_type().locals_dict().unwrap();

@@ -5,9 +5,8 @@ use thiserror::Error;
 
 use crate::{
     gc::{self},
-    init::InitToken,
+    init::{InitToken, token},
     map::Dict,
-    obj::sealed::Sealed,
     ops::{BinaryOp, UnaryOp},
     print::{Print, PrintKind},
     qstr::Qstr,
@@ -264,7 +263,7 @@ pub unsafe trait ObjTrait: Sized {
 
 bitflags! {
     /// Object type flags.
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
     pub struct TypeFlags: u16 {
         const IS_SUBCLASSED = 0x0001;
         const HAS_SPECIAL_ACCESSORS = 0x0002;
@@ -419,6 +418,23 @@ pub enum SubscrOp {
     Delete,
 }
 
+pub unsafe extern "C" fn make_new_trampoline<'a, F, O>(
+    f: F,
+    ty: *const ObjType,
+    n_pos: usize,
+    n_kw: usize,
+    ptr: *const Obj,
+) -> Obj
+where
+    F: FnOnce(&'static ObjType, usize, usize, &'a [Obj]) -> O,
+    O: Into<Obj>,
+{
+    // TODO: safe?
+    let ty = unsafe { &*ty };
+    let args = unsafe { ::std::slice::from_raw_parts(ptr, n_pos + (n_kw * 2)) };
+    f(ty, n_pos, n_kw, args).into()
+}
+
 /// Generates a [`MakeNew`] from a safe Rust function.
 ///
 /// # Usage
@@ -433,58 +449,44 @@ pub enum SubscrOp {
 #[macro_export]
 macro_rules! make_new_from_fn {
     ($f:expr) => {{
-        unsafe extern "C" fn trampoline(
+        unsafe extern "C" fn trampoline<'a>(
             ty: *const $crate::obj::ObjType,
             n_pos: usize,
             n_kw: usize,
             ptr: *const $crate::obj::Obj,
         ) -> Obj {
-            // TODO: safe?
-            let ty: &'static $crate::obj::ObjType = unsafe { &*ty };
-            let args = unsafe { ::std::slice::from_raw_parts(ptr, n_pos + (n_kw * 2)) };
-            $f(ty, n_pos, n_kw, args)
+            unsafe { $crate::obj::make_new_trampoline($f, ty, n_pos, n_kw, ptr) }
         }
 
         unsafe { $crate::obj::MakeNew::new(trampoline) }
     }};
 }
 
-mod sealed {
-    use super::*;
-
-    pub trait Sealed<O> {}
-
-    impl<F, O> Sealed<O> for F
-    where
-        F: Fn(&O, Qstr, AttrOp),
-        O: ObjTrait,
-    {
-    }
-
-    impl<F> Sealed<Obj> for F where F: Fn(Obj, Qstr, AttrOp) {}
-}
-
-pub trait TrampolineAttrFn<O>: Sealed<O> {
-    fn call(&self, self_in: Obj, attr: Qstr, op: AttrOp);
-}
-
-impl<F, O> TrampolineAttrFn<O> for F
+pub unsafe extern "C" fn attr_trampoline<F, O>(f: F, self_in: Obj, attr: Qstr, dest: *mut Obj)
 where
-    F: Fn(&O, Qstr, AttrOp),
-    O: ObjTrait,
+    F: FnOnce(&O, Qstr, AttrOp),
+    Obj: AsRef<O>,
 {
-    fn call(&self, self_in: Obj, attr: Qstr, op: AttrOp) {
-        self(self_in.try_as_obj().unwrap(), attr, op);
-    }
-}
-
-impl<F> TrampolineAttrFn<Obj> for F
-where
-    F: Fn(Obj, Qstr, AttrOp),
-{
-    fn call(&self, self_in: Obj, attr: Qstr, op: AttrOp) {
-        self(self_in, attr, op);
-    }
+    let op = unsafe {
+        let dest1 = dest.add(1);
+        if (*dest).is_null() {
+            AttrOp::Load {
+                result: LoadResult::new(self_in, &mut *dest, &mut *dest1),
+            }
+        } else {
+            if (*dest1).is_null() {
+                AttrOp::Delete {
+                    result: DeleteResult::new(&mut *dest),
+                }
+            } else {
+                AttrOp::Store {
+                    src: *dest1,
+                    result: StoreResult::new(&mut *dest),
+                }
+            }
+        }
+    };
+    f(self_in.as_ref(), attr, op);
 }
 
 /// Generates an [`Attr`] from a safe Rust function.
@@ -502,31 +504,37 @@ where
 #[macro_export]
 macro_rules! attr_from_fn {
     ($f:expr) => {{
-        unsafe extern "C" fn trampoline(self_in: Obj, attr: Qstr, dest: *mut Obj) {
-            let op = unsafe {
-                let dest1 = dest.add(1);
-                if (*dest).is_null() {
-                    $crate::obj::AttrOp::Load {
-                        result: $crate::obj::LoadResult::new(self_in, &mut *dest, &mut *dest1),
-                    }
-                } else {
-                    if (*dest1).is_null() {
-                        $crate::obj::AttrOp::Delete {
-                            result: $crate::obj::DeleteResult::new(&mut *dest),
-                        }
-                    } else {
-                        $crate::obj::AttrOp::Store {
-                            src: *dest1,
-                            result: $crate::obj::StoreResult::new(&mut *dest),
-                        }
-                    }
-                }
-            };
-            $crate::obj::TrampolineAttrFn::call(&$f, self_in, attr, op);
+        unsafe extern "C" fn trampoline(
+            self_in: $crate::obj::Obj,
+            attr: $crate::qstr::Qstr,
+            dest: *mut $crate::obj::Obj,
+        ) {
+            unsafe { $crate::obj::attr_trampoline($f, self_in, attr, dest) }
         }
 
         unsafe { $crate::obj::Attr::new(trampoline) }
     }};
+}
+
+pub extern "C" fn subscr_trampoline<F, O, R>(f: F, self_in: Obj, index: Obj, value: Obj) -> Obj
+where
+    F: FnOnce(&O, i32, SubscrOp) -> R,
+    Obj: AsRef<O>,
+    R: Into<Obj>,
+{
+    let Some(index) = index.try_to_int() else {
+        return Obj::NULL;
+    };
+
+    let op = if value.is_null() {
+        SubscrOp::Delete
+    } else if value.is_sentinel() {
+        SubscrOp::Load
+    } else {
+        SubscrOp::Store { src: value }
+    };
+
+    f(self_in.as_ref(), index, op).into()
 }
 
 /// Generates a [`Subscr`] from a safe Rust function.
@@ -544,20 +552,12 @@ macro_rules! attr_from_fn {
 #[macro_export]
 macro_rules! subscr_from_fn {
     ($f:expr) => {{
-        extern "C" fn trampoline(self_in: Obj, index: Obj, value: Obj) -> Obj {
-            let Some(index) = index.try_to_int() else {
-                return Obj::NULL;
-            };
-
-            let op = if value.is_null() {
-                SubscrOp::Delete
-            } else if value.is_sentinel() {
-                SubscrOp::Load
-            } else {
-                SubscrOp::Store { src: value }
-            };
-
-            $f(self_in.try_as_obj().unwrap(), index, op)
+        extern "C" fn trampoline(
+            self_in: $crate::obj::Obj,
+            index: $crate::obj::Obj,
+            value: $crate::obj::Obj,
+        ) -> $crate::obj::Obj {
+            $crate::obj::subscr_trampoline($f, self_in, index, value)
         }
 
         unsafe { $crate::obj::Subscr::new(trampoline) }
@@ -1081,6 +1081,24 @@ impl Obj {
         self.obj_type()
             .and_then(|ty| ty.slot_value_raw(Slot::Call))
             .is_some()
+    }
+}
+
+impl<O: ObjTrait + 'static> From<O> for Obj {
+    fn from(value: O) -> Self {
+        Obj::new(token(), value, false).expect("allocation error")
+    }
+}
+
+impl<O: ObjTrait> AsRef<O> for Obj {
+    fn as_ref(&self) -> &O {
+        self.try_as_obj_or_coerce().expect("mismatched types")
+    }
+}
+
+impl AsRef<Obj> for Obj {
+    fn as_ref(&self) -> &Obj {
+        self
     }
 }
 

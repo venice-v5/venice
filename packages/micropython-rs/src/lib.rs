@@ -7,6 +7,7 @@ mod raw;
 
 pub(crate) mod print;
 
+pub mod class;
 pub mod errno;
 pub mod except;
 pub mod fun;
@@ -25,3 +26,5 @@ pub mod str;
 pub mod stream;
 pub mod tuple;
 pub mod vstr;
+
+pub use micropython_macros::*;
