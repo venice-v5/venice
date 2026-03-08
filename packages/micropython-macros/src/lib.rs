@@ -276,13 +276,14 @@ pub fn class_methods(_: TokenStream, item: TokenStream) -> TokenStream {
         .map(|f| quote! { Some(#f) })
         .unwrap_or(none_tokens);
 
-    let mut method_tokens = Vec::with_capacity(methods.len());
-    for (sig, attr) in methods.iter() {
-        match generate_fun(&ty, sig, attr) {
-            Ok(tokens) => method_tokens.push(tokens),
-            Err(e) => return e.into_compile_error().into(),
-        }
-    }
+    let method_tokens = match methods
+        .into_iter()
+        .map(|(sig, attr)| generate_fun(&ty, &sig, &attr))
+        .collect::<syn::Result<Vec<_>>>()
+    {
+        Ok(tokens) => tokens,
+        Err(e) => return e.into_compile_error().into(),
+    };
 
     quote! {
         #input
