@@ -1,3 +1,4 @@
+use argparse::{ArgType, error_msg};
 use micropython_rs::{
     const_dict,
     except::raise_type_error,
@@ -7,7 +8,7 @@ use micropython_rs::{
 };
 use vexide_devices::smart::ai_vision::AiVisionDetectionMode;
 
-use crate::{args::ArgType, error_msg::error_msg, obj::alloc_obj, qstrgen::qstr};
+use crate::{obj::alloc_obj, qstrgen::qstr};
 
 static AI_VISION_DETECTION_MODE_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(AiVisionDetectionMode))

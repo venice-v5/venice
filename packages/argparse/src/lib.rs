@@ -1,3 +1,5 @@
+pub mod error_msg;
+
 use std::fmt::Display;
 
 use micropython_rs::{
@@ -6,8 +8,6 @@ use micropython_rs::{
     obj::{Obj, ObjTrait, ObjType, repr_c},
     str::Str,
 };
-
-use crate::error_msg::error_msg;
 
 #[derive(Clone, Copy)]
 pub struct Args<'a> {

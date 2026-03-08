@@ -1,5 +1,6 @@
 use std::cell::Cell;
 
+use argparse::{ArgValue, Args, error_msg};
 use micropython_rs::{
     except::{raise_stop_iteration, raise_type_error},
     init::token,
@@ -8,13 +9,7 @@ use micropython_rs::{
 };
 
 use super::time32;
-use crate::{
-    args::{ArgValue, Args},
-    error_msg::error_msg,
-    modvenice::units::time::TimeUnitObj,
-    obj::alloc_obj,
-    qstrgen::qstr,
-};
+use crate::{modvenice::units::time::TimeUnitObj, obj::alloc_obj, qstrgen::qstr};
 
 #[repr(C)]
 pub struct Sleep {

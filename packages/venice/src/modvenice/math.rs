@@ -1,5 +1,6 @@
 use std::cell::Cell;
 
+use argparse::{ArgType, error_msg};
 use micropython_rs::{
     attr_from_fn,
     except::raise_type_error,
@@ -9,9 +10,7 @@ use micropython_rs::{
 };
 use vexide_devices::math::Angle;
 
-use crate::{
-    args::ArgType, error_msg::error_msg, modvenice::units::rotation::RotationUnit, qstrgen::qstr,
-};
+use crate::{modvenice::units::rotation::RotationUnit, qstrgen::qstr};
 
 #[repr(C)]
 pub struct Vec3 {

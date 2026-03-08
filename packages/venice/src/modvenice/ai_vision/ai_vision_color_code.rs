@@ -1,5 +1,6 @@
 use std::cell::Cell;
 
+use argparse::Args;
 use micropython_rs::{
     init::token,
     make_new_from_fn,
@@ -8,7 +9,7 @@ use micropython_rs::{
 };
 use vexide_devices::smart::ai_vision::AiVisionColorCode;
 
-use crate::{args::Args, obj::alloc_obj, qstrgen::qstr};
+use crate::{obj::alloc_obj, qstrgen::qstr};
 
 static AI_VISION_COLOR_CODE_OBJ_TYPE: ObjFullType =
     ObjFullType::new(TypeFlags::empty(), qstr!(AiVisionColorCode))

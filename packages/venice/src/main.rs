@@ -1,9 +1,7 @@
 //! Open source MicroPython port for VEX V5 robots.
 #![feature(allocator_api)]
 
-pub mod args;
 pub mod devices;
-pub mod error_msg;
 pub mod fun;
 pub mod obj;
 pub mod qstrgen;

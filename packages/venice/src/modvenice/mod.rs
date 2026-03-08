@@ -75,7 +75,7 @@ macro_rules! raise_port_error {
     ($e:expr) => {
         $crate::modvenice::raise_device_error(
             ::micropython_rs::init::token(),
-            $crate::error_msg::error_msg!("{}", $e),
+            ::argparse::error_msg!("{}", $e),
         )
     };
 }

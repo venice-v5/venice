@@ -3,6 +3,7 @@ pub mod direction;
 pub mod gearset;
 pub mod motor_type;
 
+use argparse::Args;
 use brake::BrakeModeObj;
 use direction::DirectionObj;
 use gearset::GearsetObj;
@@ -18,7 +19,6 @@ use vexide_devices::{math::Direction, smart::motor::Motor};
 
 use super::raise_device_error;
 use crate::{
-    args::Args,
     devices::{self, PortNumber},
     fun::{fun_var_between, fun1, fun2, fun3},
     modvenice::{

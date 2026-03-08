@@ -3,6 +3,7 @@ pub mod state;
 
 use std::{cell::RefCell, ffi::CStr, ops::RangeInclusive};
 
+use argparse::{Args, error_msg};
 use micropython_rs::{
     attr_from_fn, const_dict,
     except::{raise_stop_iteration, raise_value_error},
@@ -19,9 +20,7 @@ use vexide_devices::controller::{Controller, ControllerConnection, ControllerErr
 use self::state::ControllerStateObj;
 use crate::{
     alloc::Gc,
-    args::Args,
     devices,
-    error_msg::error_msg,
     fun::{fun_var_between, fun1, fun2},
     modvenice::{
         controller::id::ControllerIdObj, raise_device_error, raise_port_error,

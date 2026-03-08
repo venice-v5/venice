@@ -1,5 +1,6 @@
 use std::cell::Cell;
 
+use argparse::{ArgType, error_msg};
 use bitflags::bitflags;
 use micropython_rs::{
     const_dict,
@@ -12,8 +13,6 @@ use micropython_rs::{
 };
 
 use crate::{
-    args::ArgType,
-    error_msg::error_msg,
     fun::fun1,
     modvenice::vasyncio::event_loop::{self, EventLoop},
     obj::alloc_obj,

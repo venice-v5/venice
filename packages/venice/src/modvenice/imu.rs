@@ -1,5 +1,6 @@
 use std::cell::Cell;
 
+use argparse::Args;
 use micropython_rs::{
     const_dict,
     except::{raise_stop_iteration, raise_value_error},
@@ -15,7 +16,6 @@ use vexide_devices::smart::{
 };
 
 use crate::{
-    args::Args,
     devices::{self, PortNumber},
     fun::{fun1, fun2, fun3},
     modvenice::{

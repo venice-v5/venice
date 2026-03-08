@@ -4,6 +4,7 @@ pub mod ai_vision_detection_mode;
 pub mod ai_vision_flags;
 pub mod ai_vision_object;
 pub mod april_tag_family;
+use argparse::Args;
 use micropython_rs::{
     const_dict,
     except::raise_value_error,
@@ -15,7 +16,6 @@ use micropython_rs::{
 use vexide_devices::smart::ai_vision::AiVisionSensor;
 
 use crate::{
-    args::Args,
     devices::{self, PortNumber},
     fun::{fun1, fun2, fun3},
     modvenice::{

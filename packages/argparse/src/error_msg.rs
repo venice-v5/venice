@@ -86,6 +86,7 @@ impl Write for MessageWriter {
     }
 }
 
+#[macro_export]
 macro_rules! error_msg {
     ($($arg:tt)*) => {{
         use ::std::fmt::Write;
@@ -95,5 +96,3 @@ macro_rules! error_msg {
         writer.finish()
     }};
 }
-
-pub(crate) use error_msg;

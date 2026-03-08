@@ -1,6 +1,7 @@
 pub mod gesture;
 pub mod rgb;
 
+use argparse::Args;
 use micropython_rs::{
     const_dict,
     except::raise_value_error,
@@ -11,7 +12,6 @@ use micropython_rs::{
 use vexide_devices::smart::optical::OpticalSensor;
 
 use crate::{
-    args::Args,
     devices::{self, PortNumber},
     fun::{fun1, fun2, fun3},
     modvenice::{

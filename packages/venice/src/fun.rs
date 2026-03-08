@@ -1,7 +1,7 @@
 macro_rules! fun1 {
     ($f:expr, $a:ty) => {{
+        use ::argparse::{ArgTrait, ArgValue};
         use ::micropython_rs::{except::raise_type_error, fun::Fun1, init::token, obj::Obj};
-        use $crate::args::{ArgTrait, ArgValue};
 
         extern "C" fn trampoline(a: Obj) -> Obj {
             let a_value = ArgValue::from_obj(&a);
@@ -9,7 +9,7 @@ macro_rules! fun1 {
             if !<$a as ArgTrait>::coercable(a_value.ty()) {
                 raise_type_error(
                     token(),
-                    $crate::error_msg::error_msg!(
+                    ::argparse::error_msg!(
                         "expected <{}> for argument #1, found <{}>",
                         <$a as ArgTrait>::ty(),
                         a_value.ty()
@@ -26,8 +26,8 @@ macro_rules! fun1 {
 
 macro_rules! fun2 {
     ($f:expr, $a:ty, $b:ty) => {{
+        use ::argparse::{ArgTrait, ArgValue};
         use ::micropython_rs::{except::raise_type_error, fun::Fun2, init::token, obj::Obj};
-        use $crate::args::{ArgTrait, ArgValue};
 
         extern "C" fn trampoline(a: Obj, b: Obj) -> Obj {
             let a_value = ArgValue::from_obj(&a);
@@ -36,7 +36,7 @@ macro_rules! fun2 {
             if !<$a as ArgTrait>::coercable(a_value.ty()) {
                 raise_type_error(
                     token(),
-                    $crate::error_msg::error_msg!(
+                    ::argparse::error_msg!(
                         "expected <{}> for argument #1, found <{}>",
                         <$a as ArgTrait>::ty(),
                         a_value.ty()
@@ -47,7 +47,7 @@ macro_rules! fun2 {
             if !<$b as ArgTrait>::coercable(b_value.ty()) {
                 raise_type_error(
                     token(),
-                    $crate::error_msg::error_msg!(
+                    ::argparse::error_msg!(
                         "expected <{}> for argument #2, found <{}>",
                         <$b as ArgTrait>::ty(),
                         b_value.ty()
@@ -69,8 +69,8 @@ macro_rules! fun2 {
 
 macro_rules! fun3 {
     ($f:expr, $a:ty, $b:ty, $c:ty) => {{
+        use ::argparse::{ArgTrait, ArgValue};
         use ::micropython_rs::{except::raise_type_error, fun::Fun3, init::token, obj::Obj};
-        use $crate::args::{ArgTrait, ArgValue};
 
         extern "C" fn trampoline(a: Obj, b: Obj, c: Obj) -> Obj {
             let a_value = ArgValue::from_obj(&a);
@@ -80,7 +80,7 @@ macro_rules! fun3 {
             if !<$a as ArgTrait>::coercable(a_value.ty()) {
                 raise_type_error(
                     token(),
-                    $crate::error_msg::error_msg!(
+                    ::argparse::error_msg!(
                         "expected <{}> for argument #1, found <{}>",
                         <$a as ArgTrait>::ty(),
                         a_value.ty()
@@ -91,7 +91,7 @@ macro_rules! fun3 {
             if !<$b as ArgTrait>::coercable(b_value.ty()) {
                 raise_type_error(
                     token(),
-                    $crate::error_msg::error_msg!(
+                    ::argparse::error_msg!(
                         "expected <{}> for argument #2, found <{}>",
                         <$b as ArgTrait>::ty(),
                         b_value.ty()
@@ -102,7 +102,7 @@ macro_rules! fun3 {
             if !<$c as ArgTrait>::coercable(c_value.ty()) {
                 raise_type_error(
                     token(),
-                    $crate::error_msg::error_msg!(
+                    ::argparse::error_msg!(
                         "expected <{}> for argument #3, found <{}>",
                         <$c as ArgTrait>::ty(),
                         c_value.ty()

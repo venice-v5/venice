@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 
+use argparse::error_msg;
 use micropython_rs::{
     except::{mp_type_ImportError, raise_msg, raise_value_error},
     init::{InitToken, token},
@@ -11,7 +12,6 @@ use micropython_rs::{
 };
 
 use crate::{
-    error_msg::error_msg,
     module_map::{MODULE_MAP, VptModuleFlags},
     qstrgen::qstr,
 };

@@ -1,5 +1,6 @@
 pub mod distance_object;
 
+use argparse::Args;
 use micropython_rs::{
     const_dict,
     except::raise_value_error,
@@ -10,7 +11,6 @@ use micropython_rs::{
 use vexide_devices::smart::distance::DistanceSensor;
 
 use crate::{
-    args::Args,
     devices::{self, PortNumber},
     fun::fun1,
     modvenice::{distance_sensor::distance_object::DistanceObjectObj, raise_port_error},
