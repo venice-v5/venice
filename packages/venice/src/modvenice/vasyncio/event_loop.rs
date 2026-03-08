@@ -4,12 +4,11 @@ use std::{
 };
 
 use micropython_rs::{
-    const_dict,
+    class, class_methods,
     except::{mp_type_RuntimeError, raise_msg, raise_type_error},
     fun::{Fun1, Fun2},
     generator::{GEN_INSTANCE_TYPE, VmReturnKind, resume_gen},
     init::token,
-    make_new_from_fn,
     nlr::{self, push_nlr_callback},
     obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
 };
@@ -17,16 +16,6 @@ use vex_sdk::vexTasksRun;
 
 use super::{sleep::Sleep, task::Task, time32};
 use crate::{alloc::Gc, obj::alloc_obj, qstrgen::qstr};
-
-pub static EVENT_LOOP_OBJ_TYPE: ObjFullType =
-    ObjFullType::new(TypeFlags::empty(), qstr!(EventLoop))
-        .set_make_new(make_new_from_fn!(event_loop_new))
-        .set_locals_dict({
-            const_dict![
-                qstr!(spawn) => Obj::from_static(&Fun2::new(event_loop_spawn)),
-                qstr!(run) => Obj::from_static(&Fun1::new(event_loop_run)),
-            ]
-        });
 
 struct Sleeper {
     task: Obj,
@@ -70,16 +59,13 @@ pub static WAKE_SIGNAL: WakeSignal = WakeSignal {
     base: ObjBase::new(WakeSignal::OBJ_TYPE),
 };
 
+#[class(qstr!(EventLoop))]
 #[repr(C)]
 pub struct EventLoop {
     base: ObjBase<'static>,
     ready: RefCell<VecDeque<Obj, Gc>>,
     sleepers: RefCell<BinaryHeap<Sleeper, Gc>>,
     current_task: Cell<Obj>,
-}
-
-unsafe impl ObjTrait for EventLoop {
-    const OBJ_TYPE: &ObjType = EVENT_LOOP_OBJ_TYPE.as_obj_type();
 }
 
 thread_local! {
@@ -182,39 +168,45 @@ impl EventLoop {
     }
 }
 
-fn event_loop_new(_: &ObjType, n_args: usize, n_kw: usize, _args: &[Obj]) -> Obj {
-    if n_args != 0 || n_kw != 0 {
-        raise_type_error(token(), c"function does not accept any arguments");
+#[class_methods]
+impl EventLoop {
+    #[make_new]
+    fn make_new(_: &ObjType, n_args: usize, n_kw: usize, _args: &[Obj]) -> Self {
+        if n_args != 0 || n_kw != 0 {
+            raise_type_error(token(), c"function does not accept any arguments");
+        }
+
+        Self::new()
     }
 
-    alloc_obj(EventLoop::new())
-}
+    // this function can't use a Fun generator because a Generator struct would be needed to write out
+    // its type signature, and that struct does not exist
+    extern "C" fn py_spawn(self_in: Obj, coro: Obj) -> Obj {
+        if !coro.is(GEN_INSTANCE_TYPE) {
+            raise_type_error(token(), c"expected coroutine");
+        }
 
-// this function can't use a Fun generator because a Generator struct would be needed to write out
-// its type signature, and that struct does not exist
-extern "C" fn event_loop_spawn(self_in: Obj, coro: Obj) -> Obj {
-    if !coro.is(GEN_INSTANCE_TYPE) {
-        raise_type_error(token(), c"expected coroutine");
+        self_in.try_as_obj::<EventLoop>().unwrap().spawn(coro)
     }
 
-    self_in.try_as_obj::<EventLoop>().unwrap().spawn(coro)
-}
+    #[constant(qstr!(spawn))]
+    const SPAWN: Fun2 = Fun2::new(Self::py_spawn);
 
-// this function can't use a Fun generator because it needs the EventLoop in Obj form, not as a
-// reference, in order to properly replace the static variable
-extern "C" fn event_loop_run(self_in: Obj) -> Obj {
-    let prev_loop = RUNNING_LOOP.replace(self_in);
-    push_nlr_callback(
-        token(),
-        || self_in.try_as_obj::<EventLoop>().unwrap().run(),
-        || RUNNING_LOOP.set(prev_loop),
-        true,
-    );
-    Obj::NONE
-}
+    // this function can't use a Fun generator because it needs the EventLoop in Obj form, not as a
+    // reference, in order to properly replace the static variable
+    extern "C" fn py_run(self_in: Obj) -> Obj {
+        let prev_loop = RUNNING_LOOP.replace(self_in);
+        push_nlr_callback(
+            token(),
+            || self_in.try_as_obj::<EventLoop>().unwrap().run(),
+            || RUNNING_LOOP.set(prev_loop),
+            true,
+        );
+        Obj::NONE
+    }
 
-pub extern "C" fn get_running_loop() -> Obj {
-    RUNNING_LOOP.get()
+    #[constant(qstr!(run))]
+    const RUN: Fun1 = Fun1::new(Self::py_run);
 }
 
 pub extern "C" fn vasyncio_run(coro: Obj) -> Obj {
@@ -224,16 +216,20 @@ pub extern "C" fn vasyncio_run(coro: Obj) -> Obj {
 
     let eloop = EventLoop::new();
     eloop.spawn(coro);
-    event_loop_run(alloc_obj(eloop))
+    EventLoop::py_run(alloc_obj(eloop))
 }
 
 // this function can't use a Fun generator because a Generator struct would be needed to write out
 // its type signature, and that struct does not exist
 pub extern "C" fn vasyncio_spawn(coro: Obj) -> Obj {
-    let eloop = get_running_loop();
+    let eloop = RUNNING_LOOP.get();
     if eloop.is_none() {
         raise_msg(token(), &mp_type_RuntimeError, c"no running event loop");
     }
 
-    event_loop_spawn(eloop, coro)
+    EventLoop::py_spawn(eloop, coro)
+}
+
+pub extern "C" fn vasyncio_get_running_loop() -> Obj {
+    RUNNING_LOOP.get()
 }

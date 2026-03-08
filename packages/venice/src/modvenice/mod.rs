@@ -57,7 +57,7 @@ use crate::{
         },
         serial::{SerialPortObj, SerialPortOpenFutureObj},
         vasyncio::{
-            event_loop::{EVENT_LOOP_OBJ_TYPE, get_running_loop, vasyncio_run, vasyncio_spawn},
+            event_loop::{EventLoop, vasyncio_get_running_loop, vasyncio_run, vasyncio_spawn},
             sleep::SLEEP_OBJ_TYPE,
         },
     },
@@ -133,9 +133,9 @@ static mut venice_globals: Dict = Dict::new(const_map![
     qstr!(RotationSensor) => Obj::from_static(RotationSensorObj::OBJ_TYPE),
 
     // async
-    qstr!(EventLoop) => Obj::from_static(&EVENT_LOOP_OBJ_TYPE),
+    qstr!(EventLoop) => Obj::from_static(EventLoop::OBJ_TYPE),
     qstr!(Sleep) => Obj::from_static(&SLEEP_OBJ_TYPE),
-    qstr!(get_running_loop) => Obj::from_static(&Fun0::new(get_running_loop)),
+    qstr!(get_running_loop) => Obj::from_static(&Fun0::new(vasyncio_get_running_loop)),
     qstr!(run) => Obj::from_static(&Fun1::new(vasyncio_run)),
     qstr!(spawn) => Obj::from_static(&Fun1::new(vasyncio_spawn)),
 

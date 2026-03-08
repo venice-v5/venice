@@ -14,7 +14,7 @@ use micropython_rs::{
 
 use crate::{
     fun::fun1,
-    modvenice::vasyncio::event_loop::{self, EventLoop},
+    modvenice::vasyncio::event_loop::{EventLoop, vasyncio_get_running_loop},
     obj::alloc_obj,
     qstrgen::qstr,
 };
@@ -161,7 +161,7 @@ impl CompetitionRuntime {
 
         if !self.coro.get().is_null() {
             // tick the coroutine on the current task
-            let terminated = event_loop::get_running_loop()
+            let terminated = vasyncio_get_running_loop()
                 .try_as_obj::<EventLoop>()
                 .unwrap()
                 .tick_coro(Obj::NULL, self.coro.get());
