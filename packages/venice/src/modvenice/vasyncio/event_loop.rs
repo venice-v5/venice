@@ -187,7 +187,7 @@ impl EventLoop {
     }
 
     #[constant(qstr!(spawn))]
-    const SPAWN: Fun2 = Fun2::new(Self::py_spawn);
+    const SPAWN: &Fun2 = &Fun2::new(Self::py_spawn);
 
     // this function can't use a Fun generator because it needs the EventLoop in Obj form, not as a
     // reference, in order to properly replace the static variable
@@ -203,7 +203,7 @@ impl EventLoop {
     }
 
     #[constant(qstr!(run))]
-    const RUN: Fun1 = Fun1::new(Self::py_run);
+    const RUN: &Fun1 = &Fun1::new(Self::py_run);
 }
 
 pub extern "C" fn vasyncio_run(coro: Obj) -> Obj {

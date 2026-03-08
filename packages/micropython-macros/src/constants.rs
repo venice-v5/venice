@@ -76,7 +76,7 @@ pub fn generate_constant(
             quote! { #qstr => ::micropython_rs::obj::Obj::#cons(#spanned_ty::#constant_name), }
         }
         None => {
-            quote_spanned! {constant.ty.span()=> #qstr => ::micropython_rs::obj::Obj::from_static(&<#ty>::#constant_name), }
+            quote_spanned! {constant.ty.span()=> #qstr => ::micropython_rs::obj::Obj::from_static(<#ty>::#constant_name), }
         }
     })
 }
