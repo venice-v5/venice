@@ -1,27 +1,41 @@
 use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned};
 use syn::{
-    Attribute, ExprMacro, FnArg, Ident, LitInt, Signature, Token, Type,
+    Attribute, ExprMacro, FnArg, Ident, LitInt, Meta, Signature, Token, Type,
     parse::{Parse, ParseStream},
     spanned::Spanned,
 };
 
+#[derive(Default)]
 pub enum FunType {
+    #[default]
     Fixed,
-    FunVar { min_args: LitInt },
-    FunVarBetween { min_args: LitInt, max_args: LitInt },
-    FunVarKw { min_args: LitInt },
+    FunVar {
+        min_args: LitInt,
+    },
+    FunVarBetween {
+        min_args: LitInt,
+        max_args: LitInt,
+    },
+    FunVarKw {
+        min_args: LitInt,
+    },
 }
 
+#[derive(Default)]
 pub struct MethodArgs {
     pub ty: FunType,
-    pub qstr: ExprMacro,
+    pub qstr: Option<ExprMacro>,
 }
 
 impl Parse for MethodArgs {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        let mut ty = FunType::Fixed;
-        let mut qstr: Option<ExprMacro> = None;
+        if input.is_empty() {
+            return Ok(Self::default());
+        }
+
+        let mut ty = None;
+        let mut qstr = None;
 
         while !input.is_empty() {
             let ident: Ident = input.parse()?;
@@ -29,10 +43,14 @@ impl Parse for MethodArgs {
 
             match ident.to_string().as_str() {
                 "name" => {
-                    qstr = Some(input.parse()?);
+                    if qstr.replace(input.parse()?).is_some() {
+                        return Err(syn::Error::new(ident.span(), "multiple `name` definitions"));
+                    }
                 }
                 "ty" => {
-                    ty = input.parse()?;
+                    if ty.replace(input.parse()?).is_some() {
+                        return Err(syn::Error::new(ident.span(), "multiple `ty` definitions"));
+                    }
                 }
                 _ => {
                     return Err(syn::Error::new(ident.span(), "unknown argument"));
@@ -44,9 +62,10 @@ impl Parse for MethodArgs {
             }
         }
 
-        let qstr = qstr.ok_or_else(|| syn::Error::new(input.span(), "missing `name` argument"))?;
-
-        Ok(MethodArgs { ty, qstr })
+        Ok(MethodArgs {
+            ty: ty.unwrap_or_default(),
+            qstr,
+        })
     }
 }
 
@@ -313,13 +332,26 @@ fn generate_var_fun(ty: &Type, sig: &Signature, fun_type: FunType) -> syn::Resul
 }
 
 pub fn generate_fun(ty: &Type, sig: &Signature, attr: &Attribute) -> syn::Result<TokenStream> {
-    let args = attr.parse_args::<MethodArgs>()?;
+    let args = match &attr.meta {
+        Meta::Path(_) => MethodArgs::default(),
+        Meta::List(_) => attr.parse_args()?,
+        Meta::NameValue(_) => return Err(syn::Error::new(attr.span(), "unsupported `=` format")),
+    };
 
     let fun_expr = match args.ty {
         FunType::Fixed => generate_fixed_fun(ty, sig)?,
         _ => generate_var_fun(ty, sig, args.ty)?,
     };
-    let attr_qstr = &args.qstr;
+    let attr_qstr = match &args.qstr {
+        Some(m) => {
+            let mac = &m.mac;
+            quote! { #mac }
+        }
+        None => {
+            let fn_ident = &sig.ident;
+            quote! { qstr!(#fn_ident) }
+        }
+    };
 
     Ok(quote! {
         #attr_qstr => ::micropython_rs::obj::Obj::from_static(&#fun_expr),
