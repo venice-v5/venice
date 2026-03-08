@@ -154,7 +154,7 @@ fn generate_fixed_fun(ty: &Type, sig: &Signature) -> syn::Result<TokenStream> {
                             ::argparse::error_msg!(
                                 "expected <{}> for argument #1, found <{}>",
                                 <#ty as ::argparse::ArgTrait>::ty(),
-                                a_value.ty()
+                                a_argvalue.ty()
                             ),
                         );
                     }
