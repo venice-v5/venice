@@ -1,3 +1,5 @@
+mod methods;
+
 use proc_macro::TokenStream;
 use quote::{quote, quote_spanned};
 use syn::{
@@ -6,6 +8,8 @@ use syn::{
     parse_macro_input,
     spanned::Spanned,
 };
+
+use crate::methods::generate_fun;
 
 struct ClassArgs {
     pub qstr_macro: ExprMacro,
@@ -162,14 +166,14 @@ pub fn class_methods(_: TokenStream, item: TokenStream) -> TokenStream {
             ImplItem::Fn(f) => {
                 let mut attr_idx = None;
                 let mut opt = None;
-                let mut method = false;
+                let mut method_attr = None;
                 for (idx, a) in f.attrs.iter().enumerate() {
                     let Some(i) = a.path().get_ident() else {
                         continue;
                     };
                     match i.to_string().as_str() {
                         "method" => {
-                            method = true;
+                            method_attr = Some(a.clone());
                         }
                         "make_new" => {
                             opt = Some(("make_new", a.span(), &mut make_new));
@@ -201,8 +205,8 @@ pub fn class_methods(_: TokenStream, item: TokenStream) -> TokenStream {
                     if opt.replace(f.sig.clone()).is_some() {
                         return replace_err(span, name);
                     }
-                } else if method {
-                    methods.push(f.sig.clone());
+                } else if let Some(method_attr) = method_attr {
+                    methods.push((f.sig.clone(), method_attr));
                 }
             }
             ImplItem::Type(t) => {
@@ -272,6 +276,14 @@ pub fn class_methods(_: TokenStream, item: TokenStream) -> TokenStream {
         .map(|f| quote! { Some(#f) })
         .unwrap_or(none_tokens);
 
+    let mut method_tokens = Vec::with_capacity(methods.len());
+    for (sig, attr) in methods.iter() {
+        match generate_fun(&ty, sig, attr) {
+            Ok(tokens) => method_tokens.push(tokens),
+            Err(e) => return e.into_compile_error().into(),
+        }
+    }
+
     quote! {
         #input
 
@@ -284,6 +296,10 @@ pub fn class_methods(_: TokenStream, item: TokenStream) -> TokenStream {
             const STREAM: Option<&::micropython_rs::stream::Stream> = #stream_tokens;
             const UNARY_OP: Option<::micropython_rs::obj::UnaryOpFn> = #unary_op_tokens;
             const BINARY_OP: Option<::micropython_rs::obj::BinaryOpFn> = #binary_op_tokens;
+
+            const LOCALS_DICT: Option<&::micropython_rs::map::Dict> = Some(::micropython_rs::const_dict![
+                #(#method_tokens)*
+            ]);
         }
     }
     .into()
