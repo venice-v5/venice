@@ -10,7 +10,7 @@ use micropython_rs::{
     generator::{GEN_INSTANCE_TYPE, VmReturnKind, resume_gen},
     init::token,
     nlr::{self, push_nlr_callback},
-    obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
+    obj::{Obj, ObjBase, ObjTrait, ObjType},
 };
 use vex_sdk::vexTasksRun;
 
@@ -43,17 +43,14 @@ impl Ord for Sleeper {
     }
 }
 
+#[class(qstr!(WakeSignal))]
 #[repr(C)]
 pub struct WakeSignal {
     base: ObjBase<'static>,
 }
 
-pub static WAKE_SIGNAL_OBJ_TYPE: ObjFullType =
-    ObjFullType::new(TypeFlags::empty(), qstr!(WakeSignal));
-
-unsafe impl ObjTrait for WakeSignal {
-    const OBJ_TYPE: &ObjType = WAKE_SIGNAL_OBJ_TYPE.as_obj_type();
-}
+#[class_methods]
+impl WakeSignal {}
 
 pub static WAKE_SIGNAL: WakeSignal = WakeSignal {
     base: ObjBase::new(WakeSignal::OBJ_TYPE),

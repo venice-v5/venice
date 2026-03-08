@@ -1,16 +1,15 @@
 use std::cell::{Cell, Ref, RefCell};
 
 use micropython_rs::{
+    class, class_methods,
     except::{raise_stop_iteration, raise_type_error},
     init::token,
-    obj::{Iter, Obj, ObjBase, ObjFullType, ObjTrait, TypeFlags},
+    obj::{Obj, ObjBase, ObjTrait},
 };
 
 use crate::{alloc::Gc, qstrgen::qstr};
 
-pub static TASK_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::ITER_IS_ITERNEXT, qstr!(Task))
-    .set_iter(Iter::IterNext(task_iternext));
-
+#[class(qstr!(Task))]
 #[repr(C)]
 pub struct Task {
     base: ObjBase<'static>,
@@ -18,10 +17,6 @@ pub struct Task {
     coro: Obj,
     waiting_tasks: RefCell<Vec<Obj, Gc>>,
     return_val: Cell<Obj>,
-}
-
-unsafe impl ObjTrait for Task {
-    const OBJ_TYPE: &micropython_rs::obj::ObjType = TASK_OBJ_TYPE.as_obj_type();
 }
 
 impl Task {
@@ -55,13 +50,17 @@ impl Task {
     }
 }
 
-extern "C" fn task_iternext(self_in: Obj) -> Obj {
-    let task = self_in
-        .try_as_obj::<Task>()
-        .unwrap_or_else(|| raise_type_error(token(), c"expected Task"));
-    if !task.is_complete() {
-        self_in
-    } else {
-        raise_stop_iteration(token(), task.return_val.get())
+#[class_methods]
+impl Task {
+    #[iter]
+    extern "C" fn task_iternext(self_in: Obj) -> Obj {
+        let task = self_in
+            .try_as_obj::<Task>()
+            .unwrap_or_else(|| raise_type_error(token(), c"expected Task"));
+        if !task.is_complete() {
+            self_in
+        } else {
+            raise_stop_iteration(token(), task.return_val.get())
+        }
     }
 }

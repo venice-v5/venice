@@ -58,7 +58,7 @@ use crate::{
         serial::{SerialPortObj, SerialPortOpenFutureObj},
         vasyncio::{
             event_loop::{EventLoop, vasyncio_get_running_loop, vasyncio_run, vasyncio_spawn},
-            sleep::SLEEP_OBJ_TYPE,
+            sleep::Sleep,
         },
     },
     qstrgen::qstr,
@@ -134,7 +134,7 @@ static mut venice_globals: Dict = Dict::new(const_map![
 
     // async
     qstr!(EventLoop) => Obj::from_static(EventLoop::OBJ_TYPE),
-    qstr!(Sleep) => Obj::from_static(&SLEEP_OBJ_TYPE),
+    qstr!(Sleep) => Obj::from_static(Sleep::OBJ_TYPE),
     qstr!(get_running_loop) => Obj::from_static(&Fun0::new(vasyncio_get_running_loop)),
     qstr!(run) => Obj::from_static(&Fun1::new(vasyncio_run)),
     qstr!(spawn) => Obj::from_static(&Fun1::new(vasyncio_spawn)),
