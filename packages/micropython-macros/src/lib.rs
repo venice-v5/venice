@@ -1,3 +1,4 @@
+mod constants;
 mod methods;
 
 use proc_macro::TokenStream;
@@ -9,7 +10,7 @@ use syn::{
     spanned::Spanned,
 };
 
-use crate::methods::generate_fun;
+use crate::{constants::generate_constant, methods::generate_fun};
 
 struct ClassArgs {
     pub qstr_macro: ExprMacro,
@@ -145,7 +146,7 @@ pub fn class_methods(_: TokenStream, item: TokenStream) -> TokenStream {
                     };
                     match i.to_string().as_str() {
                         "constant" => {
-                            constants.push(c.clone());
+                            constants.push((c.clone(), a.clone()));
                         }
                         "stream" => {
                             let span = a.span();
@@ -285,6 +286,15 @@ pub fn class_methods(_: TokenStream, item: TokenStream) -> TokenStream {
         Err(e) => return e.into_compile_error().into(),
     };
 
+    let constant_tokens = match constants
+        .into_iter()
+        .map(|(constant, attr)| generate_constant(&ty, constant, attr))
+        .collect::<syn::Result<Vec<_>>>()
+    {
+        Ok(tokens) => tokens,
+        Err(e) => return e.into_compile_error().into(),
+    };
+
     quote! {
         #input
 
@@ -300,6 +310,7 @@ pub fn class_methods(_: TokenStream, item: TokenStream) -> TokenStream {
 
             const LOCALS_DICT: Option<&::micropython_rs::map::Dict> = Some(::micropython_rs::const_dict![
                 #(#method_tokens)*
+                #(#constant_tokens)*
             ]);
         }
     }
