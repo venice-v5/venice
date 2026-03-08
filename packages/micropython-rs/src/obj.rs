@@ -1084,6 +1084,36 @@ impl Obj {
     }
 }
 
+impl From<()> for Obj {
+    fn from(_: ()) -> Self {
+        Obj::NONE
+    }
+}
+
+impl From<i32> for Obj {
+    fn from(value: i32) -> Self {
+        Obj::from_int(value)
+    }
+}
+
+impl From<f32> for Obj {
+    fn from(value: f32) -> Self {
+        Obj::from_float(value)
+    }
+}
+
+impl From<bool> for Obj {
+    fn from(value: bool) -> Self {
+        Obj::from_bool(value)
+    }
+}
+
+impl From<Qstr> for Obj {
+    fn from(value: Qstr) -> Self {
+        Obj::from_qstr(value)
+    }
+}
+
 impl<O: ObjTrait + 'static> From<O> for Obj {
     fn from(value: O) -> Self {
         Obj::new(token(), value, false).expect("allocation error")
