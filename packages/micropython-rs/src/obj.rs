@@ -343,17 +343,18 @@ impl<'a> LoadResult<'a> {
         *self.dest1 = Obj::SENTINEL;
     }
 
-    pub fn return_value(self, value: Obj) {
-        *self.dest0 = value;
+    pub fn return_value(self, value: impl Into<Obj>) {
+        *self.dest0 = value.into();
     }
 
-    pub fn return_method(self, method: Obj) {
-        *self.dest0 = method;
+    pub fn return_method(self, method: impl Into<Obj>) {
+        *self.dest0 = method.into();
         *self.dest1 = self.self_in;
     }
 }
 
 impl<'a> StoreResult<'a> {
+    #[doc(hidden)]
     pub fn new(dest0: &'a mut Obj) -> Self {
         Self { dest0 }
     }
@@ -364,6 +365,7 @@ impl<'a> StoreResult<'a> {
 }
 
 impl<'a> DeleteResult<'a> {
+    #[doc(hidden)]
     pub fn new(dest0: &'a mut Obj) -> Self {
         Self { dest0 }
     }
