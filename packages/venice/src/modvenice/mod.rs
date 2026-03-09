@@ -22,15 +22,6 @@ use micropython_rs::{
     obj::{Obj, ObjFullType, ObjTrait},
 };
 
-use self::{
-    controller::{
-        ControllerObj,
-        state::{ButtonStateObj, ControllerStateObj, JoystickStateObj},
-    },
-    motor::{MotorObj, brake::BrakeModeObj, direction::DirectionObj, gearset::GearsetObj},
-    rotation_sensor::RotationSensorObj,
-    units::{rotation::RotationUnitObj, time::TimeUnitObj},
-};
 use crate::{
     modvenice::{
         ai_vision::{
@@ -45,17 +36,26 @@ use crate::{
             },
         },
         competition::{Competition, CompetitionRuntime},
-        controller::id::ControllerIdObj,
+        controller::{
+            ControllerObj,
+            id::ControllerIdObj,
+            state::{ButtonStateObj, ControllerStateObj, JoystickStateObj},
+        },
         distance_sensor::{DistanceSensorObj, distance_object::DistanceObjectObj},
         imu::{InertialOrientationObj, InertialSensorObj},
         math::{EulerAngles, Quaternion, Vec3},
-        motor::{MOTOR_EXP_OBJ_TYPE, MOTOR_V5_OBJ_TYPE, motor_type::MotorTypeObj},
+        motor::{
+            MotorObj, brake::BrakeModeObj, direction::DirectionObj, gearset::GearsetObj,
+            motor_type::MotorTypeObj,
+        },
         optical::{
             OpticalSensorObj,
             gesture::{GestureDirectionObj, GestureObj},
             rgb::{OpticalRawObj, OpticalRgbObj},
         },
+        rotation_sensor::RotationSensorObj,
         serial::{SerialPortObj, SerialPortOpenFutureObj},
+        units::{rotation::RotationUnitObj, time::TimeUnitObj},
         vasyncio::{
             event_loop::{EventLoop, vasyncio_get_running_loop, vasyncio_run, vasyncio_spawn},
             sleep::Sleep,
@@ -88,9 +88,7 @@ static mut venice_globals: Dict = Dict::new(const_map![
     qstr!(__name__) => Obj::from_qstr(qstr!(venice)),
 
     // motor
-    qstr!(AbstractMotor) => Obj::from_static(MotorObj::OBJ_TYPE),
-    qstr!(MotorV5) => Obj::from_static(&MOTOR_V5_OBJ_TYPE),
-    qstr!(MotorExp) => Obj::from_static(&MOTOR_EXP_OBJ_TYPE),
+    qstr!(Motor) => Obj::from_static(MotorObj::OBJ_TYPE),
     qstr!(Gearset) => Obj::from_static(GearsetObj::OBJ_TYPE),
     qstr!(BrakeMode) => Obj::from_static(BrakeModeObj::OBJ_TYPE),
     qstr!(Direction) => Obj::from_static(DirectionObj::OBJ_TYPE),

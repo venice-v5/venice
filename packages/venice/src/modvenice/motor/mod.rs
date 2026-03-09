@@ -8,463 +8,382 @@ use brake::BrakeModeObj;
 use direction::DirectionObj;
 use gearset::GearsetObj;
 use micropython_rs::{
-    attr_from_fn, const_dict,
-    except::raise_value_error,
+    class, class_methods,
+    except::{raise_type_error, raise_value_error},
     init::token,
-    make_new_from_fn,
-    obj::{AttrOp, Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
-    qstr::Qstr,
+    obj::{Obj, ObjBase, ObjTrait, ObjType},
 };
-use vexide_devices::{math::Direction, smart::motor::Motor};
+use vexide_devices::{
+    math::Direction,
+    smart::motor::{Gearset, Motor},
+};
 
 use super::raise_device_error;
 use crate::{
     devices::{self, PortNumber},
-    fun::{fun_var_between, fun1, fun2, fun3},
     modvenice::{
         motor::motor_type::MotorTypeObj, raise_port_error, units::rotation::RotationUnitObj,
     },
-    obj::alloc_obj,
     qstrgen::qstr,
     registry::RegistryGuard,
 };
 
+#[class(qstr!(Motor))]
 #[repr(C)]
 pub struct MotorObj {
     base: ObjBase<'static>,
     guard: RegistryGuard<'static, Motor>,
 }
 
-pub(crate) static ABSTRACT_MOTOR_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(AbstractMotor))
-    .set_locals_dict(const_dict![
-        qstr!(WRITE_INTERVAL_MS) => Obj::from_int(Motor::WRITE_INTERVAL.as_millis() as i32),
+#[class_methods]
+impl MotorObj {
+    #[method(ty = var_between(min = 1, max = 3))]
+    fn new_v5(args: &[Obj]) -> Self {
+        let token = token();
+        let mut reader = Args::new(args.len(), 0, args).reader(token);
 
-        qstr!(set_voltage) => Obj::from_static(&fun2!(motor_set_voltage,&MotorObj, f32)),
-        qstr!(set_velocity) => Obj::from_static(&fun2!(motor_set_velocity,&MotorObj, i32)),
-        qstr!(brake) => Obj::from_static(&fun2!(motor_brake,&MotorObj, &BrakeModeObj)),
-        qstr!(set_position_target) => Obj::from_static(&fun_var_between!(motor_set_position_target, 4, 4)),
-        qstr!(is_exp) => Obj::from_static(&fun1!(motor_is_exp, &MotorObj)),
-        qstr!(is_v5) => Obj::from_static(&fun1!(motor_is_v5, &MotorObj)),
-        qstr!(max_voltage) => Obj::from_static(&fun1!(motor_max_voltage, &MotorObj)),
-        qstr!(velocity) => Obj::from_static(&fun1!(motor_velocity, &MotorObj)),
-        qstr!(power) => Obj::from_static(&fun1!(motor_power, &MotorObj)),
-        qstr!(torque) => Obj::from_static(&fun1!(motor_torque, &MotorObj)),
-        qstr!(voltage) => Obj::from_static(&fun1!(motor_voltage, &MotorObj)),
-        qstr!(raw_position) => Obj::from_static(&fun1!(motor_raw_position, &MotorObj)),
-        qstr!(current) => Obj::from_static(&fun1!(motor_current, &MotorObj)),
-        qstr!(efficiency) => Obj::from_static(&fun1!(motor_efficiency, &MotorObj)),
-        qstr!(current_limit) => Obj::from_static(&fun1!(motor_current_limit, &MotorObj)),
-        qstr!(voltage_limit) => Obj::from_static(&fun1!(motor_voltage_limit, &MotorObj)),
-        qstr!(temperature) => Obj::from_static(&fun1!(motor_temperature, &MotorObj)),
-        qstr!(set_profiled_velocity) => Obj::from_static(&fun2!(motor_set_profiled_velocity, &MotorObj, i32)),
-        qstr!(reset_position) => Obj::from_static(&fun1!(motor_reset_position, &MotorObj)),
-        qstr!(set_current_limit) => Obj::from_static(&fun2!(motor_set_current_limit, &MotorObj, f32)),
-        qstr!(set_voltage_limit) => Obj::from_static(&fun2!(motor_set_voltage_limit, &MotorObj, f32)),
-        qstr!(is_over_temperature) => Obj::from_static(&fun1!(motor_is_over_temperature, &MotorObj)),
-        qstr!(is_over_current) => Obj::from_static(&fun1!(motor_is_over_current, &MotorObj)),
-        qstr!(is_driver_fault) => Obj::from_static(&fun1!(motor_is_driver_fault, &MotorObj)),
-        qstr!(is_driver_over_current) => Obj::from_static(&fun1!(motor_is_driver_over_current, &MotorObj)),
-        qstr!(status) => Obj::from_static(&fun1!(motor_status, &MotorObj)),
-        qstr!(faults) => Obj::from_static(&fun1!(motor_faults, &MotorObj)),
-        qstr!(motor_type) => Obj::from_static(&fun1!(motor_motor_type, &MotorObj)),
-        qstr!(position) => Obj::from_static(&fun2!(motor_position, &MotorObj, &RotationUnitObj)),
-        qstr!(set_position) => Obj::from_static(&fun3!(motor_set_position, &MotorObj, f32, &RotationUnitObj)),
-        qstr!(set_direction) => Obj::from_static(&fun2!(motor_set_direction, &MotorObj, &DirectionObj)),
-        qstr!(direction) => Obj::from_static(&fun1!(motor_direction, &MotorObj)),
-        qstr!(free) => Obj::from_static(&fun1!(motor_free, &MotorObj)),
-    ]);
+        let port = PortNumber::from_i32(reader.next_positional())
+            .unwrap_or_else(|_| raise_value_error(token, c"port number must be between 1 and 21"));
+        let direction = reader.next_positional_or(DirectionObj::FORWARD);
+        let gearset = reader.next_positional_or(GearsetObj::GREEN);
 
-pub(crate) static MOTOR_V5_OBJ_TYPE: ObjFullType = ObjFullType::new(
-    TypeFlags::empty(),
-    qstr!(MotorV5),
-)
-.set_make_new(make_new_from_fn!(motor_v5_make_new))
-.set_parent(ABSTRACT_MOTOR_OBJ_TYPE.as_obj_type())
-.set_attr(attr_from_fn!(motor_attr))
-.set_locals_dict(const_dict![
-    qstr!(MAX_VOLTAGE) => Obj::from_float(12.0),
-    qstr!(set_gearset) => Obj::from_static(&fun2!(motor_set_gearset,&MotorObj, &GearsetObj)),
-    qstr!(gearset) => Obj::from_static(&fun1!(motor_gearset,&MotorObj)),
-]);
+        let guard = devices::lock_port(port, |port| {
+            Motor::new(port, gearset.gearset(), direction.direction())
+        });
 
-pub(crate) static MOTOR_EXP_OBJ_TYPE: ObjFullType =
-    ObjFullType::new(TypeFlags::empty(), qstr!(MotorExp))
-        .set_make_new(make_new_from_fn!(motor_exp_make_new))
-        .set_parent(ABSTRACT_MOTOR_OBJ_TYPE.as_obj_type())
-        .set_attr(attr_from_fn!(motor_attr))
-        .set_locals_dict(const_dict![
-            qstr!(MAX_VOLTAGE) => Obj::from_float(8.0),
-        ]);
-
-fn motor_attr(_this: &Obj, attr: Qstr, op: AttrOp) {
-    let AttrOp::Load { result } = op else { return };
-
-    let locals_dict = ABSTRACT_MOTOR_OBJ_TYPE.as_obj_type().locals_dict().unwrap();
-    match locals_dict.map.get(Obj::from_qstr(attr)) {
-        Some(v) => {
-            // WRITE_INTERVAL_MS is the only element in the local dict that isn't a method
-            if attr == qstr!(WRITE_INTERVAL_MS) {
-                result.return_value(v);
-            } else {
-                result.return_method(v);
-            }
+        if guard.borrow().is_exp() {
+            guard.free().unwrap();
+            raise_device_error(token, c"invalid motor type, expected V5, found Exp")
         }
-        None => result.pass(),
-    }
-}
 
-unsafe impl ObjTrait for MotorObj {
-    const OBJ_TYPE: &micropython_rs::obj::ObjType = ABSTRACT_MOTOR_OBJ_TYPE.as_obj_type();
-
-    fn coercable(ty: &ObjType) -> bool {
-        ty == MOTOR_V5_OBJ_TYPE.as_obj_type() || ty == MOTOR_EXP_OBJ_TYPE.as_obj_type()
-    }
-}
-
-fn motor_v5_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Obj {
-    let token = token();
-    let mut reader = Args::new(n_pos, n_kw, args).reader(token);
-    reader.assert_npos(3, 3);
-
-    let port = PortNumber::from_i32(reader.next_positional())
-        .unwrap_or_else(|_| raise_value_error(token, c"port number must be between 1 and 21"));
-
-    let direction: &DirectionObj = reader.next_positional();
-
-    let gearset: &GearsetObj = reader.next_positional();
-
-    let guard = devices::lock_port(port, |port| {
-        Motor::new(port, gearset.gearset(), direction.direction())
-    });
-
-    if guard.borrow().is_exp() {
-        raise_device_error(token, c"Invalid motor type, expected V5, found Exp")
+        Self {
+            base: ObjBase::new(Self::OBJ_TYPE),
+            guard,
+        }
     }
 
-    alloc_obj(MotorObj {
-        base: ObjBase::new(ty),
-        guard,
-    })
-}
+    #[method(ty = var_between(min = 1, max = 2))]
+    fn new_exp(args: &[Obj]) -> Self {
+        let token = token();
+        let mut reader = Args::new(args.len(), 0, args).reader(token);
 
-fn motor_exp_make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Obj {
-    let token = token();
-    let mut reader = Args::new(n_pos, n_kw, args).reader(token);
-    reader.assert_npos(2, 2);
+        let port = PortNumber::from_i32(reader.next_positional())
+            .unwrap_or_else(|_| raise_value_error(token, c"port number must be between 1 and 21"));
+        let direction: &DirectionObj = reader.next_positional_or(DirectionObj::FORWARD);
 
-    let port = PortNumber::from_i32(reader.next_positional())
-        .unwrap_or_else(|_| raise_value_error(token, c"port number must be between 1 and 21"));
+        let guard = devices::lock_port(port, |port| Motor::new_exp(port, direction.direction()));
+        if guard.borrow().is_v5() {
+            guard.free().unwrap();
+            raise_device_error(token, c"invalid motor type, expected Exp, found V5");
+        }
 
-    let direction: &DirectionObj = reader.next_positional();
-
-    let guard = devices::lock_port(port, |port| Motor::new_exp(port, direction.direction()));
-
-    if guard.borrow().is_v5() {
-        raise_device_error(token, c"Invalid motor type, expected Exp, found V5")
+        MotorObj {
+            base: ObjBase::new(Self::OBJ_TYPE),
+            guard,
+        }
     }
 
-    alloc_obj(MotorObj {
-        base: ObjBase::new(ty),
-        guard,
-    })
-}
-
-fn motor_set_voltage(this: &MotorObj, volts: f32) -> Obj {
-    this.guard
-        .borrow_mut()
-        .set_voltage(volts as f64)
-        .unwrap_or_else(|e| raise_port_error!(e));
-    Obj::NONE
-}
-
-fn motor_set_velocity(this: &MotorObj, rpm: i32) -> Obj {
-    this.guard
-        .borrow_mut()
-        .set_velocity(rpm)
-        .unwrap_or_else(|e| raise_port_error!(e));
-
-    Obj::NONE
-}
-
-fn motor_brake(this: &MotorObj, mode: &BrakeModeObj) -> Obj {
-    this.guard
-        .borrow_mut()
-        .brake(mode.mode())
-        .unwrap_or_else(|e| raise_port_error!(e));
-    Obj::NONE
-}
-
-fn motor_set_gearset(this: &MotorObj, gearset: &GearsetObj) -> Obj {
-    this.guard
-        .borrow_mut()
-        .set_gearset(gearset.gearset())
-        .unwrap_or_else(|e| raise_port_error!(e));
-    Obj::NONE
-}
-
-fn motor_is_exp(this: &MotorObj) -> Obj {
-    Obj::from_bool(this.guard.borrow().is_exp())
-}
-
-fn motor_is_v5(this: &MotorObj) -> Obj {
-    Obj::from_bool(this.guard.borrow().is_v5())
-}
-
-fn motor_max_voltage(this: &MotorObj) -> Obj {
-    Obj::from_float(this.guard.borrow().max_voltage() as f32)
-}
-
-fn motor_gearset(this: &MotorObj) -> Obj {
-    let gearset = this
-        .guard
-        .borrow()
-        .gearset()
-        .unwrap_or_else(|e| raise_port_error!(e));
-    Obj::from_static(GearsetObj::new_static(gearset))
-}
-
-fn motor_set_position_target(args: &[Obj]) -> Obj {
-    let mut reader = Args::new(args.len(), 0, args).reader(token());
-    // self, position, position units, velocity
-    reader.assert_npos(4, 4);
-    let motor = reader.next_positional::<&MotorObj>();
-
-    let position_val = reader.next_positional();
-
-    let unit_obj = reader.next_positional::<&RotationUnitObj>();
-
-    let velocity_val = reader.next_positional();
-    let angle = unit_obj.unit().float_to_angle(position_val);
-
-    motor
-        .guard
-        .borrow_mut()
-        .set_position_target(angle, velocity_val)
-        .unwrap_or_else(|e| raise_port_error!(e));
-
-    Obj::NONE
-}
-
-fn motor_velocity(this: &MotorObj) -> Obj {
-    let vel = this
-        .guard
-        .borrow()
-        .velocity()
-        .unwrap_or_else(|e| raise_port_error!(e));
-    Obj::from_float(vel as f32)
-}
-
-fn motor_power(this: &MotorObj) -> Obj {
-    let pwr = this
-        .guard
-        .borrow()
-        .power()
-        .unwrap_or_else(|e| raise_port_error!(e));
-    Obj::from_float(pwr as f32)
-}
-
-fn motor_torque(this: &MotorObj) -> Obj {
-    let trq = this
-        .guard
-        .borrow()
-        .torque()
-        .unwrap_or_else(|e| raise_port_error!(e));
-    Obj::from_float(trq as f32)
-}
-
-fn motor_voltage(this: &MotorObj) -> Obj {
-    let volt = this
-        .guard
-        .borrow()
-        .voltage()
-        .unwrap_or_else(|e| raise_port_error!(e));
-    Obj::from_float(volt as f32)
-}
-
-fn motor_raw_position(this: &MotorObj) -> Obj {
-    let pos = this
-        .guard
-        .borrow()
-        .raw_position()
-        .unwrap_or_else(|e| raise_port_error!(e));
-    Obj::from_int(pos)
-}
-
-fn motor_current(this: &MotorObj) -> Obj {
-    let curr = this
-        .guard
-        .borrow()
-        .current()
-        .unwrap_or_else(|e| raise_port_error!(e));
-    Obj::from_float(curr as f32)
-}
-
-fn motor_efficiency(this: &MotorObj) -> Obj {
-    let eff = this
-        .guard
-        .borrow()
-        .efficiency()
-        .unwrap_or_else(|e| raise_port_error!(e));
-    Obj::from_float(eff as f32)
-}
-
-fn motor_current_limit(this: &MotorObj) -> Obj {
-    let lim = this
-        .guard
-        .borrow()
-        .current_limit()
-        .unwrap_or_else(|e| raise_port_error!(e));
-    Obj::from_float(lim as f32)
-}
-
-fn motor_voltage_limit(this: &MotorObj) -> Obj {
-    let lim = this
-        .guard
-        .borrow()
-        .voltage_limit()
-        .unwrap_or_else(|e| raise_port_error!(e));
-    Obj::from_float(lim as f32)
-}
-
-fn motor_temperature(this: &MotorObj) -> Obj {
-    let temp = this
-        .guard
-        .borrow()
-        .temperature()
-        .unwrap_or_else(|e| raise_port_error!(e));
-    Obj::from_float(temp as f32)
-}
-
-fn motor_set_profiled_velocity(this: &MotorObj, velocity: i32) -> Obj {
-    this.guard
-        .borrow_mut()
-        .set_profiled_velocity(velocity)
-        .unwrap_or_else(|e| raise_port_error!(e));
-    Obj::NONE
-}
-
-fn motor_reset_position(this: &MotorObj) -> Obj {
-    this.guard
-        .borrow_mut()
-        .reset_position()
-        .unwrap_or_else(|e| raise_port_error!(e));
-    Obj::NONE
-}
-
-fn motor_set_current_limit(this: &MotorObj, limit: f32) -> Obj {
-    this.guard
-        .borrow_mut()
-        .set_current_limit(limit as f64)
-        .unwrap_or_else(|e| raise_port_error!(e));
-    Obj::NONE
-}
-
-fn motor_set_voltage_limit(this: &MotorObj, limit: f32) -> Obj {
-    this.guard
-        .borrow_mut()
-        .set_voltage_limit(limit as f64)
-        .unwrap_or_else(|e| raise_port_error!(e));
-    Obj::NONE
-}
-
-fn motor_is_over_temperature(this: &MotorObj) -> Obj {
-    let is_over = this
-        .guard
-        .borrow()
-        .is_over_temperature()
-        .unwrap_or_else(|e| raise_port_error!(e));
-    Obj::from_bool(is_over)
-}
-
-fn motor_is_over_current(this: &MotorObj) -> Obj {
-    let is_over = this
-        .guard
-        .borrow()
-        .is_over_current()
-        .unwrap_or_else(|e| raise_port_error!(e));
-    Obj::from_bool(is_over)
-}
-
-fn motor_is_driver_fault(this: &MotorObj) -> Obj {
-    let is_fault = this
-        .guard
-        .borrow()
-        .is_driver_fault()
-        .unwrap_or_else(|e| raise_port_error!(e));
-    Obj::from_bool(is_fault)
-}
-
-fn motor_is_driver_over_current(this: &MotorObj) -> Obj {
-    let is_over = this
-        .guard
-        .borrow()
-        .is_driver_over_current()
-        .unwrap_or_else(|e| raise_port_error!(e));
-    Obj::from_bool(is_over)
-}
-
-fn motor_motor_type(this: &MotorObj) -> Obj {
-    let mt = this.guard.borrow().motor_type();
-    Obj::from_static(MotorTypeObj::new_static(mt))
-}
-
-fn motor_position(this: &MotorObj, unit: &RotationUnitObj) -> Obj {
-    let angle = this
-        .guard
-        .borrow()
-        .position()
-        .unwrap_or_else(|e| raise_port_error!(e));
-    Obj::from_float(unit.unit().angle_to_float(angle))
-}
-
-fn motor_set_position(this: &MotorObj, position: f32, unit: &RotationUnitObj) -> Obj {
-    let angle = unit.unit().float_to_angle(position);
-    this.guard
-        .borrow_mut()
-        .set_position(angle)
-        .unwrap_or_else(|e| raise_port_error!(e));
-    Obj::NONE
-}
-
-fn motor_set_direction(this: &MotorObj, direction: &DirectionObj) -> Obj {
-    this.guard
-        .borrow_mut()
-        .set_direction(direction.direction())
-        .unwrap_or_else(|e| raise_port_error!(e));
-    Obj::NONE
-}
-
-fn motor_direction(this: &MotorObj) -> Obj {
-    let dir = this
-        .guard
-        .borrow()
-        .direction()
-        .unwrap_or_else(|e| raise_port_error!(e));
-    match dir {
-        Direction::Forward => Obj::from_static(&DirectionObj::FORWARD),
-        Direction::Reverse => Obj::from_static(&DirectionObj::REVERSE),
+    #[make_new]
+    fn make_new(_: &ObjType, _: usize, n_kw: usize, args: &[Obj]) -> Self {
+        if n_kw != 0 {
+            raise_type_error(token(), c"function does not accept keyword arguments");
+        }
+        Self::new_v5(args)
     }
-}
 
-fn motor_status(this: &MotorObj) -> Obj {
-    let status = this
-        .guard
-        .borrow()
-        .status()
-        .unwrap_or_else(|e| raise_port_error!(e));
-    Obj::from_int(status.bits() as i32)
-}
+    #[method]
+    fn set_voltage(&self, volts: f32) {
+        self.guard
+            .borrow_mut()
+            .set_voltage(volts as f64)
+            .unwrap_or_else(|e| raise_port_error!(e));
+    }
 
-fn motor_faults(this: &MotorObj) -> Obj {
-    let faults = this
-        .guard
-        .borrow()
-        .faults()
-        .unwrap_or_else(|e| raise_port_error!(e));
-    Obj::from_int(faults.bits() as i32)
-}
+    #[method]
+    fn set_velocity(&self, rpm: i32) {
+        self.guard
+            .borrow_mut()
+            .set_velocity(rpm)
+            .unwrap_or_else(|e| raise_port_error!(e));
+    }
 
-fn motor_free(this: &MotorObj) -> Obj {
-    this.guard.free_or_raise();
-    Obj::NONE
+    #[method]
+    fn brake(&self, mode: &BrakeModeObj) {
+        self.guard
+            .borrow_mut()
+            .brake(mode.mode())
+            .unwrap_or_else(|e| raise_port_error!(e));
+    }
+
+    #[method]
+    fn set_gearset(&self, gearset: &GearsetObj) {
+        self.guard
+            .borrow_mut()
+            .set_gearset(gearset.gearset())
+            .unwrap_or_else(|e| raise_port_error!(e));
+    }
+
+    #[method]
+    fn is_exp(&self) -> bool {
+        self.guard.borrow().is_exp()
+    }
+
+    #[method]
+    fn is_v5(&self) -> bool {
+        self.guard.borrow().is_v5()
+    }
+
+    #[method]
+    fn max_voltage(&self) -> f32 {
+        self.guard.borrow().max_voltage() as f32
+    }
+
+    #[method]
+    fn gearset(&self) -> Obj {
+        let gearset = self
+            .guard
+            .borrow()
+            .gearset()
+            .unwrap_or_else(|e| raise_port_error!(e));
+        Obj::from_static(match gearset {
+            Gearset::Red => GearsetObj::RED,
+            Gearset::Green => GearsetObj::GREEN,
+            Gearset::Blue => GearsetObj::BLUE,
+        })
+    }
+
+    #[method(ty = var_between(min = 4, max = 4))]
+    fn set_position_target(args: &[Obj]) {
+        let mut reader = Args::new(args.len(), 0, args).reader(token());
+        // self, position, position units, velocity
+        let motor = reader.next_positional::<&MotorObj>();
+
+        let position_val = reader.next_positional();
+
+        let unit_obj = reader.next_positional::<&RotationUnitObj>();
+
+        let velocity_val = reader.next_positional();
+        let angle = unit_obj.unit().float_to_angle(position_val);
+
+        motor
+            .guard
+            .borrow_mut()
+            .set_position_target(angle, velocity_val)
+            .unwrap_or_else(|e| raise_port_error!(e));
+    }
+
+    #[method]
+    fn velocity(&self) -> f32 {
+        self.guard
+            .borrow()
+            .velocity()
+            .unwrap_or_else(|e| raise_port_error!(e)) as f32
+    }
+
+    #[method]
+    fn power(&self) -> f32 {
+        self.guard
+            .borrow()
+            .power()
+            .unwrap_or_else(|e| raise_port_error!(e)) as f32
+    }
+
+    #[method]
+    fn torque(&self) -> f32 {
+        self.guard
+            .borrow()
+            .torque()
+            .unwrap_or_else(|e| raise_port_error!(e)) as f32
+    }
+
+    #[method]
+    fn voltage(&self) -> f32 {
+        self.guard
+            .borrow()
+            .voltage()
+            .unwrap_or_else(|e| raise_port_error!(e)) as f32
+    }
+
+    #[method]
+    fn raw_position(&self) -> i32 {
+        self.guard
+            .borrow()
+            .raw_position()
+            .unwrap_or_else(|e| raise_port_error!(e))
+    }
+
+    #[method]
+    fn current(&self) -> f32 {
+        self.guard
+            .borrow()
+            .current()
+            .unwrap_or_else(|e| raise_port_error!(e)) as f32
+    }
+
+    #[method]
+    fn efficiency(&self) -> f32 {
+        self.guard
+            .borrow()
+            .efficiency()
+            .unwrap_or_else(|e| raise_port_error!(e)) as f32
+    }
+
+    #[method]
+    fn current_limit(&self) -> f32 {
+        self.guard
+            .borrow()
+            .current_limit()
+            .unwrap_or_else(|e| raise_port_error!(e)) as f32
+    }
+
+    #[method]
+    fn voltage_limit(&self) -> f32 {
+        self.guard
+            .borrow()
+            .voltage_limit()
+            .unwrap_or_else(|e| raise_port_error!(e)) as f32
+    }
+
+    #[method]
+    fn temperature(&self) -> f32 {
+        self.guard
+            .borrow()
+            .temperature()
+            .unwrap_or_else(|e| raise_port_error!(e)) as f32
+    }
+
+    #[method]
+    fn set_profiled_velocity(&self, velocity: i32) {
+        self.guard
+            .borrow_mut()
+            .set_profiled_velocity(velocity)
+            .unwrap_or_else(|e| raise_port_error!(e));
+    }
+
+    #[method]
+    fn reset_position(&self) {
+        self.guard
+            .borrow_mut()
+            .reset_position()
+            .unwrap_or_else(|e| raise_port_error!(e));
+    }
+
+    #[method]
+    fn set_current_limit(&self, limit: f32) {
+        self.guard
+            .borrow_mut()
+            .set_current_limit(limit as f64)
+            .unwrap_or_else(|e| raise_port_error!(e));
+    }
+
+    #[method]
+    fn set_voltage_limit(&self, limit: f32) {
+        self.guard
+            .borrow_mut()
+            .set_voltage_limit(limit as f64)
+            .unwrap_or_else(|e| raise_port_error!(e));
+    }
+
+    #[method]
+    fn is_over_temperature(&self) -> bool {
+        self.guard
+            .borrow()
+            .is_over_temperature()
+            .unwrap_or_else(|e| raise_port_error!(e))
+    }
+
+    #[method]
+    fn is_over_current(&self) -> bool {
+        self.guard
+            .borrow()
+            .is_over_current()
+            .unwrap_or_else(|e| raise_port_error!(e))
+    }
+
+    #[method]
+    fn is_driver_fault(&self) -> bool {
+        self.guard
+            .borrow()
+            .is_driver_fault()
+            .unwrap_or_else(|e| raise_port_error!(e))
+    }
+
+    #[method]
+    fn is_driver_over_current(&self) -> bool {
+        self.guard
+            .borrow()
+            .is_driver_over_current()
+            .unwrap_or_else(|e| raise_port_error!(e))
+    }
+
+    #[method]
+    fn motor_type(&self) -> Obj {
+        let mt = self.guard.borrow().motor_type();
+        Obj::from_static(MotorTypeObj::new_static(mt))
+    }
+
+    #[method]
+    fn position(&self, unit: &RotationUnitObj) -> f32 {
+        let angle = self
+            .guard
+            .borrow()
+            .position()
+            .unwrap_or_else(|e| raise_port_error!(e));
+        unit.unit().angle_to_float(angle)
+    }
+
+    #[method]
+    fn set_position(&self, position: f32, unit: &RotationUnitObj) {
+        let angle = unit.unit().float_to_angle(position);
+        self.guard
+            .borrow_mut()
+            .set_position(angle)
+            .unwrap_or_else(|e| raise_port_error!(e));
+    }
+
+    #[method]
+    fn set_direction(&self, direction: &DirectionObj) {
+        self.guard
+            .borrow_mut()
+            .set_direction(direction.direction())
+            .unwrap_or_else(|e| raise_port_error!(e));
+    }
+
+    #[method]
+    fn direction(&self) -> Obj {
+        let dir = self
+            .guard
+            .borrow()
+            .direction()
+            .unwrap_or_else(|e| raise_port_error!(e));
+        Obj::from_static(match dir {
+            Direction::Forward => DirectionObj::FORWARD,
+            Direction::Reverse => DirectionObj::REVERSE,
+        })
+    }
+
+    #[method]
+    fn status(&self) -> i32 {
+        let status = self
+            .guard
+            .borrow()
+            .status()
+            .unwrap_or_else(|e| raise_port_error!(e));
+        status.bits() as i32
+    }
+
+    #[method]
+    fn faults(&self) -> i32 {
+        let faults = self
+            .guard
+            .borrow()
+            .faults()
+            .unwrap_or_else(|e| raise_port_error!(e));
+        faults.bits() as i32
+    }
+
+    #[method]
+    fn free(&self) {
+        self.guard.free_or_raise();
+    }
 }

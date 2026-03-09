@@ -42,9 +42,7 @@ impl RotationSensorObj {
         let port = PortNumber::from_i32(reader.next_positional())
             .unwrap_or_else(|_| raise_value_error(token, c"port number must be between 1 and 21"));
 
-        let direction = reader
-            .next_positional_or(&DirectionObj::FORWARD)
-            .direction();
+        let direction = reader.next_positional_or(DirectionObj::FORWARD).direction();
 
         let guard = devices::lock_port(port, |port| RotationSensor::new(port, direction));
 
@@ -113,8 +111,8 @@ impl RotationSensorObj {
     fn direction(&self) -> Obj {
         let dir = self.guard.borrow().direction();
         Obj::from_static(match dir {
-            Direction::Forward => &DirectionObj::FORWARD,
-            Direction::Reverse => &DirectionObj::REVERSE,
+            Direction::Forward => DirectionObj::FORWARD,
+            Direction::Reverse => DirectionObj::REVERSE,
         })
     }
 

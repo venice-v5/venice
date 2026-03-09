@@ -123,20 +123,6 @@ macro_rules! fun3 {
     }};
 }
 
-macro_rules! fun_var_between {
-    ($f:expr, $args_min:expr, $args_max:expr) => {{
-        use ::micropython_rs::{fun::FunVarBetween, obj::Obj};
-
-        unsafe extern "C" fn trampoline<'a>(n_args: usize, ptr: *const Obj) -> Obj {
-            let f: fn(&'a [Obj]) -> Obj = $f;
-            let args = unsafe { ::std::slice::from_raw_parts(ptr, n_args) };
-            f(args)
-        }
-
-        FunVarBetween::new(trampoline, $args_min, $args_max)
-    }};
-}
-
 macro_rules! fun_var_kw {
     ($f:expr, $args_min:expr) => {{
         use ::micropython_rs::fun::FunVarKw;
@@ -152,7 +138,6 @@ macro_rules! fun_var_kw {
     }};
 }
 
-pub(crate) use fun_var_between;
 pub(crate) use fun_var_kw;
 pub(crate) use fun1;
 pub(crate) use fun2;
