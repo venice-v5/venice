@@ -213,9 +213,9 @@ impl Builder {
 
         let rust_qstr_re = Regex::new(r#"qstr!\(([a-zA-Z_][a-zA-Z0-9_]*)\)"#).unwrap();
         let method_ident_re =
-            Regex::new(r#"#\[method.*]\s*fn\s+([a-zA-Z_][a-zA-Z0-9_]*)"#).unwrap();
+            Regex::new(r#"#\[method.*]\s*(?:pub\s+)?fn\s+([a-zA-Z_][a-zA-Z0-9_]*)"#).unwrap();
         let constant_ident_re =
-            Regex::new(r#"#\[constant\]\s*const\s+([a-zA-Z_][a-zA-Z0-9_]*)"#).unwrap();
+            Regex::new(r#"#\[constant\]\s*(?:pub\s+)?const\s+([a-zA-Z_][a-zA-Z0-9_]*)"#).unwrap();
 
         for rust_src in self.rust_srcs.iter() {
             let out = std::fs::read(rust_src).expect("couldn't read rust source");
