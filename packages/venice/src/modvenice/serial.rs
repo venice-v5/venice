@@ -10,14 +10,14 @@ use micropython_rs::{
     class, class_methods,
     errno::{MP_EINVAL, MP_EIO},
     except::{raise_stop_iteration, raise_value_error},
-    fun::{Fun2, FunVarBetween},
+    fun::{Fun1, Fun2, FunVarBetween},
     init::token,
     ioctl_from_fn,
     obj::{Obj, ObjBase, ObjTrait},
     read_from_fn,
     stream::{
-        IoctlReq, Poll, Stream, mp_stream_ioctl_obj, mp_stream_read_obj, mp_stream_read1_obj,
-        mp_stream_write_obj, mp_stream_write1_obj,
+        IoctlReq, Poll, Stream, mp_stream_flush_obj, mp_stream_ioctl_obj, mp_stream_read_obj,
+        mp_stream_read1_obj, mp_stream_write_obj, mp_stream_write1_obj,
     },
     write_from_fn,
 };
@@ -151,9 +151,9 @@ impl SerialPortObj {
     #[constant(qstr!(write))]
     const WRITE: &FunVarBetween = &mp_stream_write_obj;
     #[constant(qstr!(write1))]
-    const WRITE1: &FunVarBetween = &mp_stream_write_obj;
+    const WRITE1: &Fun2 = &mp_stream_write1_obj;
     #[constant(qstr!(flush))]
-    const FLUSH: &Fun2 = &mp_stream_write1_obj;
+    const FLUSH: &Fun1 = &mp_stream_flush_obj;
     #[constant(qstr!(ioctl))]
     const IOCTL: &FunVarBetween = &mp_stream_ioctl_obj;
 }
