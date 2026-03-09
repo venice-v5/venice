@@ -1,14 +1,15 @@
 use micropython_rs::{
-    attr_from_fn,
+    class, class_methods,
     except::{mp_type_AttributeError, raise_msg},
     init::token,
-    obj::{AttrOp, Obj, ObjBase, ObjFullType, ObjTrait, TypeFlags},
+    obj::{AttrOp, Obj, ObjBase, ObjTrait},
     qstr::Qstr,
 };
 use vexide_devices::smart::optical::{OpticalRaw, OpticalRgb};
 
 use crate::qstrgen::qstr;
 
+#[class(qstr!(OpticalRgb))]
 #[repr(C)]
 pub struct OpticalRgbObj {
     base: ObjBase<'static>,
@@ -18,6 +19,7 @@ pub struct OpticalRgbObj {
     brightness: f32,
 }
 
+#[class(qstr!(OpticalRaw))]
 #[repr(C)]
 pub struct OpticalRawObj {
     base: ObjBase<'static>,
@@ -27,22 +29,7 @@ pub struct OpticalRawObj {
     clear: u16,
 }
 
-pub static OPTICAL_RGB_OBJ_TYPE: ObjFullType =
-    ObjFullType::new(TypeFlags::empty(), qstr!(OpticalRgb))
-        .set_attr(attr_from_fn!(optical_rgb_attr));
-
-unsafe impl ObjTrait for OpticalRgbObj {
-    const OBJ_TYPE: &micropython_rs::obj::ObjType = OPTICAL_RGB_OBJ_TYPE.as_obj_type();
-}
-
-pub static OPTICAL_RAW_OBJ_TYPE: ObjFullType =
-    ObjFullType::new(TypeFlags::empty(), qstr!(OpticalRaw))
-        .set_attr(attr_from_fn!(optical_raw_attr));
-
-unsafe impl ObjTrait for OpticalRawObj {
-    const OBJ_TYPE: &micropython_rs::obj::ObjType = OPTICAL_RAW_OBJ_TYPE.as_obj_type();
-}
-
+#[class_methods]
 impl OpticalRgbObj {
     pub fn new(rgb: OpticalRgb) -> Self {
         Self {
@@ -53,8 +40,29 @@ impl OpticalRgbObj {
             brightness: rgb.brightness as f32,
         }
     }
+
+    #[attr]
+    fn attr(&self, attr: Qstr, op: AttrOp) {
+        let component = match attr.as_str() {
+            "red" | "r" => self.red,
+            "green" | "g" => self.green,
+            "blue" | "b" => self.blue,
+            "brightness" => self.brightness,
+            _ => return,
+        };
+
+        match op {
+            AttrOp::Load { result } => result.return_value(Obj::from_float(component)),
+            _ => raise_msg(
+                token(),
+                &mp_type_AttributeError,
+                c"cannot write to OpticalRgb",
+            ),
+        }
+    }
 }
 
+#[class_methods]
 impl OpticalRawObj {
     pub fn new(raw: OpticalRaw) -> Self {
         Self {
@@ -65,42 +73,24 @@ impl OpticalRawObj {
             clear: raw.clear,
         }
     }
-}
 
-fn optical_rgb_attr(this: &OpticalRgbObj, attr: Qstr, op: AttrOp) {
-    let component = match attr.as_str() {
-        "red" | "r" => this.red,
-        "green" | "g" => this.green,
-        "blue" | "b" => this.blue,
-        "brightness" => this.brightness,
-        _ => return,
-    };
+    #[attr]
+    fn attr(&self, attr: Qstr, op: AttrOp) {
+        let component = match attr.as_str() {
+            "red" | "r" => self.red,
+            "green" | "g" => self.green,
+            "blue" | "b" => self.blue,
+            "clear" => self.clear,
+            _ => return,
+        };
 
-    match op {
-        AttrOp::Load { result } => result.return_value(Obj::from_float(component)),
-        _ => raise_msg(
-            token(),
-            &mp_type_AttributeError,
-            c"cannot write to OpticalRgb",
-        ),
-    }
-}
-
-fn optical_raw_attr(this: &OpticalRawObj, attr: Qstr, op: AttrOp) {
-    let component = match attr.as_str() {
-        "red" | "r" => this.red,
-        "green" | "g" => this.green,
-        "blue" | "b" => this.blue,
-        "clear" => this.clear,
-        _ => return,
-    };
-
-    match op {
-        AttrOp::Load { result } => result.return_value(Obj::from_int(component as i32)),
-        _ => raise_msg(
-            token(),
-            &mp_type_AttributeError,
-            c"cannot write to OpticalRaw",
-        ),
+        match op {
+            AttrOp::Load { result } => result.return_value(Obj::from_int(component as i32)),
+            _ => raise_msg(
+                token(),
+                &mp_type_AttributeError,
+                c"cannot write to OpticalRaw",
+            ),
+        }
     }
 }
