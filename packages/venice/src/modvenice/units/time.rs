@@ -1,8 +1,8 @@
 use std::time::Duration;
 
 use micropython_rs::{
-    const_dict,
-    obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
+    class, class_methods,
+    obj::{ObjBase, ObjTrait},
 };
 
 use crate::{
@@ -36,32 +36,26 @@ impl TimeUnit {
     }
 }
 
+#[class(qstr!(TimeUnit))]
 #[repr(C)]
 pub struct TimeUnitObj {
     base: ObjBase<'static>,
     unit: TimeUnit,
 }
 
-static TIME_UNIT_OBJ_OBJ: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(Gearset))
-    .set_locals_dict(const_dict![
-        qstr!(MILLIS) => Obj::from_static(&TimeUnitObj::MILLIS),
-        qstr!(SECOND) => Obj::from_static(&TimeUnitObj::SECOND),
-    ]);
-
-unsafe impl ObjTrait for TimeUnitObj {
-    const OBJ_TYPE: &ObjType = TIME_UNIT_OBJ_OBJ.as_obj_type();
-}
-
+#[class_methods]
 impl TimeUnitObj {
-    pub const MILLIS: Self = Self::new(TimeUnit::Millis);
-    pub const SECOND: Self = Self::new(TimeUnit::Second);
-
-    pub const fn new(unit: TimeUnit) -> Self {
+    const fn new(unit: TimeUnit) -> Self {
         Self {
-            base: ObjBase::new(TIME_UNIT_OBJ_OBJ.as_obj_type()),
+            base: ObjBase::new(Self::OBJ_TYPE),
             unit,
         }
     }
+
+    #[constant]
+    pub const MILLIS: &Self = &Self::new(TimeUnit::Millis);
+    #[constant]
+    pub const SECOND: &Self = &Self::new(TimeUnit::Second);
 
     pub const fn unit(&self) -> &TimeUnit {
         &self.unit

@@ -1,6 +1,6 @@
 use micropython_rs::{
-    const_dict,
-    obj::{Obj, ObjBase, ObjFullType, ObjTrait, TypeFlags},
+    class, class_methods,
+    obj::{ObjBase, ObjTrait},
 };
 use vexide_devices::math::Angle;
 
@@ -13,21 +13,11 @@ pub enum RotationUnit {
     Turns,
 }
 
+#[class(qstr!(RotationUnit))]
 #[repr(C)]
 pub struct RotationUnitObj {
     base: ObjBase<'static>,
     unit: RotationUnit,
-}
-
-pub static ROTATION_UNIT_OBJ_TYPE: ObjFullType =
-    ObjFullType::new(TypeFlags::empty(), qstr!(RotationUnit)).set_locals_dict(const_dict![
-        qstr!(RADIANS) => Obj::from_static(&RotationUnitObj::RADIANS),
-        qstr!(DEGREES) => Obj::from_static(&RotationUnitObj::DEGREES),
-        qstr!(TURNS) => Obj::from_static(&RotationUnitObj::TURNS),
-    ]);
-
-unsafe impl ObjTrait for RotationUnitObj {
-    const OBJ_TYPE: &micropython_rs::obj::ObjType = ROTATION_UNIT_OBJ_TYPE.as_obj_type();
 }
 
 impl RotationUnit {
@@ -49,17 +39,21 @@ impl RotationUnit {
     }
 }
 
+#[class_methods]
 impl RotationUnitObj {
-    pub const RADIANS: Self = Self::new(RotationUnit::Radians);
-    pub const DEGREES: Self = Self::new(RotationUnit::Degrees);
-    pub const TURNS: Self = Self::new(RotationUnit::Turns);
-
-    pub const fn new(unit: RotationUnit) -> Self {
+    const fn new(unit: RotationUnit) -> Self {
         Self {
-            base: ObjBase::new(ROTATION_UNIT_OBJ_TYPE.as_obj_type()),
+            base: ObjBase::new(Self::OBJ_TYPE),
             unit,
         }
     }
+
+    #[constant]
+    pub const RADIANS: &Self = &Self::new(RotationUnit::Radians);
+    #[constant]
+    pub const DEGREES: &Self = &Self::new(RotationUnit::Degrees);
+    #[constant]
+    pub const TURNS: &Self = &Self::new(RotationUnit::Turns);
 
     pub const fn unit(&self) -> RotationUnit {
         self.unit
