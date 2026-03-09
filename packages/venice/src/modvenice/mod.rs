@@ -44,7 +44,7 @@ use crate::{
                 AI_VISION_COLOR_OBJECT_OBJ_TYPE, AI_VISION_MODEL_OBJECT_OBJ_TYPE,
             },
         },
-        competition::{COMPETITION_OBJ_TYPE, COMPETITION_RUNTIME_OBJ_TYPE},
+        competition::{Competition, CompetitionRuntime},
         controller::id::ControllerIdObj,
         distance_sensor::{DistanceSensorObj, distance_object::DistanceObjectObj},
         imu::{InertialOrientationObj, InertialSensorObj},
@@ -115,8 +115,8 @@ static mut venice_globals: Dict = Dict::new(const_map![
     qstr!(AiVisionAprilTagObject) => Obj::from_static(&AI_VISION_APRIL_TAG_OBJECT_OBJ_TYPE),
     qstr!(AiVisionModelObject) => Obj::from_static(&AI_VISION_MODEL_OBJECT_OBJ_TYPE),
     // competition
-    qstr!(Competition) => Obj::from_static(&COMPETITION_OBJ_TYPE),
-    qstr!(CompetitionRuntime) => Obj::from_static(&COMPETITION_RUNTIME_OBJ_TYPE),
+    qstr!(Competition) => Obj::from_static(Competition::OBJ_TYPE),
+    qstr!(CompetitionRuntime) => Obj::from_static(CompetitionRuntime::OBJ_TYPE),
     // imu
     qstr!(InertialSensor) => Obj::from_static(InertialSensorObj::OBJ_TYPE),
     qstr!(InertialOrientation) => Obj::from_static(InertialOrientationObj::OBJ_TYPE),

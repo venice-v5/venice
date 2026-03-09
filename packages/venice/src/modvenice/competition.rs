@@ -3,19 +3,16 @@ use std::cell::Cell;
 use argparse::{ArgType, error_msg};
 use bitflags::bitflags;
 use micropython_rs::{
-    const_dict,
+    class, class_methods,
     except::raise_type_error,
     fun::Fun2,
     generator::GEN_INSTANCE_TYPE,
     init::token,
-    make_new_from_fn,
-    obj::{Iter, Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
+    obj::{Obj, ObjBase, ObjTrait, ObjType},
 };
 
 use crate::{
-    fun::fun1,
     modvenice::vasyncio::event_loop::{EventLoop, vasyncio_get_running_loop},
-    obj::alloc_obj,
     qstrgen::qstr,
 };
 
@@ -74,6 +71,7 @@ impl Phase {
     }
 }
 
+#[class(qstr!(Competition))]
 #[repr(C)]
 pub struct Competition {
     base: ObjBase<'static>,
@@ -85,11 +83,13 @@ pub struct Competition {
     disabled: Cell<Obj>,
 }
 
+#[class(qstr!(CompetitionRuntime))]
 #[repr(C)]
 pub struct CompetitionRuntime {
     base: ObjBase<'static>,
 
     // Dragon Ball Reference (Cell)
+    // low level larping
     status: Cell<Status>,
     phase: Cell<Phase>,
 
@@ -101,30 +101,6 @@ pub struct CompetitionRuntime {
 
     // nullable
     coro: Cell<Obj>,
-}
-
-pub static COMPETITION_OBJ_TYPE: ObjFullType =
-    ObjFullType::new(TypeFlags::empty(), qstr!(Competition))
-        .set_make_new(make_new_from_fn!(competition_make_new))
-        .set_locals_dict(const_dict![
-            qstr!(run) => Obj::from_static(&fun1!(competition_run, &Competition)),
-            qstr!(connected) => Obj::from_static(&Fun2::new(competition_connected)),
-            qstr!(disconnected) => Obj::from_static(&Fun2::new(competition_disconnected)),
-            qstr!(driver) => Obj::from_static(&Fun2::new(competition_driver)),
-            qstr!(autonomous) => Obj::from_static(&Fun2::new(competition_autonomous)),
-            qstr!(disabled) => Obj::from_static(&Fun2::new(competition_disabled)),
-        ]);
-
-pub static COMPETITION_RUNTIME_OBJ_TYPE: ObjFullType =
-    ObjFullType::new(TypeFlags::ITER_IS_ITERNEXT, qstr!(CompetitionRuntime))
-        .set_iter(Iter::IterNext(runtime_iternext));
-
-unsafe impl ObjTrait for Competition {
-    const OBJ_TYPE: &micropython_rs::obj::ObjType = COMPETITION_OBJ_TYPE.as_obj_type();
-}
-
-unsafe impl ObjTrait for CompetitionRuntime {
-    const OBJ_TYPE: &micropython_rs::obj::ObjType = COMPETITION_RUNTIME_OBJ_TYPE.as_obj_type();
 }
 
 impl CompetitionRuntime {
@@ -213,22 +189,6 @@ impl CompetitionRuntime {
     }
 }
 
-fn competition_make_new(ty: &'static ObjType, _n_pos: usize, _n_kw: usize, args: &[Obj]) -> Obj {
-    if !args.is_empty() {
-        raise_type_error(token(), c"function does not accept arguments");
-    }
-
-    alloc_obj(Competition {
-        base: ObjBase::new(ty),
-
-        connected: Cell::new(Obj::NULL),
-        disconnected: Cell::new(Obj::NULL),
-        driver: Cell::new(Obj::NULL),
-        autonomous: Cell::new(Obj::NULL),
-        disabled: Cell::new(Obj::NULL),
-    })
-}
-
 fn assert_callable(routine: Obj) {
     if !routine.is_callable() {
         raise_type_error(token(), c"routine object is not callable");
@@ -252,25 +212,61 @@ routine_decorator!(competition_driver, driver);
 routine_decorator!(competition_autonomous, autonomous);
 routine_decorator!(competition_disabled, disabled);
 
-fn competition_run(comp: &Competition) -> Obj {
-    alloc_obj(CompetitionRuntime {
-        base: ObjBase::new(CompetitionRuntime::OBJ_TYPE),
+#[class_methods]
+impl Competition {
+    #[make_new]
+    fn make_new(ty: &'static ObjType, _n_pos: usize, _n_kw: usize, args: &[Obj]) -> Self {
+        if !args.is_empty() {
+            raise_type_error(token(), c"function does not accept arguments");
+        }
 
-        status: Cell::new(status()),
-        // TODO: maybe this should be made an option since we haven't computed the phase yet
-        phase: Cell::new(Phase::Disconnected),
+        Self {
+            base: ObjBase::new(ty),
 
-        connected: comp.connected.get(),
-        disconnected: comp.disconnected.get(),
-        driver: comp.driver.get(),
-        autonomous: comp.autonomous.get(),
-        disabled: comp.disabled.get(),
+            connected: Cell::new(Obj::NULL),
+            disconnected: Cell::new(Obj::NULL),
+            driver: Cell::new(Obj::NULL),
+            autonomous: Cell::new(Obj::NULL),
+            disabled: Cell::new(Obj::NULL),
+        }
+    }
 
-        coro: Cell::new(Obj::NULL),
-    })
+    #[constant(qstr!(connected))]
+    const CONNECTED: &Fun2 = &Fun2::new(competition_connected);
+    #[constant(qstr!(disconnected))]
+    const DISCONNECTED: &Fun2 = &Fun2::new(competition_disconnected);
+    #[constant(qstr!(driver))]
+    const DRIVER: &Fun2 = &Fun2::new(competition_driver);
+    #[constant(qstr!(autonomous))]
+    const AUTONOMOUS: &Fun2 = &Fun2::new(competition_autonomous);
+    #[constant(qstr!(disabled))]
+    const DISABLED: &Fun2 = &Fun2::new(competition_disabled);
+
+    #[method]
+    fn run(&self) -> CompetitionRuntime {
+        CompetitionRuntime {
+            base: ObjBase::new(CompetitionRuntime::OBJ_TYPE),
+
+            status: Cell::new(status()),
+            // TODO: maybe this should be made an option since we haven't computed the phase yet
+            phase: Cell::new(Phase::Disconnected),
+
+            connected: self.connected.get(),
+            disconnected: self.disconnected.get(),
+            driver: self.driver.get(),
+            autonomous: self.autonomous.get(),
+            disabled: self.disabled.get(),
+
+            coro: Cell::new(Obj::NULL),
+        }
+    }
 }
 
-extern "C" fn runtime_iternext(self_in: Obj) -> Obj {
-    self_in.try_as_obj::<CompetitionRuntime>().unwrap().tick();
-    Obj::NONE
+#[class_methods]
+impl CompetitionRuntime {
+    #[iter]
+    extern "C" fn iter(self_in: Obj) -> Obj {
+        self_in.try_as_obj::<Self>().unwrap().tick();
+        Obj::NONE
+    }
 }
