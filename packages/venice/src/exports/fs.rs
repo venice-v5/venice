@@ -6,14 +6,14 @@ use std::{
 };
 
 use micropython_rs::{
-    const_dict,
+    class, class_methods,
     errno::{MP_EBADF, MP_EINVAL, MP_EIO},
     except::{raise_os_error, raise_type_error, raise_value_error},
-    fun::FunVarKw,
+    fun::{Fun1, Fun2, FunVarBetween, FunVarKw},
     init::token,
     ioctl_from_fn,
     map::Map,
-    obj::{Obj, ObjBase, ObjFullType, ObjTrait, TypeFlags},
+    obj::{Obj, ObjBase, ObjTrait},
     read_from_fn,
     stream::{
         IoctlReq, SEEK_CUR, SEEK_END, SEEK_SET, Stream, mp_stream_close_obj, mp_stream_flush_obj,
@@ -25,36 +25,101 @@ use micropython_rs::{
 
 use crate::{fun::fun_var_kw, obj::alloc_obj, qstrgen::qstr};
 
+#[class(qstr!(File))]
 #[repr(C)]
 pub struct FileObj {
     base: ObjBase<'static>,
     file: RefCell<Option<File>>,
 }
 
-pub const FILE_STREAM: Stream = Stream {
-    read: read_from_fn!(file_read),
-    write: write_from_fn!(file_write),
-    ioctl: ioctl_from_fn!(file_ioctl),
-    is_text: 0,
-};
+#[class_methods]
+impl FileObj {
+    fn stream_read(self_in: Obj, buf: &mut [u8]) -> Result<usize, c_int> {
+        let this = self_in.try_as_obj::<FileObj>().unwrap();
+        this.file
+            .borrow_mut()
+            .as_mut()
+            .ok_or(MP_EBADF)?
+            .read(buf)
+            .map_err(io_to_errno)
+    }
 
-pub static FILE_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(File))
-    .set_stream(&FILE_STREAM)
-    .set_locals_dict(const_dict![
-        qstr!(read) => Obj::from_static(&mp_stream_read_obj),
-        qstr!(read1) => Obj::from_static(&mp_stream_read1_obj),
-        qstr!(readinto) => Obj::from_static(&mp_stream_readinto_obj),
-        qstr!(write) => Obj::from_static(&mp_stream_write_obj),
-        qstr!(write1) => Obj::from_static(&mp_stream_write1_obj),
-        qstr!(close) => Obj::from_static(&mp_stream_close_obj),
-        qstr!(seek) => Obj::from_static(&mp_stream_seek_obj),
-        qstr!(tell) => Obj::from_static(&mp_stream_tell_obj),
-        qstr!(flush) => Obj::from_static(&mp_stream_flush_obj),
-        qstr!(ioctl) => Obj::from_static(&mp_stream_ioctl_obj),
-    ]);
+    fn stream_write(self_in: Obj, buf: &[u8]) -> Result<usize, c_int> {
+        let this = self_in.try_as_obj::<FileObj>().unwrap();
+        this.file
+            .borrow_mut()
+            .as_mut()
+            .ok_or(MP_EBADF)?
+            .write(buf)
+            .map_err(io_to_errno)
+    }
 
-unsafe impl ObjTrait for FileObj {
-    const OBJ_TYPE: &micropython_rs::obj::ObjType = FILE_OBJ_TYPE.as_obj_type();
+    fn stream_ioctl(self_in: Obj, req: IoctlReq) -> Result<usize, c_int> {
+        let this = self_in.try_as_obj::<FileObj>().unwrap();
+        let mut file_opt = this.file.borrow_mut();
+        let file = file_opt.as_mut().ok_or(MP_EBADF)?;
+
+        match req {
+            IoctlReq::Seek(seek) => {
+                let seek_from = match seek.whence {
+                    SEEK_SET => SeekFrom::Start(seek.offset as u64),
+                    SEEK_CUR => SeekFrom::Current(seek.offset as i64),
+                    SEEK_END => SeekFrom::End(seek.offset as i64),
+                    _ => panic!("MicroPython lied..."),
+                };
+
+                file.seek(seek_from).map_err(io_to_errno)?;
+            }
+            IoctlReq::Flush => file.sync_all().map_err(io_to_errno)?,
+            IoctlReq::Close => {
+                // sync_all before closing to catch errors that would otherwise be silenced by the
+                // destructor
+                file.sync_all().map_err(io_to_errno)?;
+                *file_opt = None;
+            }
+            _ => return Err(MP_EINVAL),
+        }
+
+        Ok(0)
+    }
+
+    #[stream]
+    const STREAM: Stream = Stream {
+        read: read_from_fn!(FileObj::stream_read),
+        write: write_from_fn!(FileObj::stream_write),
+        ioctl: ioctl_from_fn!(FileObj::stream_ioctl),
+        is_text: 0,
+    };
+
+    #[constant(qstr!(read))]
+    const READ: &FunVarBetween = &mp_stream_read_obj;
+
+    #[constant(qstr!(read1))]
+    const READ1: &FunVarBetween = &mp_stream_read1_obj;
+
+    #[constant(qstr!(readinto))]
+    const READINTO: &FunVarBetween = &mp_stream_readinto_obj;
+
+    #[constant(qstr!(write))]
+    const WRITE: &FunVarBetween = &mp_stream_write_obj;
+
+    #[constant(qstr!(write1))]
+    const WRITE1: &Fun2 = &mp_stream_write1_obj;
+
+    #[constant(qstr!(close))]
+    const CLOSE: &Fun1 = &mp_stream_close_obj;
+
+    #[constant(qstr!(seek))]
+    const SEEK: &FunVarBetween = &mp_stream_seek_obj;
+
+    #[constant(qstr!(tell))]
+    const TELL: &Fun1 = &mp_stream_tell_obj;
+
+    #[constant(qstr!(flush))]
+    const FLUSH: &Fun1 = &mp_stream_flush_obj;
+
+    #[constant(qstr!(ioctl))]
+    const IOCTL: &FunVarBetween = &mp_stream_ioctl_obj;
 }
 
 // Yes this is vibecoded i dont give a shit
@@ -152,55 +217,6 @@ fn open(pos_args: &[Obj], kw_map: &Map) -> Obj {
         base: ObjBase::new(FileObj::OBJ_TYPE),
         file: RefCell::new(Some(file)),
     })
-}
-
-fn file_read(self_in: Obj, buf: &mut [u8]) -> Result<usize, c_int> {
-    let this = self_in.try_as_obj::<FileObj>().unwrap();
-    this.file
-        .borrow_mut()
-        .as_mut()
-        .ok_or(MP_EBADF)?
-        .read(buf)
-        .map_err(io_to_errno)
-}
-
-fn file_write(self_in: Obj, buf: &[u8]) -> Result<usize, c_int> {
-    let this = self_in.try_as_obj::<FileObj>().unwrap();
-    this.file
-        .borrow_mut()
-        .as_mut()
-        .ok_or(MP_EBADF)?
-        .write(buf)
-        .map_err(io_to_errno)
-}
-
-fn file_ioctl(self_in: Obj, req: IoctlReq) -> Result<usize, c_int> {
-    let this = self_in.try_as_obj::<FileObj>().unwrap();
-    let mut file_opt = this.file.borrow_mut();
-    let file = file_opt.as_mut().ok_or(MP_EBADF)?;
-
-    match req {
-        IoctlReq::Seek(seek) => {
-            let seek_from = match seek.whence {
-                SEEK_SET => SeekFrom::Start(seek.offset as u64),
-                SEEK_CUR => SeekFrom::Current(seek.offset as i64),
-                SEEK_END => SeekFrom::End(seek.offset as i64),
-                _ => panic!("MicroPython lied..."),
-            };
-
-            file.seek(seek_from).map_err(io_to_errno)?;
-        }
-        IoctlReq::Flush => file.sync_all().map_err(io_to_errno)?,
-        IoctlReq::Close => {
-            // sync_all before closing to catch errors that would otherwise be silenced by the
-            // destructor
-            file.sync_all().map_err(io_to_errno)?;
-            *file_opt = None;
-        }
-        _ => return Err(MP_EINVAL),
-    }
-
-    Ok(0)
 }
 
 #[allow(non_upper_case_globals)]
