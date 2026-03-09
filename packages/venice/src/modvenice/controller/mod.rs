@@ -34,32 +34,6 @@ pub struct ControllerObj {
     guard: ControllerGuard<'static>,
 }
 
-// static CONTROLLER_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(Controller))
-//     .set_make_new(make_new_from_fn!(controller_make_new))
-//     .set_attr(attr_from_fn!(controller_attr))
-//     .set_locals_dict(const_dict![
-//         qstr!(UPDATE_INTERVAL_MS) => Obj::from_int(Controller::UPDATE_INTERVAL.as_millis() as i32),
-//         qstr!(MAX_COLUMNS) => Obj::from_int(Controller::MAX_COLUMNS as i32),
-//         qstr!(MAX_LINES) => Obj::from_int(Controller::MAX_LINES as i32),
-
-//         qstr!(read_state) => Obj::from_static(&fun1!(controller_read_state, &ControllerObj)),
-//         qstr!(connection) => Obj::from_static(&fun1!(controller_connection, &ControllerObj)),
-//         qstr!(battery_capacity) => Obj::from_static(&fun1!(controller_battery_capacity, &ControllerObj)),
-//         qstr!(battery_level) => Obj::from_static(&fun1!(controller_battery_level, &ControllerObj)),
-//         qstr!(flags) => Obj::from_static(&fun1!(controller_flags, &ControllerObj)),
-
-//         qstr!(rumble) => Obj::from_static(&fun2!(controller_rumble, &ControllerObj, &str)),
-//         qstr!(try_rumble) => Obj::from_static(&fun2!(controller_try_rumble, &ControllerObj, &str)),
-//         qstr!(clear_line) => Obj::from_static(&fun2!(controller_clear_line, &ControllerObj, i32)),
-//         qstr!(try_clear_line) => Obj::from_static(&fun2!(controller_try_clear_line, &ControllerObj, i32)),
-//         qstr!(clear_screen) => Obj::from_static(&fun1!(controller_clear_screen, &ControllerObj)),
-//         qstr!(try_clear_screen) => Obj::from_static(&fun1!(controller_try_clear_screen, &ControllerObj)),
-//         qstr!(set_text) => Obj::from_static(&fun_var_between!(controller_set_text, 4, 4)),
-//         qstr!(try_set_text) => Obj::from_static(&fun_var_between!(controller_try_set_text, 4, 4)),
-
-//         qstr!(free) => Obj::from_static(&fun1!(controller_free, &ControllerObj))
-//     ]);
-
 #[class(qstr!(MotorV5))]
 #[repr(C)]
 pub struct ControllerConnectionObj {
