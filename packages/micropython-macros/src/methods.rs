@@ -1,7 +1,7 @@
 use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned};
 use syn::{
-    Attribute, ExprMacro, FnArg, Ident, LitInt, Meta, Signature, Token, Type,
+    Attribute, ExprMacro, FnArg, Ident, LitInt, LitStr, Meta, Signature, Token, Type,
     parse::{Parse, ParseStream},
     spanned::Spanned,
 };
@@ -23,9 +23,18 @@ pub enum FunType {
 }
 
 #[derive(Default)]
+pub enum Binding {
+    Static,
+    Class,
+    #[default]
+    Instance,
+}
+
+#[derive(Default)]
 pub struct MethodArgs {
     pub ty: FunType,
     pub qstr: Option<ExprMacro>,
+    pub binding: Binding,
 }
 
 impl Parse for MethodArgs {
@@ -36,6 +45,7 @@ impl Parse for MethodArgs {
 
         let mut ty = None;
         let mut qstr = None;
+        let mut binding = None;
 
         while !input.is_empty() {
             let ident: Ident = input.parse()?;
@@ -52,6 +62,14 @@ impl Parse for MethodArgs {
                         return Err(syn::Error::new(ident.span(), "multiple `ty` definitions"));
                     }
                 }
+                "binding" => {
+                    if binding.replace(input.parse()?).is_some() {
+                        return Err(syn::Error::new(
+                            ident.span(),
+                            "multiple `binding` definitions",
+                        ));
+                    }
+                }
                 _ => {
                     return Err(syn::Error::new(ident.span(), "unknown argument"));
                 }
@@ -64,8 +82,21 @@ impl Parse for MethodArgs {
 
         Ok(MethodArgs {
             ty: ty.unwrap_or_default(),
+            binding: binding.unwrap_or_default(),
             qstr,
         })
+    }
+}
+
+impl Parse for Binding {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let str = input.parse::<LitStr>()?;
+        match str.value().as_str() {
+            "static" => Ok(Self::Static),
+            "class" => Ok(Self::Class),
+            "instance" => Ok(Self::Instance),
+            _ => Err(syn::Error::new(str.span(), "unknown binding")),
+        }
     }
 }
 
@@ -338,10 +369,18 @@ pub fn generate_fun(ty: &Type, sig: &Signature, attr: &Attribute) -> syn::Result
         Meta::NameValue(_) => return Err(syn::Error::new(attr.span(), "unsupported `=` format")),
     };
 
-    let fun_expr = match args.ty {
+    let mut fun_expr = match args.ty {
         FunType::Fixed => generate_fixed_fun(ty, sig)?,
         _ => generate_var_fun(ty, sig, args.ty)?,
     };
+    match args.binding {
+        Binding::Instance => {}
+        Binding::Static => {
+            fun_expr = quote! { ::micropython_rs::fun::StaticMethod::new(&#fun_expr) }
+        }
+        Binding::Class => fun_expr = quote! { ::micropython_rs::fun::ClassMethod::new(&#fun_expr) },
+    }
+
     let attr_qstr = match &args.qstr {
         Some(m) => {
             let mac = &m.mac;
