@@ -4,7 +4,6 @@ use micropython_rs::{
 };
 use vexide_devices::math::Direction;
 
-use crate::qstrgen::qstr;
 
 #[class(qstr!(Direction))]
 #[repr(C)]

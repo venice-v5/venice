@@ -7,7 +7,6 @@ use micropython_rs::{
 };
 use vexide_devices::smart::optical::{OpticalRaw, OpticalRgb};
 
-use crate::qstrgen::qstr;
 
 #[class(qstr!(OpticalRgb))]
 #[repr(C)]

@@ -9,7 +9,7 @@ use vexide_devices::{
     smart::ai_vision::AiVisionObject,
 };
 
-use crate::{modvenice::units::rotation::RotationUnitObj, obj::alloc_obj, qstrgen::qstr};
+use crate::{modvenice::units::rotation::RotationUnitObj, obj::alloc_obj};
 
 #[class(qstr!(AiVisionColorObject))]
 #[repr(C)]

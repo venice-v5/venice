@@ -4,6 +4,7 @@
 pub mod devices;
 pub mod fun;
 pub mod obj;
+#[macro_use]
 pub mod qstrgen;
 pub mod registry;
 

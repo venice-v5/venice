@@ -24,7 +24,6 @@ use crate::{
     modvenice::{
         motor::motor_type::MotorTypeObj, raise_port_error, units::rotation::RotationUnitObj,
     },
-    qstrgen::qstr,
     registry::RegistryGuard,
 };
 

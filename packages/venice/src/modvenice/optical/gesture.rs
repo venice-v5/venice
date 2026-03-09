@@ -7,7 +7,6 @@ use micropython_rs::{
 };
 use vexide_devices::smart::optical::{Gesture, GestureDirection};
 
-use crate::qstrgen::qstr;
 
 #[class(qstr!(Gesture))]
 #[repr(C)]

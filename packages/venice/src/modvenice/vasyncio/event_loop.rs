@@ -15,7 +15,7 @@ use micropython_rs::{
 use vex_sdk::vexTasksRun;
 
 use super::{sleep::Sleep, task::Task, time32};
-use crate::{alloc::Gc, obj::alloc_obj, qstrgen::qstr};
+use crate::{alloc::Gc, obj::alloc_obj};
 
 struct Sleeper {
     task: Obj,

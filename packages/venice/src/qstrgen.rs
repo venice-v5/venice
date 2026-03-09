@@ -15,5 +15,3 @@ macro_rules! qstr {
         }
     };
 }
-
-pub(crate) use qstr;

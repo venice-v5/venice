@@ -24,7 +24,6 @@ use crate::{
         controller::id::ControllerIdObj, raise_device_error, raise_port_error,
         vasyncio::event_loop::WAKE_SIGNAL,
     },
-    qstrgen::qstr,
     registry::ControllerGuard,
 };
 

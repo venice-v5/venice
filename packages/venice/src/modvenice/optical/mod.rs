@@ -20,7 +20,6 @@ use crate::{
         raise_port_error,
         units::time::TimeUnitObj,
     },
-    qstrgen::qstr,
     registry::RegistryGuard,
 };
 

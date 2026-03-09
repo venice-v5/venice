@@ -4,7 +4,6 @@ use micropython_rs::{
 };
 use vexide_devices::smart::motor::BrakeMode;
 
-use crate::qstrgen::qstr;
 
 #[class(qstr!(BrakeMode))]
 #[repr(C)]

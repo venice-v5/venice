@@ -11,10 +11,7 @@ use micropython_rs::{
     obj::{Obj, ObjBase, ObjTrait, ObjType},
 };
 
-use crate::{
-    modvenice::vasyncio::event_loop::{EventLoop, vasyncio_get_running_loop},
-    qstrgen::qstr,
-};
+use crate::modvenice::vasyncio::event_loop::{EventLoop, vasyncio_get_running_loop};
 
 bitflags! {
     // thanks for the comments vexide

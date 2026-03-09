@@ -14,7 +14,6 @@ use crate::{
         raise_port_error,
         units::{rotation::RotationUnitObj, time::TimeUnitObj},
     },
-    qstrgen::qstr,
     registry::RegistryGuard,
 };
 

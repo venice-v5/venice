@@ -19,7 +19,6 @@ use micropython_rs::{
 };
 use vex_sdk_jumptable::vexSerialReadChar;
 
-use crate::qstrgen::qstr;
 
 #[class(qstr!(Stdin))]
 #[repr(C)]

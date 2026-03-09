@@ -7,7 +7,7 @@ use micropython_rs::{
     obj::{Obj, ObjBase, ObjTrait},
 };
 
-use crate::{alloc::Gc, qstrgen::qstr};
+use crate::alloc::Gc;
 
 #[class(qstr!(Task))]
 #[repr(C)]

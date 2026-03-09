@@ -10,6 +10,7 @@ mod rotation_sensor;
 mod serial;
 mod units;
 mod vasyncio;
+mod vision;
 
 use std::ffi::CStr;
 
@@ -22,8 +23,7 @@ use micropython_rs::{
     obj::{Obj, ObjFullType, ObjTrait},
 };
 
-use crate::{
-    modvenice::{
+use crate::modvenice::{
         ai_vision::{
             AiVisionSensorObj, ai_vision_color::AiVisionColorObj,
             ai_vision_color_code::AiVisionColorCodeObj,
@@ -55,9 +55,7 @@ use crate::{
             event_loop::{EventLoop, vasyncio_get_running_loop, vasyncio_run, vasyncio_spawn},
             sleep::Sleep,
         },
-    },
-    qstrgen::qstr,
-};
+    };
 
 static DEVICE_ERROR_OBJ_TYPE: ObjFullType =
     new_exception_type(qstr!(DeviceError), &mp_type_Exception);

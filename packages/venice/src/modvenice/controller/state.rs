@@ -5,7 +5,7 @@ use micropython_rs::{
 };
 use vexide_devices::controller::{ButtonState, ControllerState, JoystickState};
 
-use crate::{obj::alloc_obj, qstrgen::qstr};
+use crate::obj::alloc_obj;
 
 #[class(qstr!(ControllerState))]
 #[repr(C)]

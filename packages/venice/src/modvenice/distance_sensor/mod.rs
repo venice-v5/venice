@@ -12,7 +12,6 @@ use vexide_devices::smart::distance::DistanceSensor;
 use crate::{
     devices::{self, PortNumber},
     modvenice::{distance_sensor::distance_object::DistanceObjectObj, raise_port_error},
-    qstrgen::qstr,
     registry::RegistryGuard,
 };
 

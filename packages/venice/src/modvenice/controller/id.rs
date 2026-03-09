@@ -4,7 +4,6 @@ use micropython_rs::{
 };
 use vexide_devices::controller::ControllerId;
 
-use crate::qstrgen::qstr;
 
 #[class(qstr!(ControllerId))]
 #[repr(C)]

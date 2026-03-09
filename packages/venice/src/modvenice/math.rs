@@ -10,7 +10,7 @@ use micropython_rs::{
 };
 use vexide_devices::math::Angle;
 
-use crate::{modvenice::units::rotation::RotationUnit, qstrgen::qstr};
+use crate::modvenice::units::rotation::RotationUnit;
 
 #[class(qstr!(Vec3))]
 #[repr(C)]

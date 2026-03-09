@@ -23,7 +23,6 @@ use crate::{
         vasyncio::{event_loop::WAKE_SIGNAL, time32},
     },
     obj::alloc_obj,
-    qstrgen::qstr,
     registry::RegistryGuard,
 };
 

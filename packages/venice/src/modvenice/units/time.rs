@@ -5,10 +5,7 @@ use micropython_rs::{
     obj::{ObjBase, ObjTrait},
 };
 
-use crate::{
-    modvenice::vasyncio::time32::{MILLIS_PER_SEC, NANOS_PER_MILLI},
-    qstrgen::qstr,
-};
+use crate::modvenice::vasyncio::time32::{MILLIS_PER_SEC, NANOS_PER_MILLI};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TimeUnit {

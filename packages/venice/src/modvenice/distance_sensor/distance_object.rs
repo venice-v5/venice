@@ -5,7 +5,6 @@ use micropython_rs::{
 };
 use vexide_devices::smart::distance::DistanceObject;
 
-use crate::qstrgen::qstr;
 
 #[class(qstr!(DistanceObject))]
 #[repr(C)]

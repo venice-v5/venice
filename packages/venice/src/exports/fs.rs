@@ -23,7 +23,7 @@ use micropython_rs::{
     write_from_fn,
 };
 
-use crate::{fun::fun_var_kw, obj::alloc_obj, qstrgen::qstr};
+use crate::{fun::fun_var_kw, obj::alloc_obj};
 
 #[class(qstr!(File))]
 #[repr(C)]

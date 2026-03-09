@@ -11,10 +11,7 @@ use micropython_rs::{
     state::{globals, loaded_modules},
 };
 
-use crate::{
-    module_map::{MODULE_MAP, VptModuleFlags},
-    qstrgen::qstr,
-};
+use crate::module_map::{MODULE_MAP, VptModuleFlags};
 
 pub fn absolute_name(token: InitToken, mut level: i32, module_name: &str) -> String {
     const NAME_OBJ: Obj = Obj::from_qstr(qstr!(__name__));

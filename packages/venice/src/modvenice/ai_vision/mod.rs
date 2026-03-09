@@ -25,7 +25,6 @@ use crate::{
         raise_port_error,
     },
     obj::alloc_obj,
-    qstrgen::qstr,
     registry::RegistryGuard,
 };
 

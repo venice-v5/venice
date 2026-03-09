@@ -8,7 +8,7 @@ use micropython_rs::{
 };
 use vexide_devices::smart::ai_vision::AiVisionDetectionMode;
 
-use crate::{obj::alloc_obj, qstrgen::qstr};
+use crate::obj::alloc_obj;
 
 #[class(qstr!(AiVisionDetectionMode))]
 #[repr(C)]

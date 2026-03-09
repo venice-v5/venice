@@ -27,7 +27,6 @@ use crate::{
     devices::{PortNumber, lock_port},
     modvenice::vasyncio::event_loop::WAKE_SIGNAL,
     obj::alloc_obj,
-    qstrgen::qstr,
     registry::{RegistryGuard, UpgradeGuard},
 };
 

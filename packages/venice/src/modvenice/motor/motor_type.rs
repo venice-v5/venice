@@ -4,7 +4,6 @@ use micropython_rs::{
 };
 use vexide_devices::smart::motor::MotorType;
 
-use crate::qstrgen::qstr;
 
 #[repr(C)]
 pub struct MotorTypeObj {

@@ -4,7 +4,6 @@ use micropython_rs::{
 };
 use vexide_devices::smart::motor::Gearset;
 
-use crate::qstrgen::qstr;
 
 #[class(qstr!(Gearset))]
 #[repr(C)]

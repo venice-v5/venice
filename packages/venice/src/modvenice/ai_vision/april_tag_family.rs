@@ -4,7 +4,6 @@ use micropython_rs::{
 };
 use vexide_devices::smart::ai_vision::AprilTagFamily;
 
-use crate::qstrgen::qstr;
 
 #[class(qstr!(AprilTagFamily))]
 #[repr(C)]

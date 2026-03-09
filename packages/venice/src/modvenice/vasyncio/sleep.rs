@@ -9,7 +9,7 @@ use micropython_rs::{
 };
 
 use super::time32;
-use crate::{modvenice::units::time::TimeUnitObj, qstrgen::qstr};
+use crate::modvenice::units::time::TimeUnitObj;
 
 #[class(qstr!(Sleep))]
 #[repr(C)]

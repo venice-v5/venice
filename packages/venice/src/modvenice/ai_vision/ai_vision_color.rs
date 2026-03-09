@@ -8,7 +8,6 @@ use micropython_rs::{
 use rgb::Rgb;
 use vexide_devices::smart::ai_vision::AiVisionColor;
 
-use crate::qstrgen::qstr;
 
 #[class(qstr!(AiVisionColor))]
 #[repr(C)]
