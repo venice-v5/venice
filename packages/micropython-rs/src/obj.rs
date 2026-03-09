@@ -1114,6 +1114,18 @@ impl From<Qstr> for Obj {
     }
 }
 
+impl<T> From<Option<T>> for Obj
+where
+    T: Into<Obj>,
+{
+    fn from(value: Option<T>) -> Self {
+        match value {
+            Some(v) => v.into(),
+            None => Obj::NONE,
+        }
+    }
+}
+
 impl<O: ObjTrait + 'static> From<O> for Obj {
     fn from(value: O) -> Self {
         Obj::new(token(), value, false).expect("allocation error")
