@@ -2,16 +2,17 @@ use std::cell::Cell;
 
 use argparse::{ArgType, error_msg};
 use micropython_rs::{
-    attr_from_fn,
+    class, class_methods,
     except::raise_type_error,
     init::token,
-    obj::{AttrOp, Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
+    obj::{AttrOp, Obj, ObjBase, ObjTrait},
     qstr::Qstr,
 };
 use vexide_devices::math::Angle;
 
 use crate::{modvenice::units::rotation::RotationUnit, qstrgen::qstr};
 
+#[class(qstr!(Vec3))]
 #[repr(C)]
 pub struct Vec3 {
     base: ObjBase<'static>,
@@ -20,6 +21,7 @@ pub struct Vec3 {
     z: Cell<f32>,
 }
 
+#[class(qstr!(Quaternion))]
 #[repr(C)]
 pub struct Quaternion {
     base: ObjBase<'static>,
@@ -33,6 +35,7 @@ pub struct Quaternion {
     w: Cell<f32>,
 }
 
+#[class(qstr!(EulerAngles))]
 #[repr(C)]
 pub struct EulerAngles {
     base: ObjBase<'static>,
@@ -44,26 +47,7 @@ pub struct EulerAngles {
     roll: Cell<f32>,
 }
 
-pub static VEC3_OBJ_TYPE: ObjFullType =
-    ObjFullType::new(TypeFlags::empty(), qstr!(Vec3)).set_attr(attr_from_fn!(vec3_attr));
-pub static QUATERNION_OBJ_TYPE: ObjFullType =
-    ObjFullType::new(TypeFlags::empty(), qstr!(Quaternion))
-        .set_attr(attr_from_fn!(quaternion_attr));
-pub static EULER_OBJ_TYPE: ObjFullType =
-    ObjFullType::new(TypeFlags::empty(), qstr!(EulerAngles)).set_attr(attr_from_fn!(euler_attr));
-
-unsafe impl ObjTrait for Vec3 {
-    const OBJ_TYPE: &ObjType = VEC3_OBJ_TYPE.as_obj_type();
-}
-
-unsafe impl ObjTrait for Quaternion {
-    const OBJ_TYPE: &ObjType = QUATERNION_OBJ_TYPE.as_obj_type();
-}
-
-unsafe impl ObjTrait for EulerAngles {
-    const OBJ_TYPE: &ObjType = EULER_OBJ_TYPE.as_obj_type();
-}
-
+#[class_methods]
 impl Vec3 {
     pub fn new(v: vexide_devices::math::Vector3<f64>) -> Self {
         Self {
@@ -73,8 +57,21 @@ impl Vec3 {
             z: Cell::new(v.z as f32),
         }
     }
+
+    #[attr]
+    fn attr(&self, attr: Qstr, op: AttrOp) {
+        let coord = match attr.as_str() {
+            "x" => &self.x,
+            "y" => &self.y,
+            "z" => &self.z,
+            _ => return,
+        };
+
+        handle_op(op, coord);
+    }
 }
 
+#[class_methods]
 impl Quaternion {
     pub fn new(q: vexide_devices::math::Quaternion<f64>) -> Self {
         Self {
@@ -85,8 +82,22 @@ impl Quaternion {
             w: Cell::new(q.s as f32),
         }
     }
+
+    #[attr]
+    fn attr(&self, attr: Qstr, op: AttrOp) {
+        let val = match attr.as_str() {
+            "x" => &self.x,
+            "y" => &self.y,
+            "z" => &self.z,
+            "w" => &self.w,
+            _ => return,
+        };
+
+        handle_op(op, val);
+    }
 }
 
+#[class_methods]
 impl EulerAngles {
     pub fn new<B>(e: vexide_devices::math::EulerAngles<Angle, B>, unit: RotationUnit) -> Self {
         Self {
@@ -95,6 +106,18 @@ impl EulerAngles {
             pitch: Cell::new(unit.angle_to_float(e.a)),
             roll: Cell::new(unit.angle_to_float(e.c)),
         }
+    }
+
+    #[attr]
+    fn attr(&self, attr: Qstr, op: AttrOp) {
+        let val = match attr.as_str() {
+            "yaw" | "z" => &self.yaw,
+            "pitch" | "y" => &self.pitch,
+            "roll" | "x" => &self.roll,
+            _ => return,
+        };
+
+        handle_op(op, val);
     }
 }
 
@@ -118,38 +141,4 @@ fn handle_op(op: AttrOp, val: &Cell<f32>) {
             result.sucess();
         }
     }
-}
-
-fn vec3_attr(this: &Vec3, attr: Qstr, op: AttrOp) {
-    let coord = match attr.as_str() {
-        "x" => &this.x,
-        "y" => &this.y,
-        "z" => &this.z,
-        _ => return,
-    };
-
-    handle_op(op, coord);
-}
-
-fn quaternion_attr(this: &Quaternion, attr: Qstr, op: AttrOp) {
-    let val = match attr.as_str() {
-        "x" => &this.x,
-        "y" => &this.y,
-        "z" => &this.z,
-        "w" => &this.w,
-        _ => return,
-    };
-
-    handle_op(op, val);
-}
-
-fn euler_attr(this: &EulerAngles, attr: Qstr, op: AttrOp) {
-    let val = match attr.as_str() {
-        "yaw" | "z" => &this.yaw,
-        "pitch" | "y" => &this.pitch,
-        "roll" | "x" => &this.roll,
-        _ => return,
-    };
-
-    handle_op(op, val);
 }
