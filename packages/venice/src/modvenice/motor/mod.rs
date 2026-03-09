@@ -37,7 +37,7 @@ pub struct MotorObj {
 
 #[class_methods]
 impl MotorObj {
-    #[method(ty = var_between(min = 1, max = 3))]
+    #[method(ty = var_between(min = 1, max = 3), binding = "static")]
     fn new_v5(args: &[Obj]) -> Self {
         let token = token();
         let mut reader = Args::new(args.len(), 0, args).reader(token);
@@ -62,7 +62,7 @@ impl MotorObj {
         }
     }
 
-    #[method(ty = var_between(min = 1, max = 2))]
+    #[method(ty = var_between(min = 1, max = 2), binding = "static")]
     fn new_exp(args: &[Obj]) -> Self {
         let token = token();
         let mut reader = Args::new(args.len(), 0, args).reader(token);
