@@ -1,44 +1,36 @@
 use argparse::{ArgType, error_msg};
 use micropython_rs::{
-    const_dict,
+    class, class_methods,
     except::raise_type_error,
     init::token,
-    obj::{Obj, ObjBase, ObjFullType, ObjTrait, TypeFlags},
+    obj::{Obj, ObjBase, ObjTrait},
     ops::BinaryOp,
 };
 use vexide_devices::smart::ai_vision::AiVisionDetectionMode;
 
 use crate::{obj::alloc_obj, qstrgen::qstr};
 
-static AI_VISION_DETECTION_MODE_OBJ_TYPE: ObjFullType =
-    ObjFullType::new(TypeFlags::empty(), qstr!(AiVisionDetectionMode))
-        .set_locals_dict(const_dict![
-            qstr!(APRILTAG) => Obj::from_static(&AiVisionDetectionModeObj::APRILTAG),
-            qstr!(COLOR) => Obj::from_static(&AiVisionDetectionModeObj::COLOR),
-            qstr!(MODEL) => Obj::from_static(&AiVisionDetectionModeObj::MODEL),
-            qstr!(COLOR_MERGE) => Obj::from_static(&AiVisionDetectionModeObj::COLOR_MERGE)
-        ])
-        .set_binary_op_raw(ai_vision_detection_mode_binary_op);
-
+#[class(qstr!(AiVisionDetectionMode))]
 #[repr(C)]
 pub struct AiVisionDetectionModeObj {
     base: ObjBase<'static>,
     mode: AiVisionDetectionMode,
 }
 
-unsafe impl ObjTrait for AiVisionDetectionModeObj {
-    const OBJ_TYPE: &micropython_rs::obj::ObjType = AI_VISION_DETECTION_MODE_OBJ_TYPE.as_obj_type();
-}
-
+#[class_methods]
 impl AiVisionDetectionModeObj {
-    pub const APRILTAG: Self = Self::new(AiVisionDetectionMode::APRILTAG);
-    pub const COLOR: Self = Self::new(AiVisionDetectionMode::COLOR);
-    pub const MODEL: Self = Self::new(AiVisionDetectionMode::MODEL);
-    pub const COLOR_MERGE: Self = Self::new(AiVisionDetectionMode::COLOR_MERGE);
+    #[constant]
+    pub const APRILTAG: &Self = &Self::new(AiVisionDetectionMode::APRILTAG);
+    #[constant]
+    pub const COLOR: &Self = &Self::new(AiVisionDetectionMode::COLOR);
+    #[constant]
+    pub const MODEL: &Self = &Self::new(AiVisionDetectionMode::MODEL);
+    #[constant]
+    pub const COLOR_MERGE: &Self = &Self::new(AiVisionDetectionMode::COLOR_MERGE);
 
     pub const fn new(mode: AiVisionDetectionMode) -> Self {
         Self {
-            base: ObjBase::new(AI_VISION_DETECTION_MODE_OBJ_TYPE.as_obj_type()),
+            base: ObjBase::new(Self::OBJ_TYPE),
             mode,
         }
     }
@@ -46,36 +38,38 @@ impl AiVisionDetectionModeObj {
     pub fn mode(&self) -> AiVisionDetectionMode {
         self.mode
     }
-}
-extern "C" fn ai_vision_detection_mode_binary_op(op: BinaryOp, obj_1: Obj, obj_2: Obj) -> Obj {
-    if let BinaryOp::Or = op {
-    } else if let BinaryOp::InplaceOr = op {
-    } else {
-        return Obj::NULL;
+
+    #[binary_op]
+    extern "C" fn binary_op(op: BinaryOp, obj_1: Obj, obj_2: Obj) -> Obj {
+        if let BinaryOp::Or = op {
+        } else if let BinaryOp::InplaceOr = op {
+        } else {
+            return Obj::NULL;
+        }
+        let lhs = obj_1
+            .try_as_obj::<AiVisionDetectionModeObj>()
+            .unwrap_or_else(|| {
+                raise_type_error(
+                    token(),
+                    error_msg!(
+                        "expected <AiVisionFlags> for argument #1, found <{}>",
+                        ArgType::of(&obj_1)
+                    ),
+                )
+            })
+            .mode;
+        let rhs = obj_2
+            .try_as_obj::<AiVisionDetectionModeObj>()
+            .unwrap_or_else(|| {
+                raise_type_error(
+                    token(),
+                    error_msg!(
+                        "expected <AiVisionFlags> for argument #2, found <{}>",
+                        ArgType::of(&obj_2)
+                    ),
+                )
+            })
+            .mode;
+        alloc_obj(AiVisionDetectionModeObj::new(lhs.union(rhs)))
     }
-    let lhs = obj_1
-        .try_as_obj::<AiVisionDetectionModeObj>()
-        .unwrap_or_else(|| {
-            raise_type_error(
-                token(),
-                error_msg!(
-                    "expected <AiVisionFlags> for argument #1, found <{}>",
-                    ArgType::of(&obj_1)
-                ),
-            )
-        })
-        .mode;
-    let rhs = obj_2
-        .try_as_obj::<AiVisionDetectionModeObj>()
-        .unwrap_or_else(|| {
-            raise_type_error(
-                token(),
-                error_msg!(
-                    "expected <AiVisionFlags> for argument #2, found <{}>",
-                    ArgType::of(&obj_2)
-                ),
-            )
-        })
-        .mode;
-    alloc_obj(AiVisionDetectionModeObj::new(lhs.union(rhs)))
 }

@@ -1,38 +1,37 @@
 use micropython_rs::{
-    const_dict,
-    obj::{Obj, ObjBase, ObjFullType, ObjTrait, TypeFlags},
+    class, class_methods,
+    obj::{ObjBase, ObjTrait},
 };
 use vexide_devices::smart::ai_vision::AprilTagFamily;
 
 use crate::qstrgen::qstr;
 
-static APRIL_TAG_FAMILY_OBJ_TYPE: ObjFullType =
-    ObjFullType::new(TypeFlags::empty(), qstr!(AprilTagFamily)).set_locals_dict(const_dict![
-        qstr!(CIRCLE21H7) => Obj::from_static(&AprilTagFamilyObj::new(AprilTagFamily::Circle21h7)),
-        qstr!(TAG16H5) => Obj::from_static(&AprilTagFamilyObj::new(AprilTagFamily::Tag16h5)),
-        qstr!(TAG25H9) => Obj::from_static(&AprilTagFamilyObj::new(AprilTagFamily::Tag25h9)),
-        qstr!(TAG36H11) => Obj::from_static(&AprilTagFamilyObj::new(AprilTagFamily::Tag36h11)),
-    ]);
-
+#[class(qstr!(AprilTagFamily))]
 #[repr(C)]
 pub struct AprilTagFamilyObj {
     base: ObjBase<'static>,
     family: AprilTagFamily,
 }
 
-unsafe impl ObjTrait for AprilTagFamilyObj {
-    const OBJ_TYPE: &micropython_rs::obj::ObjType = APRIL_TAG_FAMILY_OBJ_TYPE.as_obj_type();
-}
-
+#[class_methods]
 impl AprilTagFamilyObj {
-    pub const fn new(family: AprilTagFamily) -> Self {
+    const fn new(family: AprilTagFamily) -> Self {
         Self {
-            base: ObjBase::new(APRIL_TAG_FAMILY_OBJ_TYPE.as_obj_type()),
+            base: ObjBase::new(Self::OBJ_TYPE),
             family,
         }
     }
 
-    pub const fn family(&self) -> AprilTagFamily {
+    #[constant]
+    pub const CIRCLE21H7: &Self = &Self::new(AprilTagFamily::Circle21h7);
+    #[constant]
+    pub const TAG16H5: &Self = &Self::new(AprilTagFamily::Tag16h5);
+    #[constant]
+    pub const TAG25H9: &Self = &Self::new(AprilTagFamily::Tag25h9);
+    #[constant]
+    pub const TAG36H11: &Self = &Self::new(AprilTagFamily::Tag36h11);
+
+    pub fn family(&self) -> AprilTagFamily {
         self.family
     }
 }

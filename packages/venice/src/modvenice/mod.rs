@@ -25,15 +25,10 @@ use micropython_rs::{
 use crate::{
     modvenice::{
         ai_vision::{
-            AiVisionSensorObj,
-            ai_vision_color::AiVisionColorObj,
+            AiVisionSensorObj, ai_vision_color::AiVisionColorObj,
             ai_vision_color_code::AiVisionColorCodeObj,
-            ai_vision_detection_mode::AiVisionDetectionModeObj,
-            ai_vision_flags::AiVisionFlagsObj,
-            ai_vision_object::{
-                AI_VISION_APRIL_TAG_OBJECT_OBJ_TYPE, AI_VISION_CODE_OBJECT_OBJ_TYPE,
-                AI_VISION_COLOR_OBJECT_OBJ_TYPE, AI_VISION_MODEL_OBJECT_OBJ_TYPE,
-            },
+            ai_vision_detection_mode::AiVisionDetectionModeObj, ai_vision_flags::AiVisionFlagsObj,
+            ai_vision_object,
         },
         competition::{Competition, CompetitionRuntime},
         controller::{
@@ -108,10 +103,10 @@ static mut venice_globals: Dict = Dict::new(const_map![
     qstr!(AiVisionDetectionMode) => Obj::from_static(AiVisionDetectionModeObj::OBJ_TYPE),
     qstr!(AiVisionFlags) => Obj::from_static(AiVisionFlagsObj::OBJ_TYPE),
     qstr!(AiVisionSensor) => Obj::from_static(AiVisionSensorObj::OBJ_TYPE),
-    qstr!(AiVisionColorObject) => Obj::from_static(&AI_VISION_COLOR_OBJECT_OBJ_TYPE),
-    qstr!(AiVisionCodeObject) => Obj::from_static(&AI_VISION_CODE_OBJECT_OBJ_TYPE),
-    qstr!(AiVisionAprilTagObject) => Obj::from_static(&AI_VISION_APRIL_TAG_OBJECT_OBJ_TYPE),
-    qstr!(AiVisionModelObject) => Obj::from_static(&AI_VISION_MODEL_OBJECT_OBJ_TYPE),
+    qstr!(AiVisionColorObject) => Obj::from_static(ai_vision_object::Color::OBJ_TYPE),
+    qstr!(AiVisionCodeObject) => Obj::from_static(ai_vision_object::Code::OBJ_TYPE),
+    qstr!(AiVisionAprilTagObject) => Obj::from_static(ai_vision_object::AprilTag::OBJ_TYPE),
+    qstr!(AiVisionModelObject) => Obj::from_static(ai_vision_object::Model::OBJ_TYPE),
     // competition
     qstr!(Competition) => Obj::from_static(Competition::OBJ_TYPE),
     qstr!(CompetitionRuntime) => Obj::from_static(CompetitionRuntime::OBJ_TYPE),
