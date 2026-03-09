@@ -50,7 +50,18 @@ class HolomonicDrive:
         self.RightFront = create_motor(right_ports[0])
         self.RightBack = create_motor(right_ports[1])
 
-    def move(self, Forward, Lateral, Rotate):
+    def move(self, Forward, Rotate):
+        FL = max(-12, min(12, Forward + Rotate))
+        FR = max(-12, min(12, Forward - Rotate))
+        BL = max(-12, min(12, Forward + Rotate))
+        BR = max(-12, min(12, Forward - Rotate))
+
+        self.LeftFront.set_voltage(FL)
+        self.RightFront.set_voltage(FR)
+        self.LeftBack.set_voltage(BL)
+        self.RightBack.set_voltage(BR)
+
+    def moveLateral(self, Forward, Lateral, Rotate):
         FL = max(-12, min(12, Forward + Lateral + Rotate))
         FR = max(-12, min(12, Forward - Lateral - Rotate))
         BL = max(-12, min(12, Forward - Lateral + Rotate))
@@ -71,7 +82,22 @@ class HolomonicDrive6:
         self.RightMiddle = create_motor(right_ports[1])
         self.RightBack = create_motor(right_ports[2])
 
-    def move(self, Forward, Lateral, Rotate):
+    def move(self, Forward, Rotate):
+        FL = max(-12, min(12, Forward + Rotate))
+        FR = max(-12, min(12, Forward - Rotate))
+        ML = max(-12, min(12, Forward + Rotate))
+        MR = max(-12, min(12, Forward - Rotate))
+        BL = max(-12, min(12, Forward + Rotate))
+        BR = max(-12, min(12, Forward - Rotate))
+
+        self.LeftFront.set_voltage(FL)
+        self.RightFront.set_voltage(FR)
+        self.LeftMiddle.set_voltage(ML)
+        self.RightMiddle.set_voltage(MR)
+        self.LeftBack.set_voltage(BL)
+        self.RightBack.set_voltage(BR)
+
+    def move_Lateral(self, Forward, Lateral, Rotate):
         FL = max(-12, min(12, Forward + Lateral + Rotate))
         FR = max(-12, min(12, Forward - Lateral - Rotate))
         ML = max(-12, min(12, Forward + Rotate))
