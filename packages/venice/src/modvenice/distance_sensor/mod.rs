@@ -42,7 +42,7 @@ impl DistanceSensorObj {
     }
 
     #[method]
-    fn status(&self) -> i32 {
+    fn get_status(&self) -> i32 {
         self.guard
             .borrow()
             .status()
@@ -50,7 +50,7 @@ impl DistanceSensorObj {
     }
 
     #[method]
-    fn object(&self) -> Option<DistanceObjectObj> {
+    fn get_object(&self) -> Option<DistanceObjectObj> {
         self.guard
             .borrow()
             .object()

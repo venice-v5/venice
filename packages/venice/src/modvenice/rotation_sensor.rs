@@ -52,7 +52,7 @@ impl RotationSensorObj {
     }
 
     #[method]
-    fn angle(&self, unit: &RotationUnitObj) -> f32 {
+    fn get_angle(&self, unit: &RotationUnitObj) -> f32 {
         let angle = self
             .guard
             .borrow_mut()
@@ -62,7 +62,7 @@ impl RotationSensorObj {
     }
 
     #[method]
-    fn position(&self, unit: &RotationUnitObj) -> Obj {
+    fn get_position(&self, unit: &RotationUnitObj) -> Obj {
         let position = self
             .guard
             .borrow_mut()
@@ -81,7 +81,7 @@ impl RotationSensorObj {
     }
 
     #[method]
-    fn velocity(&self) -> f32 {
+    fn get_velocity(&self) -> f32 {
         let velocity = self
             .guard
             .borrow_mut()
@@ -107,7 +107,7 @@ impl RotationSensorObj {
     }
 
     #[method]
-    fn direction(&self) -> Obj {
+    fn get_direction(&self) -> Obj {
         let dir = self.guard.borrow().direction();
         Obj::from_static(match dir {
             Direction::Forward => DirectionObj::FORWARD,
@@ -116,7 +116,7 @@ impl RotationSensorObj {
     }
 
     #[method]
-    fn status(&self) -> i32 {
+    fn get_status(&self) -> i32 {
         let status = self
             .guard
             .borrow()

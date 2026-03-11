@@ -133,7 +133,7 @@ impl MotorObj {
     }
 
     #[method]
-    fn max_voltage(&self) -> f32 {
+    fn get_max_voltage(&self) -> f32 {
         self.guard.borrow().max_voltage() as f32
     }
 
@@ -172,7 +172,7 @@ impl MotorObj {
     }
 
     #[method]
-    fn velocity(&self) -> f32 {
+    fn get_velocity(&self) -> f32 {
         self.guard
             .borrow()
             .velocity()
@@ -180,7 +180,7 @@ impl MotorObj {
     }
 
     #[method]
-    fn power(&self) -> f32 {
+    fn get_power(&self) -> f32 {
         self.guard
             .borrow()
             .power()
@@ -188,7 +188,7 @@ impl MotorObj {
     }
 
     #[method]
-    fn torque(&self) -> f32 {
+    fn get_torque(&self) -> f32 {
         self.guard
             .borrow()
             .torque()
@@ -196,7 +196,7 @@ impl MotorObj {
     }
 
     #[method]
-    fn voltage(&self) -> f32 {
+    fn get_voltage(&self) -> f32 {
         self.guard
             .borrow()
             .voltage()
@@ -204,7 +204,7 @@ impl MotorObj {
     }
 
     #[method]
-    fn raw_position(&self) -> i32 {
+    fn get_raw_position(&self) -> i32 {
         self.guard
             .borrow()
             .raw_position()
@@ -212,7 +212,7 @@ impl MotorObj {
     }
 
     #[method]
-    fn current(&self) -> f32 {
+    fn get_current(&self) -> f32 {
         self.guard
             .borrow()
             .current()
@@ -220,7 +220,7 @@ impl MotorObj {
     }
 
     #[method]
-    fn efficiency(&self) -> f32 {
+    fn get_efficiency(&self) -> f32 {
         self.guard
             .borrow()
             .efficiency()
@@ -228,7 +228,7 @@ impl MotorObj {
     }
 
     #[method]
-    fn current_limit(&self) -> f32 {
+    fn get_current_limit(&self) -> f32 {
         self.guard
             .borrow()
             .current_limit()
@@ -236,7 +236,7 @@ impl MotorObj {
     }
 
     #[method]
-    fn voltage_limit(&self) -> f32 {
+    fn get_voltage_limit(&self) -> f32 {
         self.guard
             .borrow()
             .voltage_limit()
@@ -244,7 +244,7 @@ impl MotorObj {
     }
 
     #[method]
-    fn temperature(&self) -> f32 {
+    fn get_temperature(&self) -> f32 {
         self.guard
             .borrow()
             .temperature()
@@ -316,13 +316,13 @@ impl MotorObj {
     }
 
     #[method]
-    fn motor_type(&self) -> Obj {
+    fn get_motor_type(&self) -> Obj {
         let mt = self.guard.borrow().motor_type();
         Obj::from_static(MotorTypeObj::new_static(mt))
     }
 
     #[method]
-    fn position(&self, unit: &RotationUnitObj) -> f32 {
+    fn get_position(&self, unit: &RotationUnitObj) -> f32 {
         let angle = self
             .guard
             .borrow()
@@ -349,7 +349,7 @@ impl MotorObj {
     }
 
     #[method]
-    fn direction(&self) -> Obj {
+    fn get_direction(&self) -> Obj {
         let dir = self
             .guard
             .borrow()
@@ -362,7 +362,7 @@ impl MotorObj {
     }
 
     #[method]
-    fn status(&self) -> i32 {
+    fn get_status(&self) -> i32 {
         let status = self
             .guard
             .borrow()
@@ -372,7 +372,7 @@ impl MotorObj {
     }
 
     #[method]
-    fn faults(&self) -> i32 {
+    fn get_faults(&self) -> i32 {
         let faults = self
             .guard
             .borrow()

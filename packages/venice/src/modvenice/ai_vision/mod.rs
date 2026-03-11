@@ -55,7 +55,7 @@ impl AiVisionSensorObj {
     }
 
     #[method]
-    fn temperature(&self) -> f32 {
+    fn get_temperature(&self) -> f32 {
         self.guard
             .borrow()
             .temperature()
@@ -71,7 +71,7 @@ impl AiVisionSensorObj {
     }
 
     #[method]
-    fn color_code(&self, id: i32) -> Option<AiVisionColorCodeObj> {
+    fn get_color_code(&self, id: i32) -> Option<AiVisionColorCodeObj> {
         self.guard
             .borrow()
             .color_code(id as _)
@@ -88,7 +88,7 @@ impl AiVisionSensorObj {
     }
 
     #[method]
-    fn color(&self, id: i32) -> Option<AiVisionColorObj> {
+    fn get_color(&self, id: i32) -> Option<AiVisionColorObj> {
         self.guard
             .borrow()
             .color(id as _)
@@ -105,7 +105,7 @@ impl AiVisionSensorObj {
     }
 
     #[method]
-    fn flags(&self) -> AiVisionFlagsObj {
+    fn get_flags(&self) -> AiVisionFlagsObj {
         AiVisionFlagsObj::new(
             self.guard
                 .borrow()
@@ -147,7 +147,7 @@ impl AiVisionSensorObj {
     }
 
     #[method]
-    fn object_count(&self) -> i32 {
+    fn get_object_count(&self) -> i32 {
         let count = self
             .guard
             .borrow()
@@ -157,7 +157,7 @@ impl AiVisionSensorObj {
     }
 
     #[method]
-    fn objects(&self) -> Obj {
+    fn get_objects(&self) -> Obj {
         let objects = self
             .guard
             .borrow()
@@ -171,7 +171,7 @@ impl AiVisionSensorObj {
     }
 
     #[method]
-    fn color_codes(&self) -> Obj {
+    fn get_color_codes(&self) -> Obj {
         let guard = self.guard.borrow();
         let codes = (0..7)
             .map(|n| guard.color_code(n).unwrap_or_else(|e| raise_port_error!(e)))

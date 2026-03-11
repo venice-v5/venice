@@ -237,7 +237,7 @@ impl ControllerObj {
     }
 
     #[method]
-    fn connection(&self) -> Obj {
+    fn get_connection(&self) -> Obj {
         match self.guard.borrow().connection() {
             ControllerConnection::Offline => Obj::from_static(ControllerConnectionObj::OFFLINE),
             ControllerConnection::Tethered => Obj::from_static(ControllerConnectionObj::TETHERED),
@@ -246,7 +246,7 @@ impl ControllerObj {
     }
 
     #[method]
-    fn battery_capacity(&self) -> f32 {
+    fn get_battery_capacity(&self) -> f32 {
         self.guard
             .borrow()
             .battery_capacity()
@@ -254,7 +254,7 @@ impl ControllerObj {
     }
 
     #[method]
-    fn battery_level(&self) -> i32 {
+    fn get_battery_level(&self) -> i32 {
         self.guard
             .borrow()
             .battery_level()
@@ -262,7 +262,7 @@ impl ControllerObj {
     }
 
     #[method]
-    fn flags(&self) -> i32 {
+    fn get_flags(&self) -> i32 {
         self.guard
             .borrow()
             .flags()
