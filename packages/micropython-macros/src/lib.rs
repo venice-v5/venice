@@ -4,7 +4,7 @@ mod methods;
 use proc_macro::TokenStream;
 use quote::{quote, quote_spanned};
 use syn::{
-    Attribute, ExprMacro, ImplItem, ImplItemConst, ImplItemType, ItemImpl, ItemStruct, Signature,
+    ExprMacro, ImplItem, ImplItemConst, ItemImpl, ItemStruct, Signature,
     parse::{Parse, ParseStream},
     parse_macro_input,
     spanned::Spanned,
@@ -123,13 +123,6 @@ pub fn class_methods(_: TokenStream, item: TokenStream) -> TokenStream {
     let mut unary_op = None;
     let mut binary_op = None;
 
-    fn find_attr<'a>(attrs: &'a [Attribute], name: &str) -> Option<(usize, &'a Attribute)> {
-        attrs
-            .iter()
-            .enumerate()
-            .find(move |(_, attr)| attr.path().get_ident().map(|i| i == name).unwrap_or(false))
-    }
-
     let replace_err = |span, attr_name| {
         syn::Error::new(span, format!("multiple `{attr_name}` functions"))
             .into_compile_error()
@@ -151,6 +144,12 @@ pub fn class_methods(_: TokenStream, item: TokenStream) -> TokenStream {
                         "stream" => {
                             let span = a.span();
                             if stream.replace(c.clone()).is_some() {
+                                return replace_err(span, "stream");
+                            }
+                        }
+                        "parent" => {
+                            let span = a.span();
+                            if parent.replace(c.clone()).is_some() {
                                 return replace_err(span, "stream");
                             }
                         }
@@ -210,15 +209,6 @@ pub fn class_methods(_: TokenStream, item: TokenStream) -> TokenStream {
                     methods.push((f.sig.clone(), method_attr));
                 }
             }
-            ImplItem::Type(t) => {
-                if let Some((idx, a)) = find_attr(&t.attrs, "parent") {
-                    let span = a.span();
-                    t.attrs.remove(idx);
-                    if parent.replace(t.clone()).is_some() {
-                        return replace_err(span, "parent");
-                    }
-                }
-            }
             _ => {}
         }
     }
@@ -233,12 +223,11 @@ pub fn class_methods(_: TokenStream, item: TokenStream) -> TokenStream {
 
     let map_fn_item = |sig: Signature| map_item(sig.span(), sig.ident);
     let map_const_item = |c: ImplItemConst| map_item(c.ty.span(), c.ident);
-    let map_ty_item = |ty: ImplItemType| map_item(ty.ty.span(), ty.ident);
 
     let parent_tokens = parent
-        .map(map_ty_item)
-        .map(|ty| {
-            quote! { Some(<#ty as ::micropython_rs::obj::ObjTrait>::OBJ_TYPE) }
+        .map(map_const_item)
+        .map(|c| {
+            quote! { Some(#c) }
         })
         .unwrap_or_else(|| none_tokens.clone());
 
