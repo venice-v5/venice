@@ -17,10 +17,10 @@ impl Str {
     pub fn new(s: &str) -> Obj {
         unsafe extern "C" {
             /// From: `py/objstr.h`
-            fn mp_obj_str_new_copy(ty: *const ObjType, data: *const u8, len: usize) -> Obj;
+            fn mp_obj_new_str_copy(ty: *const ObjType, data: *const u8, len: usize) -> Obj;
         }
 
-        unsafe { mp_obj_str_new_copy(Self::OBJ_TYPE, s.as_ptr(), s.len()) }
+        unsafe { mp_obj_new_str_copy(Self::OBJ_TYPE, s.as_ptr(), s.len()) }
     }
 
     pub fn len(&self) -> usize {
