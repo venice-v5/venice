@@ -34,7 +34,7 @@ pub struct ControllerObj {
     guard: ControllerGuard<'static>,
 }
 
-#[class(qstr!(MotorV5))]
+#[class(qstr!(ControllerConnection))]
 #[repr(C)]
 pub struct ControllerConnectionObj {
     base: ObjBase<'static>,
@@ -50,8 +50,11 @@ impl ControllerConnectionObj {
 
 #[class_methods]
 impl ControllerConnectionObj {
+    #[constant]
     pub const OFFLINE: &Self = &Self::new();
+    #[constant]
     pub const TETHERED: &Self = &Self::new();
+    #[constant]
     pub const VEX_NET: &Self = &Self::new();
 }
 
