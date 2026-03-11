@@ -24,38 +24,43 @@ use micropython_rs::{
 };
 
 use crate::modvenice::{
-        ai_vision::{
-            AiVisionSensorObj, ai_vision_color::AiVisionColorObj,
-            ai_vision_color_code::AiVisionColorCodeObj,
-            ai_vision_detection_mode::AiVisionDetectionModeObj, ai_vision_flags::AiVisionFlagsObj,
-            ai_vision_object,
-        },
-        competition::{Competition, CompetitionRuntime},
-        controller::{
-            ControllerObj,
-            id::ControllerIdObj,
-            state::{ButtonStateObj, ControllerStateObj, JoystickStateObj},
-        },
-        distance_sensor::{DistanceSensorObj, distance_object::DistanceObjectObj},
-        imu::{InertialOrientationObj, InertialSensorObj},
-        math::{EulerAngles, Quaternion, Vec3},
-        motor::{
-            MotorObj, brake::BrakeModeObj, direction::DirectionObj, gearset::GearsetObj,
-            motor_type::MotorTypeObj,
-        },
-        optical::{
-            OpticalSensorObj,
-            gesture::{GestureDirectionObj, GestureObj},
-            rgb::{OpticalRawObj, OpticalRgbObj},
-        },
-        rotation_sensor::RotationSensorObj,
-        serial::{SerialPortObj, SerialPortOpenFutureObj},
-        units::{rotation::RotationUnitObj, time::TimeUnitObj},
-        vasyncio::{
-            event_loop::{EventLoop, vasyncio_get_running_loop, vasyncio_run, vasyncio_spawn},
-            sleep::Sleep,
-        },
-    };
+    ai_vision::{
+        AiVisionSensorObj, ai_vision_color::AiVisionColorObj,
+        ai_vision_color_code::AiVisionColorCodeObj,
+        ai_vision_detection_mode::AiVisionDetectionModeObj, ai_vision_flags::AiVisionFlagsObj,
+        ai_vision_object,
+    },
+    competition::{Competition, CompetitionRuntime},
+    controller::{
+        ControllerObj,
+        id::ControllerIdObj,
+        state::{ButtonStateObj, ControllerStateObj, JoystickStateObj},
+    },
+    distance_sensor::{DistanceSensorObj, distance_object::DistanceObjectObj},
+    imu::{InertialOrientationObj, InertialSensorObj},
+    math::{EulerAngles, Quaternion, Vec3},
+    motor::{
+        MotorObj, brake::BrakeModeObj, direction::DirectionObj, gearset::GearsetObj,
+        motor_type::MotorTypeObj,
+    },
+    optical::{
+        OpticalSensorObj,
+        gesture::{GestureDirectionObj, GestureObj},
+        rgb::{OpticalRawObj, OpticalRgbObj},
+    },
+    rotation_sensor::RotationSensorObj,
+    serial::{SerialPortObj, SerialPortOpenFutureObj},
+    units::{rotation::RotationUnitObj, time::TimeUnitObj},
+    vasyncio::{
+        event_loop::{EventLoop, vasyncio_get_running_loop, vasyncio_run, vasyncio_spawn},
+        sleep::Sleep,
+    },
+    vision::{
+        VisionSensorObj, code::VisionCodeObj, led_mode::LedModeObj, mode::VisionModeObj,
+        object::VisionObjectObj, signature::VisionSignatureObj, source::DetectionSourceObj,
+        white_balance::WhiteBalanceObj,
+    },
+};
 
 static DEVICE_ERROR_OBJ_TYPE: ObjFullType =
     new_exception_type(qstr!(DeviceError), &mp_type_Exception);
@@ -120,6 +125,15 @@ static mut venice_globals: Dict = Dict::new(const_map![
     // serial
     qstr!(SerialPort) => Obj::from_static(SerialPortObj::OBJ_TYPE),
     qstr!(SerialPortOpenFuture) => Obj::from_static(SerialPortOpenFutureObj::OBJ_TYPE),
+    // vision
+    qstr!(VisionSensor) => Obj::from_static(VisionSensorObj::OBJ_TYPE),
+    qstr!(VisionCode) => Obj::from_static(VisionCodeObj::OBJ_TYPE),
+    qstr!(LedMode) => Obj::from_static(LedModeObj::OBJ_TYPE),
+    qstr!(VisionMode) => Obj::from_static(VisionModeObj::OBJ_TYPE),
+    qstr!(VisionObject) => Obj::from_static(VisionObjectObj::OBJ_TYPE),
+    qstr!(VisionSignature) => Obj::from_static(VisionSignatureObj::OBJ_TYPE),
+    qstr!(DetectionSource) => Obj::from_static(DetectionSourceObj::OBJ_TYPE),
+    qstr!(WhiteBalance) => Obj::from_static(WhiteBalanceObj::OBJ_TYPE),
     // other devices
     qstr!(RotationSensor) => Obj::from_static(RotationSensorObj::OBJ_TYPE),
 
