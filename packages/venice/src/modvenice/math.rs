@@ -1,11 +1,11 @@
 use std::cell::Cell;
 
-use argparse::{ArgType, error_msg};
+use argparse::{ArgType, Args, error_msg};
 use micropython_rs::{
     class, class_methods,
     except::raise_type_error,
     init::token,
-    obj::{AttrOp, Obj, ObjBase, ObjTrait},
+    obj::{AttrOp, Obj, ObjBase, ObjTrait, ObjType},
     qstr::Qstr,
 };
 use vexide_devices::math::Angle;
@@ -45,6 +45,14 @@ pub struct EulerAngles {
     pitch: Cell<f32>,
     // x
     roll: Cell<f32>,
+}
+
+#[class(qstr!(Point2))]
+#[repr(C)]
+pub struct Point2 {
+    base: ObjBase<'static>,
+    x: Cell<f32>,
+    y: Cell<f32>,
 }
 
 #[class_methods]
@@ -118,6 +126,35 @@ impl EulerAngles {
         };
 
         handle_op(op, val);
+    }
+}
+
+#[class_methods]
+impl Point2 {
+    #[make_new]
+    fn make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Self {
+        let mut reader = Args::new(n_pos, n_kw, args).reader(token());
+        reader.assert_npos(2, 2).assert_nkw(0, 0);
+
+        let x = reader.next_positional();
+        let y = reader.next_positional();
+
+        Self {
+            base: ObjBase::new(ty),
+            x: Cell::new(x),
+            y: Cell::new(y),
+        }
+    }
+
+    #[attr]
+    fn attr(&self, attr: Qstr, op: AttrOp) {
+        let coord = match attr.as_str() {
+            "x" => &self.x,
+            "y" => &self.x,
+            _ => return,
+        };
+
+        handle_op(op, coord);
     }
 }
 
