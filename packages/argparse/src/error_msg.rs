@@ -16,7 +16,18 @@ pub struct MessageWriter {
 }
 
 pub struct Message {
-    ptr: *mut u8,
+    ptr: *const u8,
+}
+
+pub type Exception = micropython_rs::except::Exception<Message>;
+pub type Result<T> = std::result::Result<T, Exception>;
+
+impl From<&'static CStr> for Message {
+    fn from(value: &'static CStr) -> Self {
+        Self {
+            ptr: value.as_ptr(),
+        }
+    }
 }
 
 impl MessageWriter {
@@ -47,6 +58,8 @@ impl MessageWriter {
 
 impl AsRef<CStr> for Message {
     fn as_ref(&self) -> &CStr {
+        // SAFETY: ptr alawys points to either a static CStr, or a GC-allocated block of memory
+        // which is alive as long as self is alive
         unsafe { CStr::from_ptr(self.ptr) }
     }
 }

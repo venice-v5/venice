@@ -4,7 +4,7 @@ use std::{
 };
 
 use crate::{
-    init::InitToken,
+    init::{InitToken, token},
     obj::{Obj, ObjFullType, ObjType, TypeFlags},
     print::{Print, PrintKind},
     qstr::Qstr,
@@ -76,7 +76,7 @@ impl ExceptionType {
                     .set_attr_raw(mp_obj_exception_attr)
                     .set_parent(&parent.0)
             }
-            .to_obj_type(),
+            .into_obj_type(),
         )
     }
 
@@ -125,4 +125,71 @@ pub fn raise_os_error(_: InitToken, errno: c_int) -> ! {
 
 pub fn raise_os_error_with_filename(_: InitToken, errno: c_int, filename: impl AsRef<CStr>) -> ! {
     unsafe { mp_raise_OSError_with_filename(errno, filename.as_ref().as_ptr()) };
+}
+
+#[derive(Clone, Copy)]
+pub struct Exception<M> {
+    pub ty: &'static ExceptionType,
+    pub msg: M,
+}
+
+impl<M: AsRef<CStr>> Exception<M> {
+    pub fn raise(&self, token: InitToken) -> ! {
+        raise_msg(token, self.ty, self.msg.as_ref())
+    }
+}
+
+impl<T, M> From<Result<T, Exception<M>>> for Obj
+where
+    T: Into<Obj>,
+    M: AsRef<CStr>,
+{
+    fn from(value: Result<T, Exception<M>>) -> Self {
+        match value {
+            Ok(v) => v.into(),
+            Err(e) => e.raise(token()),
+        }
+    }
+}
+
+pub fn value_error<M: AsRef<CStr>>(msg: impl Into<M>) -> Exception<M> {
+    Exception {
+        ty: VALUE_ERROR_TYPE,
+        msg: msg.into(),
+    }
+}
+
+pub fn type_error<M: AsRef<CStr>>(msg: impl Into<M>) -> Exception<M> {
+    Exception {
+        ty: TYPE_ERROR_TYPE,
+        msg: msg.into(),
+    }
+}
+
+pub fn not_implemented_error<M: AsRef<CStr>>(msg: impl Into<M>) -> Exception<M> {
+    Exception {
+        ty: NOT_IMPLEMENTED_ERROR_TYPE,
+        msg: msg.into(),
+    }
+}
+
+pub fn runtime_error<M: AsRef<CStr>>(msg: impl Into<M>) -> Exception<M> {
+    Exception {
+        ty: RUNTIME_ERROR_TYPE,
+        msg: msg.into(),
+    }
+}
+
+pub fn attribute_error<M: AsRef<CStr>>(msg: impl Into<M>) -> Exception<M> {
+    Exception {
+        ty: ATTRIBUTE_ERROR_TYPE,
+        msg: msg.into(),
+    }
+}
+
+pub fn import_error<M: AsRef<CStr>>(msg: impl Into<M>) -> Exception<M> {
+    Exception {
+        ty: IMPORT_ERROR_TYPE,
+        msg: msg.into(),
+    }
 }

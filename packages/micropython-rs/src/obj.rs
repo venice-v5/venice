@@ -738,6 +738,29 @@ impl ObjFullType {
     }
 }
 
+impl ObjFullType {
+    pub const fn into_obj_type(self) -> ObjType {
+        ObjType {
+            base: self.base,
+            flags: self.flags,
+            name: self.name,
+            slot_index_make_new: self.slot_index_make_new,
+            slot_index_print: self.slot_index_print,
+            slot_index_call: self.slot_index_call,
+            slot_index_unary_op: self.slot_index_unary_op,
+            slot_index_binary_op: self.slot_index_binary_op,
+            slot_index_attr: self.slot_index_attr,
+            slot_index_subscr: self.slot_index_subscr,
+            slot_index_iter: self.slot_index_iter,
+            slot_index_buffer: self.slot_index_buffer,
+            slot_index_protocol: self.slot_index_protocol,
+            slot_index_parent: self.slot_index_parent,
+            slot_index_locals_dict: self.slot_index_locals_dict,
+            slots: (),
+        }
+    }
+}
+
 macro_rules! impl_slot_setter {
     ($(#[$attr:meta])* $fn_name:ident, $slot:expr, $ty:ty) => {
         impl ObjFullType {
