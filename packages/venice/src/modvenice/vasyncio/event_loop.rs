@@ -5,7 +5,7 @@ use std::{
 
 use micropython_rs::{
     class, class_methods,
-    except::{mp_type_RuntimeError, raise_msg, raise_type_error},
+    except::{RUNTIME_ERROR_TYPE, raise_msg, raise_type_error},
     fun::{Fun1, Fun2},
     generator::{GEN_INSTANCE_TYPE, VmReturnKind, resume_gen},
     init::token,
@@ -221,7 +221,7 @@ pub extern "C" fn vasyncio_run(coro: Obj) -> Obj {
 pub extern "C" fn vasyncio_spawn(coro: Obj) -> Obj {
     let eloop = RUNNING_LOOP.get();
     if eloop.is_none() {
-        raise_msg(token(), &mp_type_RuntimeError, c"no running event loop");
+        raise_msg(token(), RUNTIME_ERROR_TYPE, c"no running event loop");
     }
 
     EventLoop::py_spawn(eloop, coro)

@@ -1,12 +1,11 @@
 use micropython_rs::{
     class, class_methods,
-    except::{mp_type_AttributeError, raise_msg},
+    except::{ATTRIBUTE_ERROR_TYPE, raise_msg},
     init::token,
     obj::{AttrOp, Obj, ObjBase, ObjTrait},
     qstr::Qstr,
 };
 use vexide_devices::smart::optical::{OpticalRaw, OpticalRgb};
-
 
 #[class(qstr!(OpticalRgb))]
 #[repr(C)]
@@ -52,11 +51,7 @@ impl OpticalRgbObj {
 
         match op {
             AttrOp::Load { result } => result.return_value(Obj::from_float(component)),
-            _ => raise_msg(
-                token(),
-                &mp_type_AttributeError,
-                c"cannot write to OpticalRgb",
-            ),
+            _ => raise_msg(token(), ATTRIBUTE_ERROR_TYPE, c"cannot write to OpticalRgb"),
         }
     }
 }
@@ -85,11 +80,7 @@ impl OpticalRawObj {
 
         match op {
             AttrOp::Load { result } => result.return_value(Obj::from_int(component as i32)),
-            _ => raise_msg(
-                token(),
-                &mp_type_AttributeError,
-                c"cannot write to OpticalRaw",
-            ),
+            _ => raise_msg(token(), ATTRIBUTE_ERROR_TYPE, c"cannot write to OpticalRaw"),
         }
     }
 }

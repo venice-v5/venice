@@ -16,11 +16,11 @@ use std::ffi::CStr;
 
 use micropython_rs::{
     const_map,
-    except::{mp_type_Exception, new_exception_type, raise_msg},
+    except::{EXCEPTION_TYPE, ExceptionType, raise_msg},
     fun::{Fun0, Fun1},
     init::InitToken,
     map::Dict,
-    obj::{Obj, ObjFullType, ObjTrait},
+    obj::{Obj, ObjTrait},
 };
 
 use crate::modvenice::{
@@ -62,11 +62,10 @@ use crate::modvenice::{
     },
 };
 
-static DEVICE_ERROR_OBJ_TYPE: ObjFullType =
-    new_exception_type(qstr!(DeviceError), &mp_type_Exception);
+static DEVICE_ERROR_TYPE: ExceptionType = ExceptionType::new(qstr!(DeviceError), EXCEPTION_TYPE);
 
 pub fn raise_device_error(token: InitToken, msg: impl AsRef<CStr>) -> ! {
-    raise_msg(token, DEVICE_ERROR_OBJ_TYPE.as_obj_type(), msg)
+    raise_msg(token, &DEVICE_ERROR_TYPE, msg)
 }
 
 macro_rules! raise_port_error {

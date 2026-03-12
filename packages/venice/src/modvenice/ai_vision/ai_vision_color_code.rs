@@ -8,7 +8,6 @@ use micropython_rs::{
 };
 use vexide_devices::smart::ai_vision::AiVisionColorCode;
 
-
 #[class(qstr!(AiVisionColorCode))]
 #[repr(C)]
 pub struct AiVisionColorCodeObj {

@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use argparse::error_msg;
 use micropython_rs::{
-    except::{mp_type_ImportError, raise_msg, raise_value_error},
+    except::{IMPORT_ERROR_TYPE, raise_msg, raise_value_error},
     init::{InitToken, token},
     module::{builtin_module, exec_module},
     nlr::push_nlr_callback,
@@ -90,7 +90,7 @@ pub fn process_import_at_level(
 
     raise_msg(
         token,
-        &mp_type_ImportError,
+        IMPORT_ERROR_TYPE,
         error_msg!("no module named '{}'", full_name.as_str()),
     );
 }
