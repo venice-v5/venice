@@ -3,13 +3,13 @@ pub mod direction;
 pub mod gearset;
 pub mod motor_type;
 
-use argparse::Args;
+use argparse::{Args, Exception};
 use brake::BrakeModeObj;
 use direction::DirectionObj;
 use gearset::GearsetObj;
 use micropython_rs::{
     class, class_methods,
-    except::{raise_type_error, raise_value_error},
+    except::type_error,
     init::token,
     obj::{Obj, ObjBase, ObjTrait, ObjType},
 };
@@ -20,7 +20,7 @@ use vexide_devices::{
 
 use super::raise_device_error;
 use crate::{
-    devices::{self, PortNumber},
+    devices::{self},
     modvenice::{
         motor::motor_type::MotorTypeObj, raise_port_error, units::rotation::RotationUnitObj,
     },
@@ -37,14 +37,13 @@ pub struct MotorObj {
 #[class_methods]
 impl MotorObj {
     #[method(ty = var_between(min = 1, max = 3), binding = "static")]
-    fn new_v5(args: &[Obj]) -> Self {
+    fn new_v5(args: &[Obj]) -> Result<Self, Exception> {
         let token = token();
         let mut reader = Args::new(args.len(), 0, args).reader(token);
 
-        let port = PortNumber::from_i32(reader.next_positional())
-            .unwrap_or_else(|_| raise_value_error(token, c"port number must be between 1 and 21"));
-        let direction = reader.next_positional_or(DirectionObj::FORWARD);
-        let gearset = reader.next_positional_or(GearsetObj::GREEN);
+        let port = reader.next_positional()?;
+        let direction = reader.next_positional_or(DirectionObj::FORWARD)?;
+        let gearset = reader.next_positional_or(GearsetObj::GREEN)?;
 
         let guard = devices::lock_port(port, |port| {
             Motor::new(port, gearset.gearset(), direction.direction())
@@ -55,20 +54,20 @@ impl MotorObj {
             raise_device_error(token, c"invalid motor type, expected V5, found Exp")
         }
 
-        Self {
+        Ok(Self {
             base: ObjBase::new(Self::OBJ_TYPE),
             guard,
-        }
+        })
     }
 
     #[method(ty = var_between(min = 1, max = 2), binding = "static")]
-    fn new_exp(args: &[Obj]) -> Self {
+    fn new_exp(args: &[Obj]) -> Result<Self, Exception> {
         let token = token();
         let mut reader = Args::new(args.len(), 0, args).reader(token);
+        reader.assert_npos(1, 2).assert_nkw(0, 0);
 
-        let port = PortNumber::from_i32(reader.next_positional())
-            .unwrap_or_else(|_| raise_value_error(token, c"port number must be between 1 and 21"));
-        let direction: &DirectionObj = reader.next_positional_or(DirectionObj::FORWARD);
+        let port = reader.next_positional()?;
+        let direction = reader.next_positional_or(DirectionObj::FORWARD)?;
 
         let guard = devices::lock_port(port, |port| Motor::new_exp(port, direction.direction()));
         if guard.borrow().is_v5() {
@@ -76,18 +75,19 @@ impl MotorObj {
             raise_device_error(token, c"invalid motor type, expected Exp, found V5");
         }
 
-        MotorObj {
+        Ok(MotorObj {
             base: ObjBase::new(Self::OBJ_TYPE),
             guard,
-        }
+        })
     }
 
     #[make_new]
-    fn make_new(_: &ObjType, _: usize, n_kw: usize, args: &[Obj]) -> Self {
+    fn make_new(_: &ObjType, _: usize, n_kw: usize, args: &[Obj]) -> Result<Self, Exception> {
         if n_kw != 0 {
-            raise_type_error(token(), c"function does not accept keyword arguments");
+            Err(type_error(c"function does not accept keyword arguments"))
+        } else {
+            Self::new_v5(args)
         }
-        Self::new_v5(args)
     }
 
     #[method]
@@ -152,23 +152,21 @@ impl MotorObj {
     }
 
     #[method(ty = var_between(min = 4, max = 4))]
-    fn set_position_target(args: &[Obj]) {
+    fn set_position_target(args: &[Obj]) -> Result<(), Exception> {
         let mut reader = Args::new(args.len(), 0, args).reader(token());
-        // self, position, position units, velocity
-        let motor = reader.next_positional::<&MotorObj>();
 
-        let position_val = reader.next_positional();
+        let motor = reader.next_positional::<&MotorObj>().unwrap();
+        let position_val = reader.next_positional()?;
+        let unit_obj = reader.next_positional::<&RotationUnitObj>()?;
+        let velocity_val = reader.next_positional()?;
 
-        let unit_obj = reader.next_positional::<&RotationUnitObj>();
-
-        let velocity_val = reader.next_positional();
         let angle = unit_obj.unit().float_to_angle(position_val);
-
         motor
             .guard
             .borrow_mut()
             .set_position_target(angle, velocity_val)
             .unwrap_or_else(|e| raise_port_error!(e));
+        Ok(())
     }
 
     #[method]

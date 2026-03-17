@@ -178,18 +178,14 @@ fn generate_fixed_fun(ty: &Type, sig: &Signature) -> syn::Result<TokenStream> {
             FnArg::Typed(v) => {
                 let ty = &v.ty;
                 quote! {
-                    let a_argvalue = ::argparse::ArgValue::from_obj(&a);
-                    if !<#ty as ::argparse::ArgTrait>::coercable(a_argvalue.ty()) {
-                        ::micropython_rs::except::raise_type_error(
-                            ::micropython_rs::init::token(),
-                            ::argparse::error_msg!(
-                                "expected <{}> for argument #1, found <{}>",
-                                <#ty as ::argparse::ArgTrait>::ty(),
-                                a_argvalue.ty()
-                            ),
-                        );
-                    }
-                    let a_value = unsafe { <#ty as ::argparse::ArgTrait>::from_arg_value(a_argvalue).unwrap_unchecked() };
+                    let a_parser = <#ty as ::argparse::DefaultParser>::Parser::default();
+                    let a_value = match ::argparse::ArgParser::parse(&a_parser, &a) {
+                        ::std::result::Result::Ok(v) => v,
+                        ::std::result::Result::Err(e) => ::argparse::Exception::from(match e {
+                            ::argparse::ParseError::TypeError { expected } => ::argparse::PositionalError::TypeError { n: 1, expected, found: ::argparse::type_name(&a) },
+                            ::argparse::ParseError::ValueError { mk_msg } => ::argparse::PositionalError::ValueError { msg: mk_msg("argument #1") },
+                        }).raise(::micropython_rs::init::token()),
+                    };
                 }
             }
             FnArg::Receiver(v) => {
@@ -215,24 +211,19 @@ fn generate_fixed_fun(ty: &Type, sig: &Signature) -> syn::Result<TokenStream> {
         let FnArg::Typed(v) = arg else { unreachable!() };
         let ty = &v.ty;
         let arg_number = if is_method {
-            quote! { "1" }
+            quote! { 1 }
         } else {
-            quote! { "2" }
+            quote! { 2 }
         };
         quote! {
-            let b_argvalue = ::argparse::ArgValue::from_obj(&b);
-            if !<#ty as ::argparse::ArgTrait>::coercable(b_argvalue.ty()) {
-                ::micropython_rs::except::raise_type_error(
-                    ::micropython_rs::init::token(),
-                    ::argparse::error_msg!(
-                        "expected <{}> for argument #{}, found <{}>",
-                        <#ty as ::argparse::ArgTrait>::ty(),
-                        #arg_number,
-                        b_argvalue.ty()
-                    ),
-                );
-            }
-            let b_value = unsafe { <#ty as ::argparse::ArgTrait>::from_arg_value(b_argvalue).unwrap_unchecked() };
+            let b_parser = <#ty as ::argparse::DefaultParser>::Parser::default();
+            let b_value = match ::argparse::ArgParser::parse(&b_parser, &b) {
+                ::std::result::Result::Ok(v) => v,
+                ::std::result::Result::Err(e) => ::argparse::Exception::from(match e {
+                    ::argparse::ParseError::TypeError { expected } => ::argparse::PositionalError::TypeError { n: #arg_number, expected, found: ::argparse::type_name(&b) },
+                    ::argparse::ParseError::ValueError { mk_msg } => ::argparse::PositionalError::ValueError { msg: mk_msg(&format!("argument #{}", #arg_number)) },
+                }).raise(::micropython_rs::init::token()),
+            };
         }
     } else {
         quote! {}
@@ -242,24 +233,19 @@ fn generate_fixed_fun(ty: &Type, sig: &Signature) -> syn::Result<TokenStream> {
         let FnArg::Typed(v) = arg else { unreachable!() };
         let ty = &v.ty;
         let arg_number = if is_method {
-            quote! { "2" }
+            quote! { 2 }
         } else {
-            quote! { "3" }
+            quote! { 3 }
         };
         quote! {
-            let c_argvalue = ::argparse::ArgValue::from_obj(&c);
-            if !<#ty as ::argparse::ArgTrait>::coercable(c_argvalue.ty()) {
-                ::micropython_rs::except::raise_type_error(
-                    ::micropython_rs::init::token(),
-                    ::argparse::error_msg!(
-                        "expected <{}> for argument #{}, found <{}>",
-                        <#ty as ::argparse::ArgTrait>::ty(),
-                        #arg_number,
-                        c_argvalue.ty()
-                    ),
-                );
-            }
-            let c_value = unsafe { <#ty as ::argparse::ArgTrait>::from_arg_value(c_argvalue).unwrap_unchecked() };
+            let c_parser = <#ty as ::argparse::DefaultParser>::Parser::default();
+            let c_value = match ::argparse::ArgParser::parse(&c_parser, &c) {
+                ::std::result::Result::Ok(v) => v,
+                ::std::result::Result::Err(e) => ::argparse::Exception::from(match e {
+                    ::argparse::ParseError::TypeError { expected } => ::argparse::PositionalError::TypeError { n: #arg_number, expected, found: ::argparse::type_name(&c) },
+                    ::argparse::ParseError::ValueError { mk_msg } => ::argparse::PositionalError::ValueError { msg: mk_msg(&format!("argument #{}", #arg_number)) },
+                }).raise(::micropython_rs::init::token()),
+            };
         }
     } else {
         quote! {}

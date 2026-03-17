@@ -1,5 +1,6 @@
 use std::sync::LazyLock;
 
+use argparse::{ArgParser, DefaultParser, IntParser};
 use vexide_devices::{controller::ControllerId, peripherals::Peripherals, smart::SmartPort};
 
 use crate::registry::{ControllerGuard, ControllerRegistry, PortDevice, Registry, RegistryGuard};
@@ -91,6 +92,24 @@ impl Devices {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PortNumber(u8);
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct PortNumberParser;
+
+impl<'a> ArgParser<'a> for PortNumberParser {
+    type Output = PortNumber;
+
+    fn parse(
+        &self,
+        obj: &'a micropython_rs::obj::Obj,
+    ) -> Result<Self::Output, argparse::ParseError> {
+        IntParser::new(1..=21).parse(obj).map(|int| PortNumber(int))
+    }
+}
+
+impl DefaultParser<'_> for PortNumber {
+    type Parser = PortNumberParser;
+}
 
 impl PortNumber {
     pub const fn new(number: u8) -> Result<Self, ()> {

@@ -4,10 +4,9 @@ pub mod ai_vision_detection_mode;
 pub mod ai_vision_flags;
 pub mod ai_vision_object;
 pub mod april_tag_family;
-use argparse::Args;
+use argparse::{Args, Exception};
 use micropython_rs::{
     class, class_methods,
-    except::raise_value_error,
     init::token,
     list::new_list,
     obj::{Obj, ObjBase, ObjType},
@@ -15,7 +14,7 @@ use micropython_rs::{
 use vexide_devices::smart::ai_vision::AiVisionSensor;
 
 use crate::{
-    devices::{self, PortNumber},
+    devices::{self},
     modvenice::{
         ai_vision::{
             ai_vision_color::AiVisionColorObj, ai_vision_color_code::AiVisionColorCodeObj,
@@ -38,20 +37,24 @@ pub struct AiVisionSensorObj {
 #[class_methods]
 impl AiVisionSensorObj {
     #[make_new]
-    fn make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Self {
+    fn make_new(
+        ty: &'static ObjType,
+        n_pos: usize,
+        n_kw: usize,
+        args: &[Obj],
+    ) -> Result<Self, Exception> {
         let token = token();
         let mut reader = Args::new(n_pos, n_kw, args).reader(token);
         reader.assert_npos(1, 1).assert_nkw(0, 0);
 
-        let port = PortNumber::from_i32(reader.next_positional())
-            .unwrap_or_else(|_| raise_value_error(token, c"port number must be between 1 and 21"));
+        let port = reader.next_positional()?;
 
         let guard = devices::lock_port(port, AiVisionSensor::new);
 
-        Self {
+        Ok(Self {
             base: ObjBase::new(ty),
             guard,
-        }
+        })
     }
 
     #[method]

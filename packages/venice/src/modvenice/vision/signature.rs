@@ -1,4 +1,4 @@
-use argparse::Args;
+use argparse::{Args, Exception};
 use micropython_rs::{
     class, class_methods,
     init::token,
@@ -28,24 +28,29 @@ impl VisionSignatureObj {
     }
 
     #[make_new]
-    fn make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Self {
+    fn make_new(
+        ty: &'static ObjType,
+        n_pos: usize,
+        n_kw: usize,
+        args: &[Obj],
+    ) -> Result<Self, Exception> {
         let mut reader = Args::new(n_pos, n_kw, args).reader(token());
         reader.assert_npos(7, 7).assert_nkw(0, 0);
 
-        let u_min = reader.next_positional();
-        let u_max = reader.next_positional();
-        let u_mean = reader.next_positional();
+        let u_min = reader.next_positional()?;
+        let u_max = reader.next_positional()?;
+        let u_mean = reader.next_positional()?;
 
-        let v_min = reader.next_positional();
-        let v_max = reader.next_positional();
-        let v_mean = reader.next_positional();
+        let v_min = reader.next_positional()?;
+        let v_max = reader.next_positional()?;
+        let v_mean = reader.next_positional()?;
 
-        let range = reader.next_positional();
+        let range = reader.next_positional()?;
 
-        Self {
+        Ok(Self {
             base: ObjBase::new(ty),
             signature: VisionSignature::new((u_min, u_max, u_mean), (v_min, v_max, v_mean), range),
-        }
+        })
     }
 
     #[attr]

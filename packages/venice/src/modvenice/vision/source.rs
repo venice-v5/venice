@@ -1,4 +1,4 @@
-use argparse::{ArgType, Args, error_msg};
+use argparse::{ArgType, Args, Exception, PositionalError};
 use micropython_rs::{
     class, class_methods,
     except::raise_type_error,
@@ -8,7 +8,7 @@ use micropython_rs::{
 };
 use vexide_devices::smart::vision::DetectionSource;
 
-use crate::modvenice::vision::validate_id;
+use crate::modvenice::vision::{SignatureId, code::VisionCodeObj};
 
 #[class(qstr!(DetectionSource))]
 #[repr(C)]
@@ -57,15 +57,21 @@ impl Signature {
     const PARENT: &ObjType = DetectionSourceObj::OBJ_TYPE;
 
     #[make_new]
-    fn make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Self {
+    fn make_new(
+        ty: &'static ObjType,
+        n_pos: usize,
+        n_kw: usize,
+        args: &[Obj],
+    ) -> Result<Self, Exception> {
         let mut reader = Args::new(n_pos, n_kw, args).reader(token());
         reader.assert_npos(1, 1).assert_nkw(0, 0);
 
-        let id = validate_id(reader.next_positional());
-        Self {
+        let id = reader.next_positional::<SignatureId>()?.id();
+
+        Ok(Self {
             base: ObjBase::new(ty),
             id,
-        }
+        })
     }
 
     #[attr]
@@ -84,24 +90,28 @@ impl Code {
     const PARENT: &ObjType = DetectionSourceObj::OBJ_TYPE;
 
     #[make_new]
-    fn make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Self {
+    fn make_new(
+        ty: &'static ObjType,
+        n_pos: usize,
+        n_kw: usize,
+        args: &[Obj],
+    ) -> Result<Self, Exception> {
         let mut reader = Args::new(n_pos, n_kw, args).reader(token());
         reader.assert_npos(1, 1).assert_nkw(0, 0);
 
-        let code_argvalue = reader.try_next_positional_untyped().unwrap();
-        let argty = code_argvalue.ty();
-        if let ArgType::Obj(obj_type) = argty
-            && obj_type == super::code::VisionCodeObj::OBJ_TYPE
-        {
-            Self {
+        let code_obj = reader.next_positional::<Obj>().unwrap();
+        if code_obj.is(VisionCodeObj::OBJ_TYPE) {
+            Ok(Self {
                 base: ObjBase::new(ty),
-                code: code_argvalue.as_obj(),
-            }
+                code: code_obj,
+            })
         } else {
-            raise_type_error(
-                token(),
-                error_msg!("expected <VisionCode> for argument #1, found <{argty}>"),
-            );
+            Err(PositionalError::TypeError {
+                n: 1,
+                expected: "VisionCode",
+                found: &format!("{}", ArgType::of(&code_obj)),
+            }
+            .into())
         }
     }
 

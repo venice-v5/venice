@@ -1,9 +1,9 @@
 use std::cell::Cell;
 
-use argparse::{ArgValue, Args, error_msg};
+use argparse::{Args, Exception};
 use micropython_rs::{
     class, class_methods,
-    except::{raise_stop_iteration, raise_type_error},
+    except::raise_stop_iteration,
     init::token,
     obj::{Obj, ObjBase, ObjTrait, ObjType},
 };
@@ -40,31 +40,16 @@ impl Sleep {
 #[class_methods]
 impl Sleep {
     #[make_new]
-    fn make_new(_: &ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Self {
+    fn make_new(_: &ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Result<Self, Exception> {
         let token = token();
         let mut args = Args::new(n_pos, n_kw, args).reader(token);
         args.assert_npos(2, 2);
 
-        let interval_float = match args.try_next_positional_untyped() {
-            Ok(arg) => match arg {
-                ArgValue::Float(float) => float,
-                ArgValue::Int(int) => int as f32,
-                _ => raise_type_error(
-                    token,
-                    error_msg!(
-                        "expected <float> or <int> for argument #1, found <{}>",
-                        arg.ty()
-                    ),
-                ),
-            },
-            // only error possible is PositionalsExhuasted, but that isn't reachable because of the arg
-            // count assertion
-            Err(_) => unreachable!(),
-        };
+        let interval = args.next_positional()?;
+        let unit = args.next_positional::<&TimeUnitObj>()?.unit();
 
-        let unit = args.next_positional::<&TimeUnitObj>().unit();
-        let duration = time32::Duration::from_duration(unit.float_to_dur(interval_float));
-        Sleep::new(duration)
+        let duration = time32::Duration::from_duration(unit.float_to_dur(interval));
+        Ok(Self::new(duration))
     }
 
     #[iter]

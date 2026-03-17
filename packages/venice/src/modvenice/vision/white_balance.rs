@@ -1,4 +1,4 @@
-use argparse::Args;
+use argparse::{Args, Exception};
 use micropython_rs::{
     class, class_methods,
     except::raise_type_error,
@@ -94,20 +94,25 @@ impl StartupAuto {
 #[class_methods]
 impl Manual {
     #[make_new]
-    fn make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Self {
+    fn make_new(
+        ty: &'static ObjType,
+        n_pos: usize,
+        n_kw: usize,
+        args: &[Obj],
+    ) -> Result<Self, Exception> {
         let mut reader = Args::new(n_pos, n_kw, args).reader(token());
         reader.assert_npos(3, 3).assert_nkw(0, 0);
 
-        let r = reader.next_positional::<i32>();
-        let g = reader.next_positional::<i32>();
-        let b = reader.next_positional::<i32>();
+        let r = reader.next_positional::<u8>()?;
+        let g = reader.next_positional::<u8>()?;
+        let b = reader.next_positional::<u8>()?;
 
-        Self {
+        Ok(Self {
             base: ObjBase::new(ty),
-            r: r as u8,
-            g: g as u8,
-            b: b as u8,
-        }
+            r,
+            g,
+            b,
+        })
     }
 
     #[attr]

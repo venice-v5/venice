@@ -1,17 +1,16 @@
 pub mod gesture;
 pub mod rgb;
 
-use argparse::Args;
+use argparse::{Args, Exception};
 use micropython_rs::{
     class, class_methods,
-    except::raise_value_error,
     init::token,
     obj::{Obj, ObjBase, ObjType},
 };
 use vexide_devices::smart::optical::OpticalSensor;
 
 use crate::{
-    devices::{self, PortNumber},
+    devices,
     modvenice::{
         optical::{
             gesture::GestureObj,
@@ -33,16 +32,21 @@ pub struct OpticalSensorObj {
 #[class_methods]
 impl OpticalSensorObj {
     #[make_new]
-    fn make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Self {
+    fn make_new(
+        ty: &'static ObjType,
+        n_pos: usize,
+        n_kw: usize,
+        args: &[Obj],
+    ) -> Result<Self, Exception> {
         let mut reader = Args::new(n_pos, n_kw, args).reader(token());
-        let port = PortNumber::from_i32(reader.next_positional()).unwrap_or_else(|_| {
-            raise_value_error(token(), c"port number must be between 1 and 21")
-        });
+        reader.assert_npos(1, 1).assert_nkw(0, 0);
 
-        OpticalSensorObj {
+        let port = reader.next_positional()?;
+
+        Ok(OpticalSensorObj {
             base: ObjBase::new(ty),
             guard: devices::lock_port(port, |p| OpticalSensor::new(p)),
-        }
+        })
     }
 
     #[method]

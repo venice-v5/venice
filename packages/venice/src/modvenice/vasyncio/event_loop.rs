@@ -3,9 +3,10 @@ use std::{
     collections::{binary_heap::BinaryHeap, vec_deque::VecDeque},
 };
 
+use argparse::Exception;
 use micropython_rs::{
     class, class_methods,
-    except::{RUNTIME_ERROR_TYPE, raise_msg, raise_type_error},
+    except::{RUNTIME_ERROR_TYPE, raise_msg, raise_type_error, type_error},
     fun::{Fun1, Fun2},
     generator::{GEN_INSTANCE_TYPE, VmReturnKind, resume_gen},
     init::token,
@@ -168,12 +169,19 @@ impl EventLoop {
 #[class_methods]
 impl EventLoop {
     #[make_new]
-    fn make_new(_: &ObjType, n_args: usize, n_kw: usize, _args: &[Obj]) -> Self {
-        if n_args != 0 || n_kw != 0 {
-            raise_type_error(token(), c"function does not accept any arguments");
+    fn make_new(
+        _: &ObjType,
+        _n_args: usize,
+        _n_kw: usize,
+        args: &[Obj],
+    ) -> Result<Self, Exception> {
+        if args.len() != 0 {
+            return Err(type_error(
+                c"constructor does not accept arguments; just call EventLoop()",
+            ));
         }
 
-        Self::new()
+        Ok(Self::new())
     }
 
     // this function can't use a Fun generator because a Generator struct would be needed to write out

@@ -6,10 +6,10 @@ pub mod signature;
 pub mod source;
 pub mod white_balance;
 
-use argparse::Args;
+use argparse::{ArgParser, Args, DefaultParser, Exception, IntParser};
 use micropython_rs::{
     class, class_methods,
-    except::{raise_type_error, raise_value_error},
+    except::raise_type_error,
     fun::Fun2,
     init::token,
     list::new_list,
@@ -18,7 +18,7 @@ use micropython_rs::{
 use vexide_devices::smart::vision::{VisionMode, VisionSensor};
 
 use crate::{
-    devices::{self, PortNumber},
+    devices::{self},
     modvenice::{
         raise_port_error,
         vision::{
@@ -29,12 +29,28 @@ use crate::{
     registry::RegistryGuard,
 };
 
-pub fn validate_id(index: i32) -> u8 {
-    if !(1..=7).contains(&index) {
-        raise_value_error(token(), c"index must be between 1 and 7");
-    }
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SignatureId(u8);
 
-    index as u8
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct SignatureIdParser;
+
+impl SignatureId {
+    pub fn id(self) -> u8 {
+        self.0
+    }
+}
+
+impl<'a> ArgParser<'a> for SignatureIdParser {
+    type Output = SignatureId;
+
+    fn parse(&self, obj: &'a Obj) -> Result<Self::Output, argparse::ParseError> {
+        IntParser::new(1..=7).parse(obj).map(SignatureId)
+    }
+}
+
+impl DefaultParser<'_> for SignatureId {
+    type Parser = SignatureIdParser;
 }
 
 #[class(qstr!(VisionSensor))]
@@ -61,36 +77,37 @@ impl VisionSensorObj {
     const UPDATE_INTERVAL_MS: i32 = VisionSensor::UPDATE_INTERVAL.as_millis() as i32;
 
     #[make_new]
-    fn make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Self {
+    fn make_new(
+        ty: &'static ObjType,
+        n_pos: usize,
+        n_kw: usize,
+        args: &[Obj],
+    ) -> Result<Self, Exception> {
         let mut reader = Args::new(n_pos, n_kw, args).reader(token());
         reader.assert_npos(1, 1).assert_nkw(0, 0);
 
-        let port = PortNumber::from_i32(reader.next_positional()).unwrap_or_else(|_| {
-            raise_value_error(token(), c"port number must be between 1 and 21")
-        });
+        let port = reader.next_positional()?;
         let guard = devices::lock_port(port, |p| VisionSensor::new(p));
 
-        Self {
+        Ok(Self {
             base: ObjBase::new(ty),
             guard,
-        }
+        })
     }
 
     #[method]
-    fn set_signature(&self, id: i32, signature: &VisionSignatureObj) {
-        let id = validate_id(id);
+    fn set_signature(&self, id: SignatureId, signature: &VisionSignatureObj) {
         self.guard
             .borrow_mut()
-            .set_signature(id, signature.signature())
+            .set_signature(id.id(), signature.signature())
             .unwrap_or_else(|e| raise_port_error!(e));
     }
 
     #[method]
-    fn get_signature(&self, id: i32) -> Option<VisionSignatureObj> {
-        let id = validate_id(id);
+    fn get_signature(&self, id: SignatureId) -> Option<VisionSignatureObj> {
         self.guard
             .borrow()
-            .signature(id)
+            .signature(id.id())
             .unwrap_or_else(|e| raise_port_error!(e))
             .map(VisionSignatureObj::new)
     }

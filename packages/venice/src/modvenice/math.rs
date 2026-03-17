@@ -1,6 +1,6 @@
 use std::cell::Cell;
 
-use argparse::{ArgType, Args, error_msg};
+use argparse::{ArgType, Args, Exception, error_msg};
 use micropython_rs::{
     class, class_methods,
     except::raise_type_error,
@@ -132,18 +132,23 @@ impl EulerAngles {
 #[class_methods]
 impl Point2 {
     #[make_new]
-    fn make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Self {
+    fn make_new(
+        ty: &'static ObjType,
+        n_pos: usize,
+        n_kw: usize,
+        args: &[Obj],
+    ) -> Result<Self, Exception> {
         let mut reader = Args::new(n_pos, n_kw, args).reader(token());
         reader.assert_npos(2, 2).assert_nkw(0, 0);
 
-        let x = reader.next_positional();
-        let y = reader.next_positional();
+        let x = reader.next_positional()?;
+        let y = reader.next_positional()?;
 
-        Self {
+        Ok(Self {
             base: ObjBase::new(ty),
             x: Cell::new(x),
             y: Cell::new(y),
-        }
+        })
     }
 
     #[attr]

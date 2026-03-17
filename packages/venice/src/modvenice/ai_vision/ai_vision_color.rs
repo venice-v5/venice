@@ -1,4 +1,4 @@
-use argparse::Args;
+use argparse::{Args, Exception};
 use micropython_rs::{
     class, class_methods,
     init::token,
@@ -7,7 +7,6 @@ use micropython_rs::{
 };
 use rgb::Rgb;
 use vexide_devices::smart::ai_vision::AiVisionColor;
-
 
 #[class(qstr!(AiVisionColor))]
 #[repr(C)]
@@ -45,23 +44,28 @@ impl AiVisionColorObj {
     }
 
     #[make_new]
-    fn make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Self {
+    fn make_new(
+        ty: &'static ObjType,
+        n_pos: usize,
+        n_kw: usize,
+        args: &[Obj],
+    ) -> Result<Self, Exception> {
         let token = token();
         let mut reader = Args::new(n_pos, n_kw, args).reader(token);
-        reader.assert_npos(5, 5);
+        reader.assert_npos(5, 5).assert_nkw(0, 0);
         let rgb = Rgb::<u8>::new(
-            reader.next_positional::<i32>() as _,
-            reader.next_positional::<i32>() as _,
-            reader.next_positional::<i32>() as _,
+            reader.next_positional::<u8>()?,
+            reader.next_positional::<u8>()?,
+            reader.next_positional::<u8>()?,
         );
         let color = AiVisionColor {
             rgb,
-            hue_range: reader.next_positional::<f32>(),
-            saturation_range: reader.next_positional::<f32>(),
+            hue_range: reader.next_positional::<f32>()?,
+            saturation_range: reader.next_positional::<f32>()?,
         };
-        Self {
+        Ok(Self {
             base: ObjBase::new(ty),
             color,
-        }
+        })
     }
 }

@@ -3,7 +3,7 @@ pub mod state;
 
 use std::{cell::RefCell, ffi::CStr, ops::RangeInclusive};
 
-use argparse::{Args, error_msg};
+use argparse::{Args, Exception, error_msg};
 use micropython_rs::{
     class, class_methods,
     except::{raise_stop_iteration, raise_value_error},
@@ -182,15 +182,15 @@ fn empty_cstring_vec() -> Vec<u8, Gc> {
     vec
 }
 
-fn set_text_prelude(args: &[Obj]) -> (&ControllerObj, &str, i32, i32) {
+fn set_text_prelude(args: &[Obj]) -> Result<(&ControllerObj, &str, i32, i32), Exception> {
     let mut reader = Args::new(args.len(), 0, args).reader(token());
     reader.assert_npos(4, 4);
-    let this = reader.next_positional::<&ControllerObj>();
-    let text = reader.next_positional::<&str>();
-    let line = reader.next_positional::<i32>();
-    let column = reader.next_positional::<i32>();
+    let this = reader.next_positional::<&ControllerObj>()?;
+    let text = reader.next_positional::<&str>()?;
+    let line = reader.next_positional::<i32>()?;
+    let column = reader.next_positional::<i32>()?;
 
-    (this, text, line, column)
+    Ok((this, text, line, column))
 }
 
 #[class_methods]
@@ -203,18 +203,23 @@ impl ControllerObj {
     const MAX_LINES: i32 = Controller::MAX_LINES as i32;
 
     #[make_new]
-    fn make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Self {
+    fn make_new(
+        ty: &'static ObjType,
+        n_pos: usize,
+        n_kw: usize,
+        args: &[Obj],
+    ) -> Result<Self, Exception> {
         let token = token();
         let mut reader = Args::new(n_pos, n_kw, args).reader(token);
         reader.assert_npos(0, 1).assert_nkw(0, 0);
 
-        let id_obj = reader.next_positional_or(ControllerIdObj::PRIMARY);
+        let id_obj = reader.next_positional_or(ControllerIdObj::PRIMARY)?;
 
         let guard = devices::lock_controller(id_obj.id());
-        ControllerObj {
+        Ok(ControllerObj {
             base: ObjBase::new(ty),
             guard,
-        }
+        })
     }
 
     #[attr]
@@ -342,10 +347,10 @@ impl ControllerObj {
     }
 
     #[method(ty = var(min = 4))]
-    fn set_text(args: &[Obj]) -> ControllerFutureObj {
-        let (this, text, line, column) = set_text_prelude(args);
+    fn set_text(args: &[Obj]) -> Result<ControllerFutureObj, Exception> {
+        let (this, text, line, column) = set_text_prelude(args)?;
 
-        ControllerFutureObj {
+        Ok(ControllerFutureObj {
             future: RefCell::new(ControllerFuture::WaitingForIdle {
                 line,
                 column,
@@ -354,12 +359,12 @@ impl ControllerObj {
                 enforce_visible: false,
             }),
             base: ObjBase::new(ControllerFutureObj::OBJ_TYPE),
-        }
+        })
     }
 
     #[method(ty = var(min = 4))]
-    fn try_set_text(args: &[Obj]) {
-        let (this, text, line, column) = set_text_prelude(args);
+    fn try_set_text(args: &[Obj]) -> Result<(), Exception> {
+        let (this, text, line, column) = set_text_prelude(args)?;
 
         validate_line(&line);
         validate_column(&column);
@@ -368,6 +373,7 @@ impl ControllerObj {
             .borrow_mut()
             .try_set_text(text, line as u8, column as u8)
             .unwrap_or_else(|e| raise_port_error!(e)); // technically not PortError but the macro works
+        Ok(())
     }
 
     #[method]

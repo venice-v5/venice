@@ -1,4 +1,4 @@
-use argparse::Args;
+use argparse::{Args, ArgsReader, Exception, PositionalError};
 use micropython_rs::{
     class, class_methods,
     init::token,
@@ -7,7 +7,7 @@ use micropython_rs::{
 };
 use vexide_devices::smart::vision::VisionCode;
 
-use crate::modvenice::vision::validate_id;
+use crate::modvenice::vision::SignatureId;
 
 #[class(qstr!(VisionCode))]
 #[repr(C)]
@@ -30,20 +30,35 @@ impl VisionCodeObj {
     }
 
     #[make_new]
-    fn make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Self {
+    fn make_new(
+        ty: &'static ObjType,
+        n_pos: usize,
+        n_kw: usize,
+        args: &[Obj],
+    ) -> Result<Self, Exception> {
         let mut reader = Args::new(n_pos, n_kw, args).reader(token());
+        reader.assert_npos(2, 5).assert_nkw(0, 0);
 
-        let s1 = validate_id(reader.next_positional());
-        let s2 = validate_id(reader.next_positional());
+        let s1 = reader.next_positional::<SignatureId>()?.id();
+        let s2 = reader.next_positional::<SignatureId>()?.id();
 
-        let s3 = reader.try_next_positional().map(validate_id).ok();
-        let s4 = reader.try_next_positional().map(validate_id).ok();
-        let s5 = reader.try_next_positional().map(validate_id).ok();
+        fn read_optional_sig(reader: &mut ArgsReader) -> Result<Option<u8>, Exception> {
+            let result = reader.next_positional::<SignatureId>();
+            match result {
+                Ok(id) => Ok(Some(id.id())),
+                Err(PositionalError::ArgumentsExhausted) => Ok(None),
+                _ => Err(Exception::from(result.unwrap_err())),
+            }
+        }
 
-        Self {
+        let s3 = read_optional_sig(&mut reader)?;
+        let s4 = read_optional_sig(&mut reader)?;
+        let s5 = read_optional_sig(&mut reader)?;
+
+        Ok(Self {
             base: ObjBase::new(ty),
             code: VisionCode::new(s1, s2, s3, s4, s5),
-        }
+        })
     }
 
     #[method(binding = "static")]

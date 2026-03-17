@@ -1,4 +1,8 @@
-use std::{ffi::CStr, fmt::Write, ptr::copy_nonoverlapping};
+use std::{
+    ffi::CStr,
+    fmt::{Debug, Write},
+    ptr::copy_nonoverlapping,
+};
 
 use micropython_rs::{gc, init::token};
 
@@ -15,18 +19,25 @@ pub struct MessageWriter {
     pos: usize,
 }
 
+#[derive(Clone, Copy)]
 pub struct Message {
     ptr: *const u8,
 }
 
 pub type Exception = micropython_rs::except::Exception<Message>;
-pub type Result<T> = std::result::Result<T, Exception>;
 
 impl From<&'static CStr> for Message {
     fn from(value: &'static CStr) -> Self {
         Self {
             ptr: value.as_ptr(),
         }
+    }
+}
+
+impl Debug for Message {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let cstr: &CStr = self.as_ref();
+        f.debug_tuple("Message").field(&cstr).finish()
     }
 }
 
@@ -103,7 +114,7 @@ impl Write for MessageWriter {
 macro_rules! error_msg {
     ($($arg:tt)*) => {{
         use ::std::fmt::Write;
-        let mut writer = $crate::error_msg::MessageWriter::new();
+        let mut writer = $crate::MessageWriter::new();
         // Write implementation always returns Ok, no need to check
         let _ = write!(writer, $($arg)*);
         writer.finish()

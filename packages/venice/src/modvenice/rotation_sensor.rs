@@ -1,14 +1,13 @@
-use argparse::Args;
+use argparse::{Args, Exception};
 use micropython_rs::{
     class, class_methods,
-    except::raise_value_error,
     init::token,
     obj::{Obj, ObjBase, ObjType},
 };
 use vexide_devices::{math::Direction, smart::rotation::RotationSensor};
 
 use crate::{
-    devices::{self, PortNumber},
+    devices::{self},
     modvenice::{
         motor::direction::DirectionObj,
         raise_port_error,
@@ -33,22 +32,27 @@ impl RotationSensorObj {
     const TICKS_PER_REVOLUTION: i32 = RotationSensor::TICKS_PER_REVOLUTION as i32;
 
     #[make_new]
-    fn new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Self {
+    fn new(
+        ty: &'static ObjType,
+        n_pos: usize,
+        n_kw: usize,
+        args: &[Obj],
+    ) -> Result<Self, Exception> {
         let token = token();
         let mut reader = Args::new(n_pos, n_kw, args).reader(token);
         reader.assert_npos(1, 2).assert_nkw(0, 0);
 
-        let port = PortNumber::from_i32(reader.next_positional())
-            .unwrap_or_else(|_| raise_value_error(token, c"port number must be between 1 and 21"));
-
-        let direction = reader.next_positional_or(DirectionObj::FORWARD).direction();
+        let port = reader.next_positional()?;
+        let direction = reader
+            .next_positional_or(DirectionObj::FORWARD)?
+            .direction();
 
         let guard = devices::lock_port(port, |port| RotationSensor::new(port, direction));
 
-        RotationSensorObj {
+        Ok(RotationSensorObj {
             base: ObjBase::new(ty),
             guard,
-        }
+        })
     }
 
     #[method]

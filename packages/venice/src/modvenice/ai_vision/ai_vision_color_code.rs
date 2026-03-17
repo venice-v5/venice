@@ -1,6 +1,6 @@
 use std::cell::Cell;
 
-use argparse::Args;
+use argparse::{Args, Exception, PositionalError};
 use micropython_rs::{
     class, class_methods,
     init::token,
@@ -37,24 +37,31 @@ impl AiVisionColorCodeObj {
 #[class_methods]
 impl AiVisionColorCodeObj {
     #[make_new]
-    fn make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Self {
+    fn make_new(
+        ty: &'static ObjType,
+        n_pos: usize,
+        n_kw: usize,
+        args: &[Obj],
+    ) -> Result<Self, Exception> {
         let mut reader = Args::new(n_pos, n_kw, args).reader(token());
-        reader.assert_npos(1, 7);
+        reader.assert_npos(1, 7).assert_nkw(0, 0);
+
         let mut values = [None; 7];
         for value in values.iter_mut() {
-            let res = reader.try_next_positional::<i32>();
-            if let Ok(v) = res {
-                // TODO: this conversion needs a bounds check
-                *value = Some(v as u8);
-            } else {
-                break;
+            let res = reader.next_positional::<u8>();
+            match res {
+                Ok(v) => *value = Some(v),
+                Err(e) => match e {
+                    PositionalError::ArgumentsExhausted => break,
+                    _ => return Err(e.into()),
+                },
             }
         }
 
-        Self {
+        Ok(Self {
             base: ObjBase::new(ty),
             code: Cell::new(values),
-        }
+        })
     }
 
     #[subscr]
