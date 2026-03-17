@@ -181,7 +181,7 @@ fn generate_fixed_fun(ty: &Type, sig: &Signature) -> syn::Result<TokenStream> {
                     let a_parser = <#ty as ::argparse::DefaultParser>::Parser::default();
                     let a_value = match ::argparse::ArgParser::parse(&a_parser, &a) {
                         ::std::result::Result::Ok(v) => v,
-                        ::std::result::Result::Err(e) => ::argparse::Exception::from(match e {
+                        ::std::result::Result::Err(e) => ::micropython_rs::except::Exception::from(match e {
                             ::argparse::ParseError::TypeError { expected } => ::argparse::PositionalError::TypeError { n: 1, expected, found: ::argparse::type_name(&a) },
                             ::argparse::ParseError::ValueError { mk_msg } => ::argparse::PositionalError::ValueError { msg: mk_msg("argument #1") },
                         }).raise(::micropython_rs::init::token()),
@@ -219,7 +219,7 @@ fn generate_fixed_fun(ty: &Type, sig: &Signature) -> syn::Result<TokenStream> {
             let b_parser = <#ty as ::argparse::DefaultParser>::Parser::default();
             let b_value = match ::argparse::ArgParser::parse(&b_parser, &b) {
                 ::std::result::Result::Ok(v) => v,
-                ::std::result::Result::Err(e) => ::argparse::Exception::from(match e {
+                ::std::result::Result::Err(e) => ::micropython_rs::except::Exception::from(match e {
                     ::argparse::ParseError::TypeError { expected } => ::argparse::PositionalError::TypeError { n: #arg_number, expected, found: ::argparse::type_name(&b) },
                     ::argparse::ParseError::ValueError { mk_msg } => ::argparse::PositionalError::ValueError { msg: mk_msg(&format!("argument #{}", #arg_number)) },
                 }).raise(::micropython_rs::init::token()),
@@ -241,7 +241,7 @@ fn generate_fixed_fun(ty: &Type, sig: &Signature) -> syn::Result<TokenStream> {
             let c_parser = <#ty as ::argparse::DefaultParser>::Parser::default();
             let c_value = match ::argparse::ArgParser::parse(&c_parser, &c) {
                 ::std::result::Result::Ok(v) => v,
-                ::std::result::Result::Err(e) => ::argparse::Exception::from(match e {
+                ::std::result::Result::Err(e) => ::micropython_rs::except::Exception::from(match e {
                     ::argparse::ParseError::TypeError { expected } => ::argparse::PositionalError::TypeError { n: #arg_number, expected, found: ::argparse::type_name(&c) },
                     ::argparse::ParseError::ValueError { mk_msg } => ::argparse::PositionalError::ValueError { msg: mk_msg(&format!("argument #{}", #arg_number)) },
                 }).raise(::micropython_rs::init::token()),

@@ -1,4 +1,4 @@
-use argparse::{Args, Exception};
+use argparse::Args;
 use micropython_rs::{
     class, class_methods,
     init::token,
@@ -9,6 +9,7 @@ use vexide_devices::{math::Direction, smart::rotation::RotationSensor};
 use crate::{
     devices::{self},
     modvenice::{
+        Exception,
         motor::direction::DirectionObj,
         raise_port_error,
         units::{rotation::RotationUnitObj, time::TimeUnitObj},

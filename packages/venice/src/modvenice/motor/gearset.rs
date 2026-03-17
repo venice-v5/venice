@@ -4,7 +4,6 @@ use micropython_rs::{
 };
 use vexide_devices::smart::motor::Gearset;
 
-
 #[class(qstr!(Gearset))]
 #[repr(C)]
 pub struct GearsetObj {

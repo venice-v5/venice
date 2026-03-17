@@ -1,6 +1,6 @@
 use std::cell::Cell;
 
-use argparse::{Args, Exception};
+use argparse::Args;
 use micropython_rs::{
     class, class_methods,
     except::{raise_stop_iteration, raise_value_error},
@@ -17,6 +17,7 @@ use vexide_devices::smart::{
 use crate::{
     devices::{self},
     modvenice::{
+        Exception,
         math::{EulerAngles, Quaternion, Vec3},
         raise_device_error, raise_port_error,
         units::{rotation::RotationUnitObj, time::TimeUnitObj},

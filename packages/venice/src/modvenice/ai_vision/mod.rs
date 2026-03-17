@@ -4,7 +4,8 @@ pub mod ai_vision_detection_mode;
 pub mod ai_vision_flags;
 pub mod ai_vision_object;
 pub mod april_tag_family;
-use argparse::{Args, Exception};
+
+use argparse::Args;
 use micropython_rs::{
     class, class_methods,
     init::token,
@@ -16,6 +17,7 @@ use vexide_devices::smart::ai_vision::AiVisionSensor;
 use crate::{
     devices::{self},
     modvenice::{
+        Exception,
         ai_vision::{
             ai_vision_color::AiVisionColorObj, ai_vision_color_code::AiVisionColorCodeObj,
             ai_vision_detection_mode::AiVisionDetectionModeObj, ai_vision_flags::AiVisionFlagsObj,

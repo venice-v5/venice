@@ -3,7 +3,7 @@ pub mod direction;
 pub mod gearset;
 pub mod motor_type;
 
-use argparse::{Args, Exception};
+use argparse::Args;
 use brake::BrakeModeObj;
 use direction::DirectionObj;
 use gearset::GearsetObj;
@@ -22,7 +22,8 @@ use super::raise_device_error;
 use crate::{
     devices::{self},
     modvenice::{
-        motor::motor_type::MotorTypeObj, raise_port_error, units::rotation::RotationUnitObj,
+        Exception, motor::motor_type::MotorTypeObj, raise_port_error,
+        units::rotation::RotationUnitObj,
     },
     registry::RegistryGuard,
 };
@@ -84,7 +85,7 @@ impl MotorObj {
     #[make_new]
     fn make_new(_: &ObjType, _: usize, n_kw: usize, args: &[Obj]) -> Result<Self, Exception> {
         if n_kw != 0 {
-            Err(type_error(c"function does not accept keyword arguments"))
+            Err(type_error(c"function does not accept keyword arguments").into())
         } else {
             Self::new_v5(args)
         }

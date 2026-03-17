@@ -1,4 +1,4 @@
-use argparse::{Args, Exception};
+use argparse::Args;
 use micropython_rs::{
     class, class_methods,
     init::token,
@@ -7,6 +7,8 @@ use micropython_rs::{
 };
 use rgb::Rgb;
 use vexide_devices::smart::ai_vision::AiVisionColor;
+
+use crate::modvenice::Exception;
 
 #[class(qstr!(AiVisionColor))]
 #[repr(C)]

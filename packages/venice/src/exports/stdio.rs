@@ -19,7 +19,6 @@ use micropython_rs::{
 };
 use vex_sdk_jumptable::vexSerialReadChar;
 
-
 #[class(qstr!(Stdin))]
 #[repr(C)]
 pub struct Stdin {

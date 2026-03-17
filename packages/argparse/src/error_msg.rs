@@ -1,10 +1,6 @@
-use std::{
-    ffi::CStr,
-    fmt::{Debug, Write},
-    ptr::copy_nonoverlapping,
-};
+use std::{ffi::CStr, fmt::Write};
 
-use micropython_rs::{gc, init::token};
+use micropython_rs::{except::Message, init::token};
 
 pub const STACK_BUF_SIZE: usize = 128;
 pub const USABLE_STACK_BUF_SIZE: usize = STACK_BUF_SIZE - 1;
@@ -19,28 +15,6 @@ pub struct MessageWriter {
     pos: usize,
 }
 
-#[derive(Clone, Copy)]
-pub struct Message {
-    ptr: *const u8,
-}
-
-pub type Exception = micropython_rs::except::Exception<Message>;
-
-impl From<&'static CStr> for Message {
-    fn from(value: &'static CStr) -> Self {
-        Self {
-            ptr: value.as_ptr(),
-        }
-    }
-}
-
-impl Debug for Message {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let cstr: &CStr = self.as_ref();
-        f.debug_tuple("Message").field(&cstr).finish()
-    }
-}
-
 impl MessageWriter {
     pub fn new() -> Self {
         Self {
@@ -51,27 +25,14 @@ impl MessageWriter {
 
     pub fn finish(self) -> Message {
         let size = self.pos + 1;
-        let token = token();
-        let mem = unsafe { gc::alloc(token, size, false) };
 
         let src = match &self.buf {
             Buffer::Heap(v) => &v[..size],
             Buffer::Stack(a) => &a[..size],
         };
+        let cstr = unsafe { CStr::from_bytes_with_nul_unchecked(src) };
 
-        unsafe {
-            copy_nonoverlapping(src.as_ptr(), mem, size);
-        }
-
-        Message { ptr: mem }
-    }
-}
-
-impl AsRef<CStr> for Message {
-    fn as_ref(&self) -> &CStr {
-        // SAFETY: ptr alawys points to either a static CStr, or a GC-allocated block of memory
-        // which is alive as long as self is alive
-        unsafe { CStr::from_ptr(self.ptr) }
+        Message::from_cstr(cstr, token()).unwrap()
     }
 }
 

@@ -1,4 +1,4 @@
-use argparse::{Args, Exception};
+use argparse::Args;
 use micropython_rs::{
     class, class_methods,
     init::token,
@@ -6,6 +6,8 @@ use micropython_rs::{
     qstr::Qstr,
 };
 use vexide_devices::smart::vision::VisionSignature;
+
+use crate::modvenice::Exception;
 
 #[class(qstr!(VisionSignature))]
 #[repr(C)]

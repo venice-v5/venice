@@ -1,4 +1,4 @@
-use argparse::{Args, Exception};
+use argparse::Args;
 use micropython_rs::{
     class, class_methods,
     except::raise_type_error,
@@ -7,6 +7,8 @@ use micropython_rs::{
     qstr::Qstr,
 };
 use vexide_devices::smart::vision::WhiteBalance;
+
+use crate::modvenice::Exception;
 
 #[class(qstr!(WhiteBalance))]
 #[repr(C)]

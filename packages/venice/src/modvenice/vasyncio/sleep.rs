@@ -1,6 +1,6 @@
 use std::cell::Cell;
 
-use argparse::{Args, Exception};
+use argparse::Args;
 use micropython_rs::{
     class, class_methods,
     except::raise_stop_iteration,
@@ -9,7 +9,7 @@ use micropython_rs::{
 };
 
 use super::time32;
-use crate::modvenice::units::time::TimeUnitObj;
+use crate::modvenice::{Exception, units::time::TimeUnitObj};
 
 #[class(qstr!(Sleep))]
 #[repr(C)]

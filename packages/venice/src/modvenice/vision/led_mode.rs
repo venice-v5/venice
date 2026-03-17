@@ -1,4 +1,4 @@
-use argparse::{Args, Exception};
+use argparse::Args;
 use micropython_rs::{
     class, class_methods,
     except::raise_type_error,
@@ -8,7 +8,7 @@ use micropython_rs::{
 };
 use vexide_devices::smart::vision::LedMode;
 
-use crate::obj::alloc_obj;
+use crate::{modvenice::Exception, obj::alloc_obj};
 
 #[class(qstr!(LedMode))]
 pub struct LedModeObj {

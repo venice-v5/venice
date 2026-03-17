@@ -6,7 +6,7 @@ pub mod signature;
 pub mod source;
 pub mod white_balance;
 
-use argparse::{ArgParser, Args, DefaultParser, Exception, IntParser};
+use argparse::{ArgParser, Args, DefaultParser, IntParser};
 use micropython_rs::{
     class, class_methods,
     except::raise_type_error,
@@ -20,7 +20,7 @@ use vexide_devices::smart::vision::{VisionMode, VisionSensor};
 use crate::{
     devices::{self},
     modvenice::{
-        raise_port_error,
+        Exception, raise_port_error,
         vision::{
             code::VisionCodeObj, mode::VisionModeObj, object::VisionObjectObj,
             signature::VisionSignatureObj,

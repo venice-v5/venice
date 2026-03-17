@@ -7,7 +7,7 @@ use std::{
 };
 
 use micropython_rs::{
-    except::{raise_type_error, type_error, value_error},
+    except::{Exception, Message, raise_type_error, type_error, value_error},
     init::InitToken,
     obj::{Obj, ObjTrait, ObjType, repr_c},
     str::Str,

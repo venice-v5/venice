@@ -1,7 +1,7 @@
 pub mod gesture;
 pub mod rgb;
 
-use argparse::{Args, Exception};
+use argparse::Args;
 use micropython_rs::{
     class, class_methods,
     init::token,
@@ -12,6 +12,7 @@ use vexide_devices::smart::optical::OpticalSensor;
 use crate::{
     devices,
     modvenice::{
+        Exception,
         optical::{
             gesture::GestureObj,
             rgb::{OpticalRawObj, OpticalRgbObj},

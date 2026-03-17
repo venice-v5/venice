@@ -1,12 +1,14 @@
 use std::cell::Cell;
 
-use argparse::{Args, Exception, PositionalError};
+use argparse::{Args, PositionalError};
 use micropython_rs::{
     class, class_methods,
     init::token,
     obj::{Obj, ObjBase, ObjTrait, ObjType, SubscrOp},
 };
 use vexide_devices::smart::ai_vision::AiVisionColorCode;
+
+use crate::modvenice::Exception;
 
 #[class(qstr!(AiVisionColorCode))]
 #[repr(C)]

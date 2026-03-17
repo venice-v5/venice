@@ -4,7 +4,6 @@ use micropython_rs::{
 };
 use vexide_devices::math::Direction;
 
-
 #[class(qstr!(Direction))]
 #[repr(C)]
 pub struct DirectionObj {

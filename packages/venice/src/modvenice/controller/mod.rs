@@ -3,7 +3,7 @@ pub mod state;
 
 use std::{cell::RefCell, ffi::CStr, ops::RangeInclusive};
 
-use argparse::{Args, Exception, error_msg};
+use argparse::{Args, error_msg};
 use micropython_rs::{
     class, class_methods,
     except::{raise_stop_iteration, raise_value_error},
@@ -21,7 +21,7 @@ use crate::{
     alloc::Gc,
     devices,
     modvenice::{
-        controller::id::ControllerIdObj, raise_device_error, raise_port_error,
+        Exception, controller::id::ControllerIdObj, raise_device_error, raise_port_error,
         vasyncio::event_loop::WAKE_SIGNAL,
     },
     registry::ControllerGuard,

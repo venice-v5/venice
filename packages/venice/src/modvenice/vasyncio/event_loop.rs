@@ -3,7 +3,6 @@ use std::{
     collections::{binary_heap::BinaryHeap, vec_deque::VecDeque},
 };
 
-use argparse::Exception;
 use micropython_rs::{
     class, class_methods,
     except::{RUNTIME_ERROR_TYPE, raise_msg, raise_type_error, type_error},
@@ -16,7 +15,7 @@ use micropython_rs::{
 use vex_sdk::vexTasksRun;
 
 use super::{sleep::Sleep, task::Task, time32};
-use crate::{alloc::Gc, obj::alloc_obj};
+use crate::{alloc::Gc, modvenice::Exception, obj::alloc_obj};
 
 struct Sleeper {
     task: Obj,
@@ -176,9 +175,9 @@ impl EventLoop {
         args: &[Obj],
     ) -> Result<Self, Exception> {
         if args.len() != 0 {
-            return Err(type_error(
+            Err(type_error(
                 c"constructor does not accept arguments; just call EventLoop()",
-            ));
+            ))?
         }
 
         Ok(Self::new())

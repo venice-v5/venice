@@ -1,4 +1,4 @@
-use argparse::{Args, ArgsReader, Exception, PositionalError};
+use argparse::{Args, ArgsReader, PositionalError};
 use micropython_rs::{
     class, class_methods,
     init::token,
@@ -7,7 +7,7 @@ use micropython_rs::{
 };
 use vexide_devices::smart::vision::VisionCode;
 
-use crate::modvenice::vision::SignatureId;
+use crate::modvenice::{Exception, vision::SignatureId};
 
 #[class(qstr!(VisionCode))]
 #[repr(C)]

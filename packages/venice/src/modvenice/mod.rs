@@ -14,14 +14,16 @@ mod vision;
 
 use std::ffi::CStr;
 
+use argparse::{PositionalError, error_msg};
 use micropython_rs::{
     const_map,
-    except::{EXCEPTION_TYPE, ExceptionType, raise_msg},
+    except::{EXCEPTION_TYPE, ExceptionType, Message, raise_msg},
     fun::{Fun0, Fun1},
     init::InitToken,
     map::Dict,
     obj::{Obj, ObjTrait},
 };
+use vexide_devices::smart::PortError;
 
 use crate::modvenice::{
     ai_vision::{
@@ -63,6 +65,45 @@ use crate::modvenice::{
 };
 
 static DEVICE_ERROR_TYPE: ExceptionType = ExceptionType::new(qstr!(DeviceError), EXCEPTION_TYPE);
+
+pub struct Exception(pub micropython_rs::except::Exception);
+
+impl Exception {
+    pub fn new(ty: &'static ExceptionType, msg: impl Into<Message>) -> Self {
+        Self(micropython_rs::except::Exception {
+            ty,
+            msg: msg.into(),
+        })
+    }
+
+    pub fn raise(&self, token: InitToken) -> ! {
+        self.0.raise(token);
+    }
+}
+
+impl From<micropython_rs::except::Exception> for Exception {
+    fn from(value: micropython_rs::except::Exception) -> Self {
+        Self(value)
+    }
+}
+
+impl From<Exception> for micropython_rs::except::Exception {
+    fn from(value: Exception) -> Self {
+        value.0
+    }
+}
+
+impl From<PositionalError<'_>> for Exception {
+    fn from(value: PositionalError<'_>) -> Self {
+        Self(value.into())
+    }
+}
+
+impl From<PortError> for Exception {
+    fn from(value: PortError) -> Self {
+        Self::new(&DEVICE_ERROR_TYPE, error_msg!("{value}"))
+    }
+}
 
 pub fn raise_device_error(token: InitToken, msg: impl AsRef<CStr>) -> ! {
     raise_msg(token, &DEVICE_ERROR_TYPE, msg)

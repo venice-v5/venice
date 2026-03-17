@@ -1,6 +1,6 @@
 pub mod distance_object;
 
-use argparse::{Args, Exception};
+use argparse::Args;
 use micropython_rs::{
     class, class_methods,
     init::token,
@@ -10,7 +10,7 @@ use vexide_devices::smart::distance::DistanceSensor;
 
 use crate::{
     devices::{self},
-    modvenice::{distance_sensor::distance_object::DistanceObjectObj, raise_port_error},
+    modvenice::{Exception, distance_sensor::distance_object::DistanceObjectObj, raise_port_error},
     registry::RegistryGuard,
 };
 

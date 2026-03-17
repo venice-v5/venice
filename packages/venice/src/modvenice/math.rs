@@ -1,6 +1,6 @@
 use std::cell::Cell;
 
-use argparse::{ArgType, Args, Exception, error_msg};
+use argparse::{ArgType, Args, error_msg};
 use micropython_rs::{
     class, class_methods,
     except::raise_type_error,
@@ -10,7 +10,7 @@ use micropython_rs::{
 };
 use vexide_devices::math::Angle;
 
-use crate::modvenice::units::rotation::RotationUnit;
+use crate::modvenice::{Exception, units::rotation::RotationUnit};
 
 #[class(qstr!(Vec3))]
 #[repr(C)]
