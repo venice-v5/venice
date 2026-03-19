@@ -38,7 +38,7 @@ jobs:
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
 
       - name: build-rust
-        run: cargo v5 build
+        run: cargo v5 toolchain install && cargo v5 build
 
       - name: generate-bin
         run: arm-none-eabi-objcopy -O binary target/armv7a-vex-v5/debug/venice packages/venice/venice.bin
