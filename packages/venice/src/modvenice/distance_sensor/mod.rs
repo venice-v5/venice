@@ -1,15 +1,15 @@
 pub mod distance_object;
 
-use argparse::Args;
+use argparse::{Args, error_msg};
 use micropython_rs::{
     class, class_methods,
     obj::{Obj, ObjBase, ObjType},
 };
-use vexide_devices::smart::distance::DistanceSensor;
+use vexide_devices::smart::distance::{DistanceObjectError, DistanceSensor};
 
 use crate::{
     devices::{self},
-    modvenice::{Exception, distance_sensor::distance_object::DistanceObjectObj, raise_port_error},
+    modvenice::{Exception, device_error, distance_sensor::distance_object::DistanceObjectObj},
     registry::RegistryGuard,
 };
 
@@ -18,6 +18,12 @@ use crate::{
 pub struct DistanceSensorObj {
     base: ObjBase<'static>,
     guard: RegistryGuard<'static, DistanceSensor>,
+}
+
+impl From<DistanceObjectError> for Exception {
+    fn from(value: DistanceObjectError) -> Self {
+        device_error(error_msg!("{value}"))
+    }
 }
 
 #[class_methods]
@@ -42,20 +48,13 @@ impl DistanceSensorObj {
     }
 
     #[method]
-    fn get_status(&self) -> i32 {
-        self.guard
-            .borrow()
-            .status()
-            .unwrap_or_else(|e| raise_port_error!(e)) as i32
+    fn get_status(&self) -> Result<i32, Exception> {
+        Ok(self.guard.borrow().status()? as i32)
     }
 
     #[method]
-    fn get_object(&self) -> Option<DistanceObjectObj> {
-        self.guard
-            .borrow()
-            .object()
-            .unwrap_or_else(|e| raise_port_error!(e))
-            .map(DistanceObjectObj::new)
+    fn get_object(&self) -> Result<Option<DistanceObjectObj>, Exception> {
+        Ok(self.guard.borrow().object()?.map(DistanceObjectObj::new))
     }
 
     #[method]

@@ -10,7 +10,6 @@ use crate::{
     modvenice::{
         Exception,
         motor::direction::DirectionObj,
-        raise_port_error,
         units::{rotation::RotationUnitObj, time::TimeUnitObj},
     },
     registry::RegistryGuard,
@@ -55,60 +54,53 @@ impl RotationSensorObj {
     }
 
     #[method]
-    fn get_angle(&self, unit: &RotationUnitObj) -> f32 {
-        let angle = self
-            .guard
-            .borrow_mut()
-            .angle()
-            .unwrap_or_else(|e| raise_port_error!(e));
-        unit.unit().angle_to_float(angle)
+    fn get_angle(&self, unit: &RotationUnitObj) -> Result<f32, Exception> {
+        let angle = self.guard.borrow_mut().angle()?;
+        Ok(unit.unit().angle_to_float(angle))
     }
 
     #[method]
-    fn get_position(&self, unit: &RotationUnitObj) -> Obj {
-        let position = self
-            .guard
-            .borrow_mut()
-            .position()
-            .unwrap_or_else(|e| raise_port_error!(e));
-        Obj::from_float(unit.unit().angle_to_float(position))
+    fn get_position(&self, unit: &RotationUnitObj) -> Result<f32, Exception> {
+        let position = self.guard.borrow_mut().position()?;
+        Ok(unit.unit().angle_to_float(position))
     }
 
     #[method]
-    fn set_position(&self, position: f32, unit: &RotationUnitObj) {
+    fn set_position(&self, position: f32, unit: &RotationUnitObj) -> Result<(), Exception> {
         let angle = unit.unit().float_to_angle(position);
-        self.guard
-            .borrow_mut()
-            .set_position(angle)
-            .unwrap_or_else(|e| raise_port_error!(e));
+        self.guard.borrow_mut().set_position(angle)?;
+        Ok(())
     }
 
     #[method]
-    fn get_velocity(&self) -> f32 {
-        let velocity = self
-            .guard
-            .borrow_mut()
-            .velocity()
-            .unwrap_or_else(|e| raise_port_error!(e));
-        velocity as f32
+    fn get_velocity(&self) -> Result<f32, Exception> {
+        Ok(self.guard.borrow_mut().velocity()? as f32)
     }
 
     #[method]
-    fn reset_position(&self) {
-        self.guard
-            .borrow_mut()
-            .reset_position()
-            .unwrap_or_else(|e| raise_port_error!(e));
+    fn reset_position(&self) -> Result<(), Exception> {
+        self.guard.borrow_mut().reset_position()?;
+        Ok(())
     }
 
     #[method]
-    fn set_direction(&self, direction: &DirectionObj) {
+    fn set_direction(&self, direction: &DirectionObj) -> Result<(), Exception> {
         self.guard
             .borrow_mut()
-            .set_direction(direction.direction())
-            .unwrap_or_else(|e| raise_port_error!(e));
+            .set_direction(direction.direction())?;
+        Ok(())
     }
 
+    // Venice's convention for deciding between using getters/setters and attributes is that
+    // attributes should never perform SDK calls. If loading or storing some `x` requires calling
+    // into the SDK, then that functionality should be moved into getters and setters `get_x` and
+    // `set_x`.
+    //
+    // Loading rotation sensor direction does not require an SDK call, but storing it does
+    // (`set_direction`). It's possible to define `direction` as an attribute and make it
+    // read-only, but clash with the separate setter API and be misleading for users. That's why,
+    // despite not requiring an SDK call, loading direction is still a getter method instead of an
+    // attribute.
     #[method]
     fn get_direction(&self) -> Obj {
         let dir = self.guard.borrow().direction();
@@ -119,21 +111,16 @@ impl RotationSensorObj {
     }
 
     #[method]
-    fn get_status(&self) -> i32 {
-        let status = self
-            .guard
-            .borrow()
-            .status()
-            .unwrap_or_else(|e| raise_port_error!(e));
-        status as i32
+    fn get_status(&self) -> Result<i32, Exception> {
+        Ok(self.guard.borrow().status()? as i32)
     }
 
     #[method]
-    fn set_data_interval(&self, interval: f32, unit: &TimeUnitObj) {
+    fn set_data_interval(&self, interval: f32, unit: &TimeUnitObj) -> Result<(), Exception> {
         self.guard
             .borrow_mut()
-            .set_data_interval(unit.unit().float_to_dur(interval))
-            .unwrap_or_else(|e| raise_port_error!(e));
+            .set_data_interval(unit.unit().float_to_dur(interval))?;
+        Ok(())
     }
 
     #[method]

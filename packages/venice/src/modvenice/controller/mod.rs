@@ -21,8 +21,7 @@ use crate::{
     alloc::Gc,
     devices,
     modvenice::{
-        Exception, controller::id::ControllerIdObj, raise_device_error, raise_port_error,
-        vasyncio::event_loop::WAKE_SIGNAL,
+        Exception, controller::id::ControllerIdObj, device_error, vasyncio::event_loop::WAKE_SIGNAL,
     },
     registry::ControllerGuard,
 };
@@ -32,6 +31,12 @@ use crate::{
 pub struct ControllerObj {
     base: ObjBase<'static>,
     guard: ControllerGuard<'static>,
+}
+
+impl From<ControllerError> for Exception {
+    fn from(value: ControllerError) -> Self {
+        device_error(error_msg!("{value}"))
+    }
 }
 
 #[class(qstr!(ControllerConnection))]
@@ -156,7 +161,7 @@ impl ControllerFutureObj {
                 }
                 Err(e) => {
                     *future = ControllerFuture::Complete;
-                    raise_device_error(token(), error_msg!("{e}"));
+                    Exception::from(e).raise(token());
                 }
             }
         }
@@ -234,13 +239,9 @@ impl ControllerObj {
     }
 
     #[method]
-    fn read_state(&self) -> ControllerStateObj {
-        let state = self
-            .guard
-            .borrow()
-            .state()
-            .unwrap_or_else(|e| raise_port_error!(e));
-        ControllerStateObj::new(state)
+    fn read_state(&self) -> Result<ControllerStateObj, Exception> {
+        let state = self.guard.borrow().state()?;
+        Ok(ControllerStateObj::new(state))
     }
 
     #[method]
@@ -253,27 +254,18 @@ impl ControllerObj {
     }
 
     #[method]
-    fn get_battery_capacity(&self) -> f32 {
-        self.guard
-            .borrow()
-            .battery_capacity()
-            .unwrap_or_else(|e| raise_port_error!(e)) as f32
+    fn get_battery_capacity(&self) -> Result<f32, Exception> {
+        Ok(self.guard.borrow().battery_capacity()? as f32)
     }
 
     #[method]
-    fn get_battery_level(&self) -> i32 {
-        self.guard
-            .borrow()
-            .battery_level()
-            .unwrap_or_else(|e| raise_port_error!(e))
+    fn get_battery_level(&self) -> Result<i32, Exception> {
+        Ok(self.guard.borrow().battery_level()?)
     }
 
     #[method]
-    fn get_flags(&self) -> i32 {
-        self.guard
-            .borrow()
-            .flags()
-            .unwrap_or_else(|e| raise_port_error!(e))
+    fn get_flags(&self) -> Result<i32, Exception> {
+        Ok(self.guard.borrow().flags()?)
     }
 
     #[method]
@@ -292,11 +284,8 @@ impl ControllerObj {
     }
 
     #[method]
-    fn try_rumble(&self, pattern: &str) {
-        self.guard
-            .borrow_mut()
-            .try_rumble(pattern)
-            .unwrap_or_else(|e| raise_port_error!(e));
+    fn try_rumble(&self, pattern: &str) -> Result<(), Exception> {
+        Ok(self.guard.borrow_mut().try_rumble(pattern)?)
     }
 
     #[method]
@@ -313,11 +302,8 @@ impl ControllerObj {
     }
 
     #[method]
-    fn try_clear_line(&self, line: Line) {
-        self.guard
-            .borrow_mut()
-            .try_clear_line(line.0 as u8)
-            .unwrap_or_else(|e| raise_port_error!(e));
+    fn try_clear_line(&self, line: Line) -> Result<(), Exception> {
+        Ok(self.guard.borrow_mut().try_clear_line(line.0 as u8)?)
     }
 
     #[method]
@@ -334,11 +320,8 @@ impl ControllerObj {
     }
 
     #[method]
-    fn try_clear_screen(&self) {
-        self.guard
-            .borrow_mut()
-            .try_clear_screen()
-            .unwrap_or_else(|e| raise_port_error!(e));
+    fn try_clear_screen(&self) -> Result<(), Exception> {
+        Ok(self.guard.borrow_mut().try_clear_screen()?)
     }
 
     #[method(ty = var(min = 4))]
@@ -360,11 +343,10 @@ impl ControllerObj {
     fn try_set_text(args: &[Obj]) -> Result<(), Exception> {
         let (this, text, line, column) = set_text_prelude(args)?;
 
-        this.guard
+        Ok(this
+            .guard
             .borrow_mut()
-            .try_set_text(text, line.0 as u8, column.0 as u8)
-            .unwrap_or_else(|e| raise_port_error!(e)); // technically not PortError but the macro works
-        Ok(())
+            .try_set_text(text, line.0 as u8, column.0 as u8)?)
     }
 
     #[method]

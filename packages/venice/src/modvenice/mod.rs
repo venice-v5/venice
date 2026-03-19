@@ -12,12 +12,10 @@ mod units;
 mod vasyncio;
 mod vision;
 
-use std::ffi::CStr;
-
 use argparse::{KeywordError, PositionalError, error_msg};
 use micropython_rs::{
     const_map,
-    except::{EXCEPTION_TYPE, ExceptionType, Message, raise_msg},
+    except::{EXCEPTION_TYPE, ExceptionType, Message},
     fun::{Fun0, Fun1},
     init::InitToken,
     map::Dict,
@@ -107,24 +105,28 @@ impl From<KeywordError<'_>> for Exception {
 
 impl From<PortError> for Exception {
     fn from(value: PortError) -> Self {
-        Self::new(&DEVICE_ERROR_TYPE, error_msg!("{value}"))
+        device_error(error_msg!("{value}"))
     }
 }
 
-pub fn raise_device_error(token: InitToken, msg: impl AsRef<CStr>) -> ! {
-    raise_msg(token, &DEVICE_ERROR_TYPE, msg)
+pub fn device_error(msg: impl Into<Message>) -> Exception {
+    Exception::new(&DEVICE_ERROR_TYPE, msg)
 }
 
-macro_rules! raise_port_error {
-    ($e:expr) => {
-        $crate::modvenice::raise_device_error(
-            ::micropython_rs::init::token(),
-            ::argparse::error_msg!("{}", $e),
-        )
-    };
-}
+// pub fn raise_device_error(token: InitToken, msg: impl AsRef<CStr>) -> ! {
+//     raise_msg(token, &DEVICE_ERROR_TYPE, msg)
+// }
 
-pub(crate) use raise_port_error;
+// macro_rules! raise_port_error {
+//     ($e:expr) => {
+//         $crate::modvenice::raise_device_error(
+//             ::micropython_rs::init::token(),
+//             ::argparse::error_msg!("{}", $e),
+//         )
+//     };
+// }
+
+// pub(crate) use raise_port_error;
 
 #[unsafe(no_mangle)]
 #[allow(non_upper_case_globals)]
