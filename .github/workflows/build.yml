@@ -45,7 +45,7 @@ jobs:
 
 
       - name: generate-bin
-        run: arm-none-eabi-objcopy -O binary target/armv7a-vex-v5/debug/venice packages/venice/venice.bin
+        run: arm-none-eabi-objcopy -O binary target/armv7a-vex-v5/debug/venice venice/venice.bin
 
       - name: gzip-bin
         run: gzip -c venice/venice.bin > venice/venice.bin.tmp && mv venice/venice.bin.tmp venice/venice.bin
