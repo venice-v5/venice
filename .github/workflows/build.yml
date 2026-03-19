@@ -1,0 +1,50 @@
+name: build
+
+on: [push]
+
+jobs:
+  build_wheel:
+    name: build-wheel
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: setup-uv
+        uses: astral-sh/setup-uv@v1
+        with:
+          version: "0.7.3"
+
+      - name: setup-rust
+        uses: Swatinem/rust-cache@v2
+
+      - name: setup-arm-none-eabi-gcc
+        uses: carlosperate/arm-none-eabi-gcc-action@v1
+        with:
+          release: '14.2.Rel1'
+
+      - name: build-rust
+        # only clone mp if the build fails otherwise
+        run: cargo build || (git submodule update --init --recursive && cargo build)
+
+      - name: generate-bin
+        run: arm-none-eabi-objcopy -O binary target/armv7a-vex-v5/debug/venice venice/venice.bin
+
+      - name: gzip-bin
+        run: gzip -c venice/venice.bin > venice/venice.bin.tmp && mv venice/venice.bin.tmp venice/venice.bin
+
+      - name: build-wheel
+        run: cd venice && uv sync && uv build
+
+      - name: upload-bin
+        uses: actions/upload-artifact@v4
+        with:
+          name: binary
+          path: venice/venice.bin
+
+      - name: upload-wheel
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels
+          path: venice/dist
