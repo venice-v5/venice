@@ -3,7 +3,7 @@ use std::cell::Cell;
 use argparse::Args;
 use micropython_rs::{
     class, class_methods,
-    except::{raise_stop_iteration, raise_value_error},
+    except::{raise_stop_iteration, value_error},
     fun::Fun1,
     init::token,
     obj::{Obj, ObjBase, ObjTrait, ObjType},
@@ -81,7 +81,7 @@ impl InertialSensorObj {
         n_kw: usize,
         args: &[Obj],
     ) -> Result<Self, Exception> {
-        let mut reader = Args::new(n_pos, n_kw, args).reader(token());
+        let mut reader = Args::new(n_pos, n_kw, args).reader();
         let port = reader.next_positional()?;
 
         let guard = devices::lock_port(port, InertialSensor::new);
@@ -239,15 +239,13 @@ impl InertialSensorObj {
     }
 
     #[method]
-    fn set_data_interval(&self, interval: f32, unit: &TimeUnitObj) {
+    fn set_data_interval(&self, interval: f32, unit: &TimeUnitObj) -> Result<(), Exception> {
         if interval < 0.0 {
-            raise_value_error(token(), c"interval cannot be negative");
+            Err(value_error(c"interval cannot be negative"))?
         }
         let dur = unit.unit().float_to_dur(interval);
-        self.guard
-            .borrow_mut()
-            .set_data_interval(dur)
-            .unwrap_or_else(|e| raise_port_error!(e));
+        self.guard.borrow_mut().set_data_interval(dur)?;
+        Ok(())
     }
 }
 

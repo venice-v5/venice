@@ -7,8 +7,8 @@ use std::{
 };
 
 use micropython_rs::{
-    except::{Exception, Message, raise_type_error, type_error, value_error},
-    init::InitToken,
+    except::{Exception, Message, type_error, value_error},
+    init::token,
     obj::{Obj, ObjTrait, ObjType, repr_c},
     str::Str,
 };
@@ -17,16 +17,15 @@ pub use crate::error_msg::*;
 
 #[derive(Clone, Copy)]
 pub struct Args<'a> {
-    n_pos: usize,
-    n_kw: usize,
-    args: &'a [Obj],
+    pos_args: &'a [Obj],
+    kw_args: &'a [Obj],
 }
 
 #[derive(Clone, Copy)]
 pub struct ArgsReader<'a> {
     args: Args<'a>,
-    n: usize,
-    token: InitToken,
+    n_pos: usize,
+    n_kw: usize,
 }
 
 pub trait ArgParser<'a> {
@@ -216,6 +215,12 @@ pub enum Arg<'a> {
     Keyword(&'a str, &'a Obj),
 }
 
+#[derive(Clone, Copy)]
+pub struct KeywordArg<'a> {
+    pub kw: &'a str,
+    pub obj: &'a Obj,
+}
+
 pub enum ParseError {
     TypeError {
         expected: &'static str,
@@ -239,7 +244,6 @@ pub enum PositionalError<'a> {
 }
 
 pub enum KeywordError<'a> {
-    ArgumentsExhausted,
     TypeError {
         kw: &'a str,
         expected: &'a str,
@@ -257,9 +261,24 @@ impl From<PositionalError<'_>> for Exception {
                 type_error(c"unexpected end of positional arguments")
             }
             PositionalError::TypeError { n, expected, found } => type_error(error_msg!(
-                "expected '{expected}' for argument #{n}, found {found}"
+                "expected '{expected}' for argument #{n}, found '{found}'"
             )),
             PositionalError::ValueError { msg } => value_error(msg),
+        }
+    }
+}
+
+impl From<KeywordError<'_>> for Exception {
+    fn from(value: KeywordError<'_>) -> Self {
+        match value {
+            KeywordError::TypeError {
+                kw,
+                expected,
+                found,
+            } => type_error(error_msg!(
+                "expected '{expected}' found argument '{kw}', found '{found}'"
+            )),
+            KeywordError::ValueError { msg } => value_error(msg),
         }
     }
 }
@@ -301,69 +320,85 @@ pub fn type_name(obj: &Obj) -> &'static str {
     }
 }
 
+impl<'a> KeywordArg<'a> {
+    pub fn parse<T>(&self) -> Result<T, KeywordError<'a>>
+    where
+        T: DefaultParser<'a>,
+    {
+        let parser = T::Parser::default();
+        match parser.parse(self.obj) {
+            Ok(v) => Ok(v),
+            Err(e) => Err(match e {
+                ParseError::TypeError { expected } => KeywordError::TypeError {
+                    kw: self.kw,
+                    expected,
+                    found: type_name(self.obj),
+                },
+                ParseError::ValueError { mk_msg } => KeywordError::ValueError {
+                    msg: mk_msg(&format!("argument '{}'", self.kw)),
+                },
+            }),
+        }
+    }
+}
+
 impl<'a> Args<'a> {
-    pub const fn new(n_pos: usize, n_kw: usize, args: &'a [Obj]) -> Self {
-        Self { n_pos, n_kw, args }
+    pub fn new(n_pos: usize, n_kw: usize, args: &'a [Obj]) -> Self {
+        Self {
+            pos_args: &args[..n_pos],
+            kw_args: &args[n_pos..n_pos + (n_kw * 2)],
+        }
     }
 
     pub fn count(&self) -> usize {
-        self.n_pos + self.n_kw
+        self.pos_args.len() + self.kw_args.len() / 2
     }
 
-    pub fn nth(&self, n: usize) -> Option<Arg<'a>> {
-        if n < self.n_pos {
-            return Some(Arg::Positional(&self.args[n]));
-        }
-
-        let kw_index = n - self.n_pos;
-        if kw_index > self.n_kw {
-            return None;
-        }
-
-        let array_index = (kw_index * 2) + self.n_pos;
-        Some(Arg::Keyword(
-            self.args[array_index].get_str().unwrap(),
-            &self.args[array_index + 1],
-        ))
+    pub fn nth_pos(&self, n: usize) -> Option<&'a Obj> {
+        self.pos_args.get(n)
     }
 
-    pub const fn reader(self, token: InitToken) -> ArgsReader<'a> {
+    pub fn nth_kw(&self, n: usize) -> Option<KeywordArg<'a>> {
+        let index = n * 2;
+        let kw = self.kw_args.get(index)?.get_str().unwrap();
+        let obj = self.kw_args.get(index + 1)?;
+
+        Some(KeywordArg { kw, obj })
+    }
+
+    pub const fn reader(self) -> ArgsReader<'a> {
         ArgsReader {
             args: self,
-            n: 0,
-            token,
+            n_pos: 0,
+            n_kw: 0,
         }
     }
 }
 
 impl<'a> ArgsReader<'a> {
     pub fn assert_npos(&self, min: usize, max: usize) -> &Self {
-        if self.args.n_pos < min || self.args.n_pos > max {
+        if !(min..=max).contains(&self.args.pos_args.len()) {
             if max == 0 {
-                raise_type_error(self.token, c"function does not accept positional arguments")
+                type_error(c"function does not accept positional arguments").raise(token())
             } else {
-                raise_type_error(
-                    self.token,
-                    error_msg!(
-                        "function expects at least {min} positional arguments and at most {max}"
-                    ),
-                )
+                type_error(error_msg!(
+                    "function expects at least {min} positional arguments and at most {max}"
+                ))
+                .raise(token())
             }
         }
         self
     }
 
     pub fn assert_nkw(&self, min: usize, max: usize) -> &Self {
-        if self.args.n_kw < min || self.args.n_kw > max {
+        if !(min..=max).contains(&(self.args.kw_args.len() / 2)) {
             if max == 0 {
-                raise_type_error(self.token, c"function does not accept keyword arguments")
+                type_error(c"function does not accept keyword arguments").raise(token())
             } else {
-                raise_type_error(
-                    self.token,
-                    error_msg!(
-                        "function expects at least {min} keyword arguments and at most {max}"
-                    ),
-                )
+                type_error(error_msg!(
+                    "function expects at least {min} keyword arguments and at most {max}"
+                ))
+                .raise(token())
             }
         }
         self
@@ -373,26 +408,27 @@ impl<'a> ArgsReader<'a> {
     where
         P: ArgParser<'a>,
     {
-        if let Some(Arg::Positional(arg)) = self.args.nth(self.n) {
-            let result = parser.parse(arg);
-            result
-                .map_err(|e| match e {
-                    ParseError::TypeError { expected } => {
-                        let found = type_name(arg);
-                        PositionalError::TypeError {
-                            n: self.n,
-                            expected,
-                            found,
+        self.args
+            .nth_pos(self.n_pos)
+            .ok_or(PositionalError::ArgumentsExhausted)
+            .and_then(|arg| {
+                let result = parser.parse(arg);
+                result
+                    .map_err(|e| match e {
+                        ParseError::TypeError { expected } => {
+                            let found = type_name(arg);
+                            PositionalError::TypeError {
+                                n: self.n_pos,
+                                expected,
+                                found,
+                            }
                         }
-                    }
-                    ParseError::ValueError { mk_msg } => PositionalError::ValueError {
-                        msg: mk_msg(&format!("argument #{}", self.n)),
-                    },
-                })
-                .inspect(|_| self.n += 1)
-        } else {
-            Err(PositionalError::ArgumentsExhausted)
-        }
+                        ParseError::ValueError { mk_msg } => PositionalError::ValueError {
+                            msg: mk_msg(&format!("argument #{}", self.n_pos)),
+                        },
+                    })
+                    .inspect(|_| self.n_pos += 1)
+            })
     }
 
     pub fn next_positional<T>(&mut self) -> Result<T, PositionalError<'a>>
@@ -415,36 +451,8 @@ impl<'a> ArgsReader<'a> {
         }
     }
 
-    pub fn next_kw_with<P>(&mut self, parser: P) -> Result<P::Output, KeywordError<'a>>
-    where
-        P: ArgParser<'a>,
-    {
-        match self.args.nth(self.n) {
-            Some(Arg::Keyword(kw, arg)) => {
-                let result = parser.parse(arg);
-                result
-                    .map_err(|e| match e {
-                        ParseError::TypeError { expected } => KeywordError::TypeError {
-                            kw,
-                            expected,
-                            found: type_name(arg),
-                        },
-                        ParseError::ValueError { mk_msg } => KeywordError::ValueError {
-                            msg: mk_msg(&format!("argument '{kw}'")),
-                        },
-                    })
-                    .inspect(|_| self.n += 1)
-            }
-            None => Err(KeywordError::ArgumentsExhausted),
-            Some(Arg::Positional(_)) => unreachable!(),
-        }
-    }
-
-    pub fn next_kw<T>(&mut self) -> Result<T, KeywordError<'a>>
-    where
-        T: DefaultParser<'a>,
-    {
-        self.next_kw_with(T::Parser::default())
+    pub fn next_kw(&mut self) -> Option<KeywordArg<'a>> {
+        self.args.nth_kw(self.n_kw).inspect(|_| self.n_kw += 1)
     }
 }
 

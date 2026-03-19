@@ -39,8 +39,7 @@ pub struct MotorObj {
 impl MotorObj {
     #[method(ty = var_between(min = 1, max = 3), binding = "static")]
     fn new_v5(args: &[Obj]) -> Result<Self, Exception> {
-        let token = token();
-        let mut reader = Args::new(args.len(), 0, args).reader(token);
+        let mut reader = Args::new(args.len(), 0, args).reader();
 
         let port = reader.next_positional()?;
         let direction = reader.next_positional_or(DirectionObj::FORWARD)?;
@@ -52,7 +51,7 @@ impl MotorObj {
 
         if guard.borrow().is_exp() {
             guard.free().unwrap();
-            raise_device_error(token, c"invalid motor type, expected V5, found Exp")
+            raise_device_error(token(), c"invalid motor type, expected V5, found Exp")
         }
 
         Ok(Self {
@@ -63,8 +62,7 @@ impl MotorObj {
 
     #[method(ty = var_between(min = 1, max = 2), binding = "static")]
     fn new_exp(args: &[Obj]) -> Result<Self, Exception> {
-        let token = token();
-        let mut reader = Args::new(args.len(), 0, args).reader(token);
+        let mut reader = Args::new(args.len(), 0, args).reader();
         reader.assert_npos(1, 2).assert_nkw(0, 0);
 
         let port = reader.next_positional()?;
@@ -73,7 +71,7 @@ impl MotorObj {
         let guard = devices::lock_port(port, |port| Motor::new_exp(port, direction.direction()));
         if guard.borrow().is_v5() {
             guard.free().unwrap();
-            raise_device_error(token, c"invalid motor type, expected Exp, found V5");
+            raise_device_error(token(), c"invalid motor type, expected Exp, found V5");
         }
 
         Ok(MotorObj {
@@ -154,7 +152,7 @@ impl MotorObj {
 
     #[method(ty = var_between(min = 4, max = 4))]
     fn set_position_target(args: &[Obj]) -> Result<(), Exception> {
-        let mut reader = Args::new(args.len(), 0, args).reader(token());
+        let mut reader = Args::new(args.len(), 0, args).reader();
 
         let motor = reader.next_positional::<&MotorObj>().unwrap();
         let position_val = reader.next_positional()?;

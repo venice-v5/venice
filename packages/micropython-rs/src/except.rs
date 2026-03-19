@@ -31,9 +31,6 @@ unsafe extern "C" {
     fn mp_obj_exception_attr(self_in: Obj, attr: Qstr, dest: *mut Obj);
 
     fn mp_raise_msg(exc_type: *const ObjType, msg: RomErrorText) -> !;
-    fn mp_raise_ValueError(msg: RomErrorText) -> !;
-    fn mp_raise_TypeError(msg: RomErrorText) -> !;
-    fn mp_raise_NotImplementedError(msg: RomErrorText) -> !;
     fn mp_raise_StopIteration(arg: Obj) -> !;
     fn mp_raise_OSError(errno_: c_int) -> !;
     fn mp_raise_OSError_with_filename(errno_: c_int, filename: *const u8) -> !;
@@ -104,18 +101,6 @@ pub const ATTRIBUTE_ERROR_TYPE: &ExceptionType =
 
 pub fn raise_msg(_: InitToken, exc_type: &ExceptionType, msg: impl AsRef<CStr>) -> ! {
     unsafe { mp_raise_msg(&exc_type.0, RomErrorText::new(msg.as_ref())) };
-}
-
-pub fn raise_value_error(_: InitToken, msg: impl AsRef<CStr>) -> ! {
-    unsafe { mp_raise_ValueError(RomErrorText::new(msg.as_ref())) };
-}
-
-pub fn raise_type_error(_: InitToken, msg: impl AsRef<CStr>) -> ! {
-    unsafe { mp_raise_TypeError(RomErrorText::new(msg.as_ref())) };
-}
-
-pub fn raise_not_implemented_error(_: InitToken, msg: impl AsRef<CStr>) -> ! {
-    unsafe { mp_raise_NotImplementedError(RomErrorText::new(msg.as_ref())) };
 }
 
 pub fn raise_stop_iteration(_: InitToken, arg: Obj) -> ! {

@@ -6,24 +6,23 @@ pub mod signature;
 pub mod source;
 pub mod white_balance;
 
-use argparse::{ArgParser, Args, DefaultParser, IntParser};
+use argparse::{ArgParser, Args, DefaultParser, IntParser, error_msg};
 use micropython_rs::{
     class, class_methods,
-    except::raise_type_error,
-    fun::Fun2,
-    init::token,
     list::new_list,
     obj::{Obj, ObjBase, ObjType},
 };
-use vexide_devices::smart::vision::{VisionMode, VisionSensor};
+use vexide_devices::smart::vision::{
+    VisionMode, VisionObjectError, VisionSensor, VisionSignatureError,
+};
 
 use crate::{
     devices::{self},
     modvenice::{
-        Exception, raise_port_error,
+        DEVICE_ERROR_TYPE, Exception,
         vision::{
-            code::VisionCodeObj, mode::VisionModeObj, object::VisionObjectObj,
-            signature::VisionSignatureObj,
+            code::VisionCodeObj, led_mode::LedModeArg, mode::VisionModeObj,
+            object::VisionObjectObj, signature::VisionSignatureObj, white_balance::WhiteBalanceArg,
         },
     },
     registry::RegistryGuard,
@@ -51,6 +50,18 @@ impl<'a> ArgParser<'a> for SignatureIdParser {
 
 impl DefaultParser<'_> for SignatureId {
     type Parser = SignatureIdParser;
+}
+
+impl From<VisionObjectError> for Exception {
+    fn from(value: VisionObjectError) -> Self {
+        Self::new(&DEVICE_ERROR_TYPE, error_msg!("{value}"))
+    }
+}
+
+impl From<VisionSignatureError> for Exception {
+    fn from(value: VisionSignatureError) -> Self {
+        Self::new(&DEVICE_ERROR_TYPE, error_msg!("{value}"))
+    }
 }
 
 #[class(qstr!(VisionSensor))]
@@ -83,7 +94,7 @@ impl VisionSensorObj {
         n_kw: usize,
         args: &[Obj],
     ) -> Result<Self, Exception> {
-        let mut reader = Args::new(n_pos, n_kw, args).reader(token());
+        let mut reader = Args::new(n_pos, n_kw, args).reader();
         reader.assert_npos(1, 1).assert_nkw(0, 0);
 
         let port = reader.next_positional()?;
@@ -96,156 +107,108 @@ impl VisionSensorObj {
     }
 
     #[method]
-    fn set_signature(&self, id: SignatureId, signature: &VisionSignatureObj) {
+    fn set_signature(
+        &self,
+        id: SignatureId,
+        signature: &VisionSignatureObj,
+    ) -> Result<(), Exception> {
         self.guard
             .borrow_mut()
-            .set_signature(id.id(), signature.signature())
-            .unwrap_or_else(|e| raise_port_error!(e));
+            .set_signature(id.id(), signature.signature())?;
+        Ok(())
     }
 
     #[method]
-    fn get_signature(&self, id: SignatureId) -> Option<VisionSignatureObj> {
-        self.guard
+    fn get_signature(&self, id: SignatureId) -> Result<Option<VisionSignatureObj>, Exception> {
+        Ok(self
+            .guard
             .borrow()
-            .signature(id.id())
-            .unwrap_or_else(|e| raise_port_error!(e))
-            .map(VisionSignatureObj::new)
+            .signature(id.id())?
+            .map(VisionSignatureObj::new))
     }
 
     #[method]
-    fn get_signatures(&self) -> Obj {
+    fn get_signatures(&self) -> Result<Obj, Exception> {
         let vec = self
             .guard
             .borrow()
-            .signatures()
-            .unwrap_or_else(|e| raise_port_error!(e))
+            .signatures()?
             .into_iter()
             .map(|s| s.map(VisionSignatureObj::new))
             .map(Obj::from)
             .collect::<Vec<_>>();
-        new_list(&vec)
+        Ok(new_list(&vec))
     }
 
     #[method]
-    fn add_code(&self, code: &VisionCodeObj) {
-        self.guard
-            .borrow_mut()
-            .add_code(code.code())
-            .unwrap_or_else(|e| raise_port_error!(e));
+    fn add_code(&self, code: &VisionCodeObj) -> Result<(), Exception> {
+        self.guard.borrow_mut().add_code(code.code())?;
+        Ok(())
     }
 
     #[method]
-    fn get_led_mode(&self) -> Obj {
-        led_mode::new(
-            self.guard
-                .borrow()
-                .led_mode()
-                .unwrap_or_else(|e| raise_port_error!(e)),
-        )
+    fn get_led_mode(&self) -> Result<Obj, Exception> {
+        Ok(led_mode::new(self.guard.borrow().led_mode()?))
     }
 
     #[method]
-    fn get_objects(&self) -> Obj {
-        let objects = self
-            .guard
-            .borrow()
-            .objects()
-            .unwrap_or_else(|e| raise_port_error!(e));
+    fn get_objects(&self) -> Result<Obj, Exception> {
+        let objects = self.guard.borrow().objects()?;
         let obj_objects = objects
             .into_iter()
             .map(VisionObjectObj::new)
             .map(Obj::from)
             .collect::<Vec<_>>();
-        new_list(&obj_objects)
+        Ok(new_list(&obj_objects))
     }
 
     #[method]
-    fn get_object_count(&self) -> i32 {
-        self.guard
-            .borrow()
-            .object_count()
-            .unwrap_or_else(|e| raise_port_error!(e)) as i32
+    fn get_object_count(&self) -> Result<i32, Exception> {
+        Ok(self.guard.borrow().object_count()? as i32)
     }
 
     #[method]
-    fn get_brightness(&self) -> f32 {
-        self.guard
-            .borrow()
-            .brightness()
-            .unwrap_or_else(|e| raise_port_error!(e)) as f32
+    fn get_brightness(&self) -> Result<f32, Exception> {
+        Ok(self.guard.borrow().brightness()? as f32)
     }
 
     #[method]
-    fn get_white_balance(&self) -> Obj {
-        white_balance::new(
-            self.guard
-                .borrow()
-                .white_balance()
-                .unwrap_or_else(|e| raise_port_error!(e)),
-        )
+    fn get_white_balance(&self) -> Result<Obj, Exception> {
+        Ok(white_balance::new(self.guard.borrow().white_balance()?))
     }
 
     #[method]
-    fn set_brightness(&self, brightness: f32) {
-        self.guard
-            .borrow_mut()
-            .set_brightness(brightness as f64)
-            .unwrap_or_else(|e| raise_port_error!(e))
-    }
-
-    extern "C" fn set_white_balance(self_in: Obj, balance_obj: Obj) -> Obj {
-        let balance = white_balance::from_obj(balance_obj).unwrap_or_else(|| {
-            raise_type_error(token(), c"expected <WhiteBalance> for argument #1")
-        });
-        let this = self_in.try_as_obj::<Self>().unwrap();
-        this.guard
-            .borrow_mut()
-            .set_white_balance(balance)
-            .unwrap_or_else(|e| raise_port_error!(e));
-        Obj::NONE
-    }
-
-    #[constant(qstr!(set_white_balance))]
-    const SET_WHITE_BALANCE: &Fun2 = &Fun2::new(Self::set_white_balance);
-
-    extern "C" fn set_led_mode(self_in: Obj, mode_obj: Obj) -> Obj {
-        let mode = led_mode::from_obj(mode_obj)
-            .unwrap_or_else(|| raise_type_error(token(), c"expected <LedMode> for argument #1"));
-
-        let this = self_in.try_as_obj::<Self>().unwrap();
-        this.guard
-            .borrow_mut()
-            .set_led_mode(mode)
-            .unwrap_or_else(|e| raise_port_error!(e));
-        Obj::NONE
-    }
-
-    #[constant(qstr!(set_led_mode))]
-    const SET_LED_MODE: &Fun2 = &Fun2::new(Self::set_led_mode);
-
-    #[method]
-    fn set_mode(&self, mode: &VisionModeObj) {
-        self.guard
-            .borrow_mut()
-            .set_mode(mode.mode())
-            .unwrap_or_else(|e| raise_port_error!(e));
+    fn set_brightness(&self, brightness: f32) -> Result<(), Exception> {
+        self.guard.borrow_mut().set_brightness(brightness as f64)?;
+        Ok(())
     }
 
     #[method]
-    fn get_mode(&self) -> Obj {
-        Obj::from_static(
-            match self
-                .guard
-                .borrow()
-                .mode()
-                .unwrap_or_else(|e| raise_port_error!(e))
-            {
-                VisionMode::ColorDetection => VisionModeObj::COLOR_DETECTION,
-                VisionMode::LineDetection => VisionModeObj::LINE_DETECTION,
-                VisionMode::MixedDetection => VisionModeObj::MIXED_DETECTION,
-                VisionMode::Wifi => VisionModeObj::WIFI,
-                VisionMode::Test => VisionModeObj::TEST,
-            },
-        )
+    fn set_white_balance(&self, balance: WhiteBalanceArg) -> Result<(), Exception> {
+        self.guard.borrow_mut().set_white_balance(balance.0)?;
+        Ok(())
+    }
+
+    #[method]
+    fn set_led_mode(&self, mode: LedModeArg) -> Result<(), Exception> {
+        self.guard.borrow_mut().set_led_mode(mode.0)?;
+        Ok(())
+    }
+
+    #[method]
+    fn set_mode(&self, mode: &VisionModeObj) -> Result<(), Exception> {
+        self.guard.borrow_mut().set_mode(mode.mode())?;
+        Ok(())
+    }
+
+    #[method]
+    fn get_mode(&self) -> Result<Obj, Exception> {
+        Ok(Obj::from_static(match self.guard.borrow().mode()? {
+            VisionMode::ColorDetection => VisionModeObj::COLOR_DETECTION,
+            VisionMode::LineDetection => VisionModeObj::LINE_DETECTION,
+            VisionMode::MixedDetection => VisionModeObj::MIXED_DETECTION,
+            VisionMode::Wifi => VisionModeObj::WIFI,
+            VisionMode::Test => VisionModeObj::TEST,
+        }))
     }
 }

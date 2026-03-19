@@ -3,7 +3,7 @@ use std::cell::Cell;
 use argparse::{ArgType, Args, error_msg};
 use micropython_rs::{
     class, class_methods,
-    except::raise_type_error,
+    except::type_error,
     init::token,
     obj::{AttrOp, Obj, ObjBase, ObjTrait, ObjType},
     qstr::Qstr,
@@ -138,7 +138,7 @@ impl Point2 {
         n_kw: usize,
         args: &[Obj],
     ) -> Result<Self, Exception> {
-        let mut reader = Args::new(n_pos, n_kw, args).reader(token());
+        let mut reader = Args::new(n_pos, n_kw, args).reader();
         reader.assert_npos(2, 2).assert_nkw(0, 0);
 
         let x = reader.next_positional()?;
@@ -171,10 +171,8 @@ fn handle_op(op: AttrOp, val: &Cell<f32>) {
                 val.set(f);
                 result.success();
             } else {
-                raise_type_error(
-                    token(),
-                    error_msg!("expected f32, got <{}>", ArgType::of(&src)),
-                );
+                type_error(error_msg!("expected f32, found <{}>", ArgType::of(&src)))
+                    .raise(token());
             }
         }
         AttrOp::Delete { result } => {

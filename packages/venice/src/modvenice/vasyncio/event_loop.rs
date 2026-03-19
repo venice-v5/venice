@@ -5,7 +5,7 @@ use std::{
 
 use micropython_rs::{
     class, class_methods,
-    except::{RUNTIME_ERROR_TYPE, raise_msg, raise_type_error, type_error},
+    except::{RUNTIME_ERROR_TYPE, raise_msg, type_error},
     fun::{Fun1, Fun2},
     generator::{GEN_INSTANCE_TYPE, VmReturnKind, resume_gen},
     init::token,
@@ -187,7 +187,7 @@ impl EventLoop {
     // its type signature, and that struct does not exist
     extern "C" fn py_spawn(self_in: Obj, coro: Obj) -> Obj {
         if !coro.is(GEN_INSTANCE_TYPE) {
-            raise_type_error(token(), c"expected coroutine");
+            type_error(c"expected coroutine").raise(token());
         }
 
         self_in.try_as_obj::<EventLoop>().unwrap().spawn(coro)
@@ -215,7 +215,7 @@ impl EventLoop {
 
 pub extern "C" fn vasyncio_run(coro: Obj) -> Obj {
     if !coro.is(GEN_INSTANCE_TYPE) {
-        raise_type_error(token(), c"expected coroutine");
+        type_error(c"expected coroutine").raise(token());
     }
 
     let eloop = EventLoop::new();

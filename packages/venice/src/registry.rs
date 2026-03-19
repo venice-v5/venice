@@ -4,7 +4,7 @@ use std::{
     sync::{Mutex, MutexGuard},
 };
 
-use micropython_rs::{except::raise_value_error, init::token};
+use micropython_rs::{except::value_error, init::token};
 use thiserror::Error;
 use vexide_devices::{controller::Controller, smart::SmartPort};
 
@@ -85,7 +85,7 @@ impl Registry {
         I: FnOnce(SmartPort) -> D,
     {
         self.try_lock(init)
-            .unwrap_or_else(|_| raise_value_error(token(), c"port occupied"))
+            .unwrap_or_else(|_| value_error(c"port occupied").raise(token()))
     }
 }
 
@@ -106,12 +106,12 @@ impl<'a, D: PortDevice> RegistryGuard<'a, D> {
 
     pub fn borrow<'b>(&'b self) -> Ref<'b, D> {
         self.try_borrow()
-            .unwrap_or_else(|_| raise_value_error(token(), c"attempt to use device after free"))
+            .unwrap_or_else(|_| value_error(c"attempt to use device after free").raise(token()))
     }
 
     pub fn borrow_mut<'b>(&'b self) -> RefMut<'b, D> {
         self.try_borrow_mut()
-            .unwrap_or_else(|_| raise_value_error(token(), c"attempt to use device after free"))
+            .unwrap_or_else(|_| value_error(c"attempt to use device after free").raise(token()))
     }
 
     pub fn start_upgrade(mut self) -> Result<UpgradeGuard<'a, D>, DeviceFreedError> {
@@ -147,7 +147,7 @@ impl<'a, D: PortDevice> RegistryGuard<'a, D> {
 
     pub fn free_or_raise(&self) {
         self.free()
-            .unwrap_or_else(|_| raise_value_error(token(), c"attempt to free device twice"))
+            .unwrap_or_else(|_| value_error(c"attempt to free device twice").raise(token()))
     }
 }
 
@@ -256,7 +256,7 @@ impl ControllerRegistry {
 
     pub fn lock<'a>(&'a self) -> ControllerGuard<'a> {
         self.try_lock()
-            .unwrap_or_else(|_| raise_value_error(token(), c"controller already occupied"))
+            .unwrap_or_else(|_| value_error(c"controller already occupied").raise(token()))
     }
 }
 
@@ -279,12 +279,12 @@ impl<'a> ControllerGuard<'a> {
 
     pub fn borrow<'b>(&'b self) -> ControllerRef<'a, 'b> {
         self.try_borrow()
-            .unwrap_or_else(|_| raise_value_error(token(), c"attempt to use controller after free"))
+            .unwrap_or_else(|_| value_error(c"attempt to use controller after free").raise(token()))
     }
 
     pub fn borrow_mut<'b>(&'b self) -> ControllerRefMut<'a, 'b> {
         self.try_borrow_mut()
-            .unwrap_or_else(|_| raise_value_error(token(), c"attempt to use controller after free"))
+            .unwrap_or_else(|_| value_error(c"attempt to use controller after free").raise(token()))
     }
 
     pub fn free(&self) -> Result<(), DeviceFreedError> {
@@ -297,7 +297,7 @@ impl<'a> ControllerGuard<'a> {
 
     pub fn free_or_raise(&self) {
         self.free()
-            .unwrap_or_else(|_| raise_value_error(token(), c"attempt to free controller twice"))
+            .unwrap_or_else(|_| value_error(c"attempt to free controller twice").raise(token()))
     }
 }
 

@@ -4,7 +4,6 @@ pub mod rgb;
 use argparse::Args;
 use micropython_rs::{
     class, class_methods,
-    init::token,
     obj::{Obj, ObjBase, ObjType},
 };
 use vexide_devices::smart::optical::OpticalSensor;
@@ -39,7 +38,7 @@ impl OpticalSensorObj {
         n_kw: usize,
         args: &[Obj],
     ) -> Result<Self, Exception> {
-        let mut reader = Args::new(n_pos, n_kw, args).reader(token());
+        let mut reader = Args::new(n_pos, n_kw, args).reader();
         reader.assert_npos(1, 1).assert_nkw(0, 0);
 
         let port = reader.next_positional()?;

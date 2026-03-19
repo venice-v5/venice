@@ -1,14 +1,15 @@
 use std::{
     cell::RefCell,
-    ffi::{CStr, c_int},
+    ffi::c_int,
     fs::{File, OpenOptions},
     io::{Read, Seek, SeekFrom, Write},
 };
 
+use argparse::{ArgParser, Args, DefaultParser, KeywordError, ParseError, StrParser, type_name};
 use micropython_rs::{
     class, class_methods,
     errno::{MP_EBADF, MP_EINVAL, MP_EIO},
-    except::{raise_os_error, raise_type_error, raise_value_error},
+    except::{Message, raise_os_error},
     fun::{Fun1, Fun2, FunVarBetween, FunVarKw},
     init::token,
     ioctl_from_fn,
@@ -23,7 +24,7 @@ use micropython_rs::{
     write_from_fn,
 };
 
-use crate::{fun::fun_var_kw, obj::alloc_obj};
+use crate::{fun::fun_var_kw, modvenice::Exception};
 
 #[class(qstr!(File))]
 #[repr(C)]
@@ -122,101 +123,151 @@ impl FileObj {
     const IOCTL: &FunVarBetween = &mp_stream_ioctl_obj;
 }
 
-// Yes this is vibecoded i dont give a shit
-pub fn parse_python_mode(mode: &str) -> Result<OpenOptions, &'static CStr> {
-    let mut opts = OpenOptions::new();
+struct Mode(OpenOptions);
 
-    let mut has_base_mode = false;
-    let mut plus_modifier = false;
+impl Default for Mode {
+    fn default() -> Self {
+        let mut opts = OpenOptions::new();
+        opts.read(true);
+        Self(opts)
+    }
+}
 
-    for c in mode.chars() {
-        match c {
-            // Base modes
-            'r' => {
-                if has_base_mode {
-                    return Err(c"invalid mode: multiple base modes");
-                }
-                opts.read(true);
-                has_base_mode = true;
-            }
-            'w' => {
-                if has_base_mode {
-                    return Err(c"invalid mode: multiple base modes");
-                }
-                opts.write(true).create(true).truncate(true);
-                has_base_mode = true;
-            }
-            'a' => {
-                if has_base_mode {
-                    return Err(c"invalid mode: multiple base modes");
-                }
-                opts.write(true).create(true).append(true);
-                has_base_mode = true;
-            }
-            'x' => {
-                if has_base_mode {
-                    return Err(c"invalid mode: multiple base modes");
-                }
-                opts.write(true).create_new(true);
-                has_base_mode = true;
-            }
+#[derive(Default)]
+struct ModeParser;
 
-            // Modifiers
-            '+' => {
-                plus_modifier = true;
-            }
-            'b' | 't' => {
-                // Valid Python mode characters, but standard Rust fs ignores
-                // text vs binary distinction. We accept them and do nothing.
-            }
-            _ => return Err(c"invalid mode character"),
+impl<'a> ArgParser<'a> for ModeParser {
+    type Output = Mode;
+
+    fn parse(&self, obj: &'a Obj) -> Result<Self::Output, argparse::ParseError> {
+        let mode_str = StrParser.parse(obj)?;
+
+        let mut opts = OpenOptions::new();
+
+        let mut has_base_mode = false;
+        let mut plus_modifier = false;
+
+        fn multiple_base_nodes(_: &str) -> Message {
+            c"invalid mode: multiple base nodes".into()
         }
-    }
 
-    if !has_base_mode {
-        return Err(c"must specify exactly one of 'r', 'w', 'a', or 'x'");
-    }
+        for c in mode_str.chars() {
+            match c {
+                // Base modes
+                'r' => {
+                    if has_base_mode {
+                        return Err(argparse::ParseError::ValueError {
+                            mk_msg: Box::from(multiple_base_nodes),
+                        });
+                    }
+                    opts.read(true);
+                    has_base_mode = true;
+                }
+                'w' => {
+                    if has_base_mode {
+                        return Err(argparse::ParseError::ValueError {
+                            mk_msg: Box::from(multiple_base_nodes),
+                        });
+                    }
+                    opts.write(true).create(true).truncate(true);
+                    has_base_mode = true;
+                }
+                'a' => {
+                    if has_base_mode {
+                        return Err(argparse::ParseError::ValueError {
+                            mk_msg: Box::from(multiple_base_nodes),
+                        });
+                    }
+                    opts.write(true).create(true).append(true);
+                    has_base_mode = true;
+                }
+                'x' => {
+                    if has_base_mode {
+                        return Err(argparse::ParseError::ValueError {
+                            mk_msg: Box::from(multiple_base_nodes),
+                        });
+                    }
+                    opts.write(true).create_new(true);
+                    has_base_mode = true;
+                }
 
-    // Apply the '+' modifier which enables the missing read/write flag
-    if plus_modifier {
-        opts.read(true).write(true);
-    }
+                // Modifiers
+                '+' => {
+                    plus_modifier = true;
+                }
+                'b' | 't' => {
+                    // Valid Python mode characters, but standard Rust fs ignores
+                    // text vs binary distinction. We accept them and do nothing.
+                }
+                _ => {
+                    return Err(ParseError::ValueError {
+                        mk_msg: Box::from(|_: &str| c"invalid mode character".into()),
+                    });
+                }
+            }
+        }
 
-    Ok(opts)
+        if !has_base_mode {
+            return Err(ParseError::ValueError {
+                mk_msg: Box::from(|_: &str| {
+                    c"mode must specify exactly one of 'r', 'w', 'a', or 'x'".into()
+                }),
+            });
+        }
+
+        // Apply the '+' modifier which enables the missing read/write flag
+        if plus_modifier {
+            opts.read(true).write(true);
+        }
+
+        Ok(Mode(opts))
+    }
+}
+
+impl DefaultParser<'_> for Mode {
+    type Parser = ModeParser;
 }
 
 fn io_to_errno(e: std::io::Error) -> c_int {
     e.raw_os_error().unwrap_or(MP_EIO)
 }
 
-fn open(pos_args: &[Obj], kw_map: &Map) -> Obj {
-    if pos_args.len() > 1 {
-        raise_type_error(token(), c"function accepts only 1 positional argument");
-    }
+fn open_inner(pos_args: &[Obj], kw_map: &Map) -> Result<FileObj, Exception> {
+    let mut reader = Args::new(pos_args.len(), 0, pos_args).reader();
+    reader.assert_npos(1, 2);
 
-    let path = pos_args[0]
-        .get_str()
-        .unwrap_or_else(|| raise_type_error(token(), c"file path must be a string"));
+    let path = reader.next_positional::<&str>()?;
 
     let mode_obj = kw_map.get(Obj::from_qstr(qstr!(mode)));
     let mode = mode_obj
         .as_ref()
-        .map(|m| {
-            m.get_str()
-                .unwrap_or_else(|| raise_type_error(token(), c"mode must be a string"))
-        })
-        .unwrap_or("r");
+        .map(|m| ModeParser.parse(m))
+        .unwrap_or(Ok(Mode::default()))
+        .map_err(|e| match e {
+            ParseError::TypeError { expected } => KeywordError::TypeError {
+                kw: "mode",
+                expected,
+                found: type_name(&mode_obj.unwrap()),
+            },
+            ParseError::ValueError { mk_msg } => KeywordError::ValueError {
+                msg: mk_msg("argument 'mode'"),
+            },
+        })?;
 
-    let opts = parse_python_mode(mode).unwrap_or_else(|e| raise_value_error(token(), e));
-    let file = opts
+    let file = mode
+        .0
         .open(path)
         .unwrap_or_else(|e| raise_os_error(token(), io_to_errno(e)));
 
     // TODO: find a way to push an nlr callback that closes the file
-    alloc_obj(FileObj {
+    Ok(FileObj {
         base: ObjBase::new(FileObj::OBJ_TYPE),
         file: RefCell::new(Some(file)),
     })
+}
+
+fn open(pos_args: &[Obj], kw_map: &Map) -> Obj {
+    open_inner(pos_args, kw_map).into()
 }
 
 #[allow(non_upper_case_globals)]

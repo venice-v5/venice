@@ -1,7 +1,6 @@
 use argparse::{Args, ArgsReader, PositionalError};
 use micropython_rs::{
     class, class_methods,
-    init::token,
     obj::{AttrOp, Obj, ObjBase, ObjTrait, ObjType},
     qstr::Qstr,
 };
@@ -36,7 +35,7 @@ impl VisionCodeObj {
         n_kw: usize,
         args: &[Obj],
     ) -> Result<Self, Exception> {
-        let mut reader = Args::new(n_pos, n_kw, args).reader(token());
+        let mut reader = Args::new(n_pos, n_kw, args).reader();
         reader.assert_npos(2, 5).assert_nkw(0, 0);
 
         let s1 = reader.next_positional::<SignatureId>()?.id();

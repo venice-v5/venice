@@ -4,14 +4,17 @@ use argparse::{ArgType, error_msg};
 use bitflags::bitflags;
 use micropython_rs::{
     class, class_methods,
-    except::raise_type_error,
+    except::type_error,
     fun::Fun2,
     generator::GEN_INSTANCE_TYPE,
     init::token,
     obj::{Obj, ObjBase, ObjTrait, ObjType},
 };
 
-use crate::modvenice::vasyncio::event_loop::{EventLoop, vasyncio_get_running_loop};
+use crate::modvenice::{
+    Exception,
+    vasyncio::event_loop::{EventLoop, vasyncio_get_running_loop},
+};
 
 bitflags! {
     // thanks for the comments vexide
@@ -112,7 +115,7 @@ impl CompetitionRuntime {
         }
     }
 
-    pub fn tick(&self) {
+    pub fn tick(&self) -> Result<(), Exception> {
         let mut phase_updated = false;
 
         if let Some(prev_status) = self.poll_update() {
@@ -171,24 +174,22 @@ impl CompetitionRuntime {
                         Phase::Mode(Mode::Autonomous) => "autonomous",
                         Phase::Mode(Mode::Disabled) => "disabled",
                     };
-                    raise_type_error(
-                        token(),
-                        error_msg!(
-                            "expected coroutine return value from {phase_name} routine, got <{}>",
-                            ArgType::of(&coro)
-                        ),
-                    );
+                    Err(type_error(error_msg!(
+                        "expected coroutine return value from {phase_name} routine, got <{}>",
+                        ArgType::of(&coro)
+                    )))?;
                 }
 
                 coro
             });
         }
+        Ok(())
     }
 }
 
 fn assert_callable(routine: Obj) {
     if !routine.is_callable() {
-        raise_type_error(token(), c"routine object is not callable");
+        type_error(c"routine object is not callable").raise(token());
     }
 }
 
@@ -214,7 +215,7 @@ impl Competition {
     #[make_new]
     fn make_new(ty: &'static ObjType, _n_pos: usize, _n_kw: usize, args: &[Obj]) -> Self {
         if !args.is_empty() {
-            raise_type_error(token(), c"function does not accept arguments");
+            type_error(c"function does not accept arguments").raise(token());
         }
 
         Self {
@@ -263,7 +264,6 @@ impl Competition {
 impl CompetitionRuntime {
     #[iter]
     extern "C" fn iter(self_in: Obj) -> Obj {
-        self_in.try_as_obj::<Self>().unwrap().tick();
-        Obj::NONE
+        self_in.try_as_obj::<Self>().unwrap().tick().into()
     }
 }

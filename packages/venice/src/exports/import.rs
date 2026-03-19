@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use argparse::error_msg;
 use micropython_rs::{
-    except::{IMPORT_ERROR_TYPE, raise_msg, raise_value_error},
+    except::{IMPORT_ERROR_TYPE, raise_msg, value_error},
     init::{InitToken, token},
     module::{builtin_module, exec_module},
     nlr::push_nlr_callback,
@@ -104,7 +104,7 @@ pub fn import(token: InitToken, module_name_qstr: Qstr, _fromtuple: Obj, level: 
 
     if module_name.is_empty() {
         // TODO: Add exception API
-        raise_value_error(token, c"module name cannot be empty");
+        value_error(c"module name cannot be empty").raise(token);
     }
 
     let mut outer_module_obj = Obj::NULL;
@@ -135,7 +135,7 @@ unsafe extern "C" fn venice_import(arg_count: usize, args: *const Obj) -> Obj {
         let level = args[4].try_to_int().unwrap();
         if level < 0 {
             // TODO: Add exception API
-            raise_value_error(token, c"level cannot be negative");
+            value_error(c"level cannot be negative").raise(token);
         } else {
             (args[3], level)
         }

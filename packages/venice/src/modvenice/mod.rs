@@ -14,7 +14,7 @@ mod vision;
 
 use std::ffi::CStr;
 
-use argparse::{PositionalError, error_msg};
+use argparse::{KeywordError, PositionalError, error_msg};
 use micropython_rs::{
     const_map,
     except::{EXCEPTION_TYPE, ExceptionType, Message, raise_msg},
@@ -95,6 +95,12 @@ impl From<Exception> for micropython_rs::except::Exception {
 
 impl From<PositionalError<'_>> for Exception {
     fn from(value: PositionalError<'_>) -> Self {
+        Self(value.into())
+    }
+}
+
+impl From<KeywordError<'_>> for Exception {
+    fn from(value: KeywordError<'_>) -> Self {
         Self(value.into())
     }
 }

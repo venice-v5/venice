@@ -1,7 +1,7 @@
 use argparse::{ArgType, Args, PositionalError};
 use micropython_rs::{
     class, class_methods,
-    except::raise_type_error,
+    except::type_error,
     init::token,
     obj::{AttrOp, Obj, ObjBase, ObjTrait, ObjType},
     qstr::Qstr,
@@ -43,7 +43,7 @@ pub struct Line {
 impl DetectionSourceObj {
     #[make_new]
     fn make_new(_: &ObjType, _: usize, _: usize, _: &[Obj]) {
-        raise_type_error(token(), c"DetectionSource is an abstract base class; use a variant like DetectionSource.Signature");
+        type_error(c"DetectionSource is an abstract base class; use a variant like DetectionSource.Signature").raise(token());
     }
 
     #[constant(qstr!(Signature))]
@@ -66,7 +66,7 @@ impl Signature {
         n_kw: usize,
         args: &[Obj],
     ) -> Result<Self, Exception> {
-        let mut reader = Args::new(n_pos, n_kw, args).reader(token());
+        let mut reader = Args::new(n_pos, n_kw, args).reader();
         reader.assert_npos(1, 1).assert_nkw(0, 0);
 
         let id = reader.next_positional::<SignatureId>()?.id();
@@ -99,7 +99,7 @@ impl Code {
         n_kw: usize,
         args: &[Obj],
     ) -> Result<Self, Exception> {
-        let mut reader = Args::new(n_pos, n_kw, args).reader(token());
+        let mut reader = Args::new(n_pos, n_kw, args).reader();
         reader.assert_npos(1, 1).assert_nkw(0, 0);
 
         let code_obj = reader.next_positional::<Obj>().unwrap();
@@ -138,15 +138,15 @@ impl Line {
     };
 
     #[make_new]
-    fn make_new(_: &ObjType, _: usize, _: usize, args: &[Obj]) -> Obj {
+    fn make_new(_: &ObjType, _: usize, _: usize, args: &[Obj]) -> Result<Obj, Exception> {
         if args.len() != 0 {
-            raise_type_error(
-                token(),
+            Err(type_error(
                 c"constructor does not accept arguments; just call DetectionSource.Line()",
-            );
+            )
+            .into())
+        } else {
+            Ok(Obj::from_static(Self::SELF))
         }
-
-        Obj::from_static(Self::SELF)
     }
 }
 

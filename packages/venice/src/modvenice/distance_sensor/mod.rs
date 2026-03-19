@@ -3,7 +3,6 @@ pub mod distance_object;
 use argparse::Args;
 use micropython_rs::{
     class, class_methods,
-    init::token,
     obj::{Obj, ObjBase, ObjType},
 };
 use vexide_devices::smart::distance::DistanceSensor;
@@ -30,8 +29,7 @@ impl DistanceSensorObj {
         n_kw: usize,
         args: &[Obj],
     ) -> Result<Self, Exception> {
-        let token = token();
-        let mut reader = Args::new(n_pos, n_kw, args).reader(token);
+        let mut reader = Args::new(n_pos, n_kw, args).reader();
         reader.assert_npos(1, 1).assert_nkw(0, 0);
 
         let port = reader.next_positional()?;

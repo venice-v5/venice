@@ -3,7 +3,6 @@ use std::cell::Cell;
 use argparse::{Args, PositionalError};
 use micropython_rs::{
     class, class_methods,
-    init::token,
     obj::{Obj, ObjBase, ObjTrait, ObjType, SubscrOp},
 };
 use vexide_devices::smart::ai_vision::AiVisionColorCode;
@@ -45,7 +44,7 @@ impl AiVisionColorCodeObj {
         n_kw: usize,
         args: &[Obj],
     ) -> Result<Self, Exception> {
-        let mut reader = Args::new(n_pos, n_kw, args).reader(token());
+        let mut reader = Args::new(n_pos, n_kw, args).reader();
         reader.assert_npos(1, 7).assert_nkw(0, 0);
 
         let mut values = [None; 7];

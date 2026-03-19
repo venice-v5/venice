@@ -1,7 +1,6 @@
 use argparse::Args;
 use micropython_rs::{
     class, class_methods,
-    init::token,
     obj::{AttrOp, Obj, ObjBase, ObjTrait, ObjType},
     qstr::Qstr,
 };
@@ -36,7 +35,7 @@ impl VisionSignatureObj {
         n_kw: usize,
         args: &[Obj],
     ) -> Result<Self, Exception> {
-        let mut reader = Args::new(n_pos, n_kw, args).reader(token());
+        let mut reader = Args::new(n_pos, n_kw, args).reader();
         reader.assert_npos(7, 7).assert_nkw(0, 0);
 
         let u_min = reader.next_positional()?;

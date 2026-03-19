@@ -1,7 +1,7 @@
-use argparse::Args;
+use argparse::{ArgParser, Args, DefaultParser, ParseError};
 use micropython_rs::{
     class, class_methods,
-    except::raise_type_error,
+    except::type_error,
     init::token,
     obj::{AttrOp, Obj, ObjBase, ObjTrait, ObjType},
     qstr::Qstr,
@@ -33,10 +33,8 @@ pub struct Manual {
 impl LedModeObj {
     #[make_new]
     fn make_new(_: &ObjType, _: usize, _: usize, _: &[Obj]) {
-        raise_type_error(
-            token(),
-            c"LedMode is an abstract base class; use a variant like LedMode.Auto",
-        );
+        type_error(c"LedMode is an abstract base class; use a variant like LedMode.Auto")
+            .raise(token())
     }
 
     #[constant(qstr!(Auto))]
@@ -55,15 +53,15 @@ impl Auto {
     };
 
     #[make_new]
-    fn make_new(_: &ObjType, _: usize, _: usize, args: &[Obj]) -> Obj {
+    fn make_new(_: &ObjType, _: usize, _: usize, args: &[Obj]) -> Result<Obj, Exception> {
         if args.len() != 0 {
-            raise_type_error(
-                token(),
-                c"constructor does not accept arguments; just call LedMode.Auto()",
-            );
+            Err(
+                type_error(c"constructor does not accept arguments; just call LedMode.Auto()")
+                    .into(),
+            )
+        } else {
+            Ok(Obj::from_static(Self::SELF))
         }
-
-        Obj::from_static(Self::SELF)
     }
 }
 
@@ -79,7 +77,7 @@ impl Manual {
         n_kw: usize,
         args: &[Obj],
     ) -> Result<Self, Exception> {
-        let mut reader = Args::new(n_pos, n_kw, args).reader(token());
+        let mut reader = Args::new(n_pos, n_kw, args).reader();
         reader.assert_npos(4, 4).assert_nkw(0, 0);
 
         let brightness = reader.next_positional()?;
@@ -126,12 +124,26 @@ pub fn new(mode: LedMode) -> Obj {
     }
 }
 
-pub fn from_obj(obj: Obj) -> Option<LedMode> {
-    if obj.is(Auto::OBJ_TYPE) {
-        Some(LedMode::Auto)
-    } else if let Some(manual) = obj.try_as_obj::<Manual>() {
-        Some(manual.as_led_mode())
-    } else {
-        None
+#[derive(Default)]
+pub struct LedModeParser;
+pub struct LedModeArg(pub LedMode);
+
+impl<'a> ArgParser<'a> for LedModeParser {
+    type Output = LedModeArg;
+
+    fn parse(&self, obj: &'a Obj) -> Result<Self::Output, argparse::ParseError> {
+        if obj.is(Auto::OBJ_TYPE) {
+            Ok(LedModeArg(LedMode::Auto))
+        } else if let Some(manual) = obj.try_as_obj::<Manual>() {
+            Ok(LedModeArg(manual.as_led_mode()))
+        } else {
+            Err(ParseError::TypeError {
+                expected: "LedMode",
+            })
+        }
     }
+}
+
+impl DefaultParser<'_> for LedModeArg {
+    type Parser = LedModeParser;
 }
