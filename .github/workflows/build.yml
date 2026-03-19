@@ -33,9 +33,12 @@ jobs:
           release: '14.2.Rel1'
 
       - name: install-cargo-v5
+        run: cargo install --git https://github.com/vexide/cargo-v5 --branch toolchain --locked cargo-v5
+
+      - name: install system deps
         run: |
-          curl -LsSf https://github.com/vexide/cargo-v5/releases/download/v0.12.1/cargo-v5-installer.sh | sh
-          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libudev-dev
 
       - name: build-rust
         run: cargo v5 toolchain install && cargo v5 build
