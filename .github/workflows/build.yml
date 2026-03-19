@@ -3,8 +3,8 @@ name: build
 on: [push]
 
 jobs:
-  build_binary:
-    name: build-binary
+  build_wheel:
+    name: build-wheel
     runs-on: ubuntu-latest
 
     steps:
@@ -44,10 +44,19 @@ jobs:
         run: arm-none-eabi-objcopy -O binary target/armv7a-vex-v5/debug/venice packages/venice/venice.bin
 
       - name: gzip-bin
-        run: gzip -c packages/venice/venice.bin > packages/venice/venice.bin.tmp && mv packages/venice/venice.bin.tmp packages/venice/venice.bin
+        run: gzip -c venice/venice.bin > venice/venice.bin.tmp && mv venice/venice.bin.tmp venice/venice.bin
+
+      - name: build-wheel
+        run: cd venice && uv sync && uv build
 
       - name: upload-bin
         uses: actions/upload-artifact@v4
         with:
           name: binary
-          path: packages/venice/venice.bin
+          path: venice/venice.bin
+
+      - name: upload-wheel
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels
+          path: venice/dist
