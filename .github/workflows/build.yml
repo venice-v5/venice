@@ -24,9 +24,32 @@ jobs:
         with:
           release: '14.2.Rel1'
 
+      # begin vibe slopped portion
+      # vibe slopped because I want to cache submodules
+      # and couldn't care less about how to actually do that
+      - name: cache-submodules
+        uses: actions/cache@v4
+        id: submodule-cache
+        with:
+          path: .git/modules
+          key: submodules-${{ hashFiles('.gitmodules') }}-${{ hashFiles('.git/refs/heads/**', '.git/packed-refs') }}
+          restore-keys: |
+            submodules-${{ hashFiles('.gitmodules') }}-
+
+      - name: init-submodules
+        if: steps.submodule-cache.outputs.cache-hit != 'true'
+        run: git submodule update --init --recursive
+
+      - name: restore-submodule-trees-cache
+        if: steps.submodule-cache.outputs.cache-hit == 'true'
+        run: git submodule update --recursive
+      # end vibeslop
+
+      - name: install-cargo-v5
+        run: cargo install --git https://github.com/vexide/cargo-v5 --branch toolchain cargo-v5
+
       - name: build-rust
-        # only clone mp if the build fails otherwise
-        run: cargo build || (git submodule update --init --recursive && cargo build)
+        run: cargo v5 build
 
       - name: generate-bin
         run: arm-none-eabi-objcopy -O binary target/armv7a-vex-v5/debug/venice venice/venice.bin
