@@ -27,14 +27,14 @@ use crate::{
 #[class(qstr!(InertialSensor))]
 #[repr(C)]
 pub struct InertialSensorObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
     guard: RegistryGuard<'static, InertialSensor>,
 }
 
 #[class(qstr!(CalibrateFuture))]
 #[repr(C)]
 pub struct CalibrateFuture {
-    base: ObjBase<'static>,
+    base: ObjBase,
     state: Cell<CalibrateFutureState>,
     imu: Obj,
 }
@@ -42,7 +42,7 @@ pub struct CalibrateFuture {
 #[class(qstr!(InertialOrientation))]
 #[repr(C)]
 pub struct InertialOrientationObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
     orientation: InertialOrientation,
 }
 

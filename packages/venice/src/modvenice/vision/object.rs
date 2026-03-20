@@ -13,7 +13,7 @@ use crate::modvenice::units::rotation::RotationUnitObj;
 #[class(qstr!(VisionObject))]
 #[repr(C)]
 pub struct VisionObjectObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
     source: Obj,
     width: u16,
     height: u16,
@@ -26,7 +26,7 @@ pub struct VisionObjectObj {
 impl VisionObjectObj {
     pub fn new(object: VisionObject) -> Self {
         Self {
-            base: ObjBase::new(Self::OBJ_TYPE),
+            base: Self::OBJ_TYPE.into(),
             source: super::source::new(object.source),
             width: object.width,
             height: object.height,

@@ -11,7 +11,7 @@ use crate::modvenice::{Exception, vision::SignatureId};
 #[class(qstr!(VisionCode))]
 #[repr(C)]
 pub struct VisionCodeObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
     code: VisionCode,
 }
 
@@ -19,7 +19,7 @@ pub struct VisionCodeObj {
 impl VisionCodeObj {
     pub fn new(code: VisionCode) -> Self {
         Self {
-            base: ObjBase::new(Self::OBJ_TYPE),
+            base: Self::OBJ_TYPE.into(),
             code,
         }
     }

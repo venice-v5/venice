@@ -29,7 +29,7 @@ use crate::{
 #[class(qstr!(Controller))]
 #[repr(C)]
 pub struct ControllerObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
     guard: ControllerGuard<'static>,
 }
 
@@ -42,7 +42,7 @@ impl From<ControllerError> for Exception {
 #[class(qstr!(ControllerConnection))]
 #[repr(C)]
 pub struct ControllerConnectionObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
 }
 
 impl ControllerConnectionObj {
@@ -77,7 +77,7 @@ enum ControllerFuture {
 #[class(qstr!(ControllerFuture))]
 #[repr(C)]
 pub struct ControllerFutureObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
     future: RefCell<ControllerFuture>,
 }
 

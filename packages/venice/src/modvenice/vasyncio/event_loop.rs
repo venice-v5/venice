@@ -46,7 +46,7 @@ impl Ord for Sleeper {
 #[class(qstr!(WakeSignal))]
 #[repr(C)]
 pub struct WakeSignal {
-    base: ObjBase<'static>,
+    base: ObjBase,
 }
 
 #[class_methods]
@@ -59,7 +59,7 @@ pub static WAKE_SIGNAL: WakeSignal = WakeSignal {
 #[class(qstr!(EventLoop))]
 #[repr(C)]
 pub struct EventLoop {
-    base: ObjBase<'static>,
+    base: ObjBase,
     ready: RefCell<VecDeque<Obj, Gc>>,
     sleepers: RefCell<BinaryHeap<Sleeper, Gc>>,
     current_task: Cell<Obj>,
@@ -73,7 +73,7 @@ impl EventLoop {
     pub fn new() -> Self {
         let gc = Gc { token: token() };
         Self {
-            base: ObjBase::new(Self::OBJ_TYPE),
+            base: Self::OBJ_TYPE.into(),
             ready: RefCell::new(VecDeque::new_in(gc)),
             sleepers: RefCell::new(BinaryHeap::new_in(gc)),
             current_task: Cell::new(Obj::NULL),

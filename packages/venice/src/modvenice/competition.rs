@@ -74,7 +74,7 @@ impl Phase {
 #[class(qstr!(Competition))]
 #[repr(C)]
 pub struct Competition {
-    base: ObjBase<'static>,
+    base: ObjBase,
 
     connected: Cell<Obj>,
     disconnected: Cell<Obj>,
@@ -86,7 +86,7 @@ pub struct Competition {
 #[class(qstr!(CompetitionRuntime))]
 #[repr(C)]
 pub struct CompetitionRuntime {
-    base: ObjBase<'static>,
+    base: ObjBase,
 
     // Dragon Ball Reference (Cell)
     // low level larping

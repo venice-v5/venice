@@ -7,7 +7,7 @@ use vexide_devices::smart::vision::VisionMode;
 #[class(qstr!(VisionMode))]
 #[repr(C)]
 pub struct VisionModeObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
     mode: VisionMode,
 }
 

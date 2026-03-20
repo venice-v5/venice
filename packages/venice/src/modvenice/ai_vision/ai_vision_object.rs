@@ -14,7 +14,7 @@ use crate::{modvenice::units::rotation::RotationUnitObj, obj::alloc_obj};
 #[class(qstr!(AiVisionColorObject))]
 #[repr(C)]
 pub struct Color {
-    base: ObjBase<'static>,
+    base: ObjBase,
     position: Point2<u16>,
     width: u16,
     height: u16,
@@ -40,7 +40,7 @@ impl Color {
 #[class(qstr!(AiVisionCodeObject))]
 #[repr(C)]
 pub struct Code {
-    base: ObjBase<'static>,
+    base: ObjBase,
     position: Point2<u16>,
     width: u16,
     height: u16,
@@ -73,7 +73,7 @@ impl Code {
 #[class(qstr!(AiVisionAprilTagObject))]
 #[repr(C)]
 pub struct AprilTag {
-    base: ObjBase<'static>,
+    base: ObjBase,
     top_left: Point2<i16>,
     top_right: Point2<i16>,
     bottom_right: Point2<i16>,
@@ -104,7 +104,7 @@ impl AprilTag {
 #[class(qstr!(AiVisionModelObject))]
 #[repr(C)]
 pub struct Model {
-    base: ObjBase<'static>,
+    base: ObjBase,
     classification: Obj,
     position: Point2<u16>,
     width: u16,

@@ -33,7 +33,7 @@ use crate::{
 #[class(qstr!(AiVisionSensor))]
 #[repr(C)]
 pub struct AiVisionSensorObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
     guard: RegistryGuard<'static, AiVisionSensor>,
 }
 

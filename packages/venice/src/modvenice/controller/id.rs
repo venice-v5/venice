@@ -7,7 +7,7 @@ use vexide_devices::controller::ControllerId;
 #[class(qstr!(ControllerId))]
 #[repr(C)]
 pub struct ControllerIdObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
     id: ControllerId,
 }
 

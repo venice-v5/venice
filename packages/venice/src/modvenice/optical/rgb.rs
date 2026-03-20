@@ -10,7 +10,7 @@ use vexide_devices::smart::optical::{OpticalRaw, OpticalRgb};
 #[class(qstr!(OpticalRgb))]
 #[repr(C)]
 pub struct OpticalRgbObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
     red: f32,
     green: f32,
     blue: f32,
@@ -20,7 +20,7 @@ pub struct OpticalRgbObj {
 #[class(qstr!(OpticalRaw))]
 #[repr(C)]
 pub struct OpticalRawObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
     red: u16,
     green: u16,
     blue: u16,
@@ -31,7 +31,7 @@ pub struct OpticalRawObj {
 impl OpticalRgbObj {
     pub fn new(rgb: OpticalRgb) -> Self {
         Self {
-            base: ObjBase::new(Self::OBJ_TYPE),
+            base: Self::OBJ_TYPE.into(),
             red: rgb.red as f32,
             green: rgb.green as f32,
             blue: rgb.blue as f32,
@@ -60,7 +60,7 @@ impl OpticalRgbObj {
 impl OpticalRawObj {
     pub fn new(raw: OpticalRaw) -> Self {
         Self {
-            base: ObjBase::new(Self::OBJ_TYPE),
+            base: Self::OBJ_TYPE.into(),
             red: raw.red,
             green: raw.green,
             blue: raw.blue,

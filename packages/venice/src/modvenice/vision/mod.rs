@@ -66,7 +66,7 @@ impl From<VisionSignatureError> for Exception {
 
 #[class(qstr!(VisionSensor))]
 pub struct VisionSensorObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
     guard: RegistryGuard<'static, VisionSensor>,
 }
 

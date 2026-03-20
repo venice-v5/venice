@@ -30,7 +30,7 @@ use crate::{
 #[class(qstr!(Motor))]
 #[repr(C)]
 pub struct MotorObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
     guard: RegistryGuard<'static, Motor>,
 }
 
@@ -59,7 +59,7 @@ impl MotorObj {
             Err(device_error(c"invalid motor type, expected V5, found Exp"))
         } else {
             Ok(Self {
-                base: ObjBase::new(Self::OBJ_TYPE),
+                base: Self::OBJ_TYPE.into(),
                 guard,
             })
         }
@@ -79,7 +79,7 @@ impl MotorObj {
             Err(device_error(c"invalid motor type, expected Exp, found V5"))
         } else {
             Ok(MotorObj {
-                base: ObjBase::new(Self::OBJ_TYPE),
+                base: Self::OBJ_TYPE.into(),
                 guard,
             })
         }

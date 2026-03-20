@@ -18,7 +18,7 @@ use crate::{
 #[class(qstr!(RotationSensor))]
 #[repr(C)]
 pub struct RotationSensorObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
     guard: RegistryGuard<'static, RotationSensor>,
 }
 

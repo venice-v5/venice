@@ -22,13 +22,13 @@ use vex_sdk_jumptable::vexSerialReadChar;
 #[class(qstr!(Stdin))]
 #[repr(C)]
 pub struct Stdin {
-    base: ObjBase<'static>,
+    base: ObjBase,
 }
 
 #[class(qstr!(Stdout))]
 #[repr(C)]
 pub struct Stdout {
-    base: ObjBase<'static>,
+    base: ObjBase,
 }
 
 #[class_methods]

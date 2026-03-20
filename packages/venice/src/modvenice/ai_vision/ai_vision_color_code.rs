@@ -12,7 +12,7 @@ use crate::modvenice::Exception;
 #[class(qstr!(AiVisionColorCode))]
 #[repr(C)]
 pub struct AiVisionColorCodeObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
     // this is the backing type for AiVisionColorCode
     // we store it this way to make mutability easier
     code: Cell<[Option<u8>; 7]>,
@@ -29,7 +29,7 @@ impl AiVisionColorCodeObj {
             *code = Some(c);
         }
         Self {
-            base: ObjBase::new(Self::OBJ_TYPE),
+            base: Self::OBJ_TYPE.into(),
             code: Cell::new(codes),
         }
     }

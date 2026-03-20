@@ -16,7 +16,7 @@ use crate::{
 #[class(qstr!(DistanceSensor))]
 #[repr(C)]
 pub struct DistanceSensorObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
     guard: RegistryGuard<'static, DistanceSensor>,
 }
 

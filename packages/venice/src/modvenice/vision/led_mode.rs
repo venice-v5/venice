@@ -12,17 +12,17 @@ use crate::{modvenice::Exception, obj::alloc_obj};
 
 #[class(qstr!(LedMode))]
 pub struct LedModeObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
 }
 
 #[class(qstr!(Auto))]
 pub struct Auto {
-    base: ObjBase<'static>,
+    base: ObjBase,
 }
 
 #[class(qstr!(Manual))]
 pub struct Manual {
-    base: ObjBase<'static>,
+    base: ObjBase,
     brightness: f32,
     r: u8,
     g: u8,

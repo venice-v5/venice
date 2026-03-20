@@ -12,7 +12,7 @@ use crate::alloc::Gc;
 #[class(qstr!(Task))]
 #[repr(C)]
 pub struct Task {
-    base: ObjBase<'static>,
+    base: ObjBase,
     // generator object
     coro: Obj,
     waiting_tasks: RefCell<Vec<Obj, Gc>>,
@@ -22,7 +22,7 @@ pub struct Task {
 impl Task {
     pub fn new(coro: Obj) -> Self {
         Self {
-            base: ObjBase::new(Self::OBJ_TYPE),
+            base: Self::OBJ_TYPE.into(),
             coro,
             waiting_tasks: RefCell::new(Vec::new_in(Gc { token: token() })),
             return_val: Cell::new(Obj::NULL),

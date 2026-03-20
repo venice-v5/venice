@@ -6,7 +6,7 @@ use vexide_devices::smart::motor::MotorType;
 
 #[repr(C)]
 pub struct MotorTypeObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
     motor_type: MotorType,
 }
 

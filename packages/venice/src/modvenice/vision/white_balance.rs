@@ -13,25 +13,25 @@ use crate::modvenice::Exception;
 #[class(qstr!(WhiteBalance))]
 #[repr(C)]
 pub struct WhiteBalanceObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
 }
 
 #[class(qstr!(Auto))]
 #[repr(C)]
 pub struct Auto {
-    base: ObjBase<'static>,
+    base: ObjBase,
 }
 
 #[class(qstr!(StartupAuto))]
 #[repr(C)]
 pub struct StartupAuto {
-    base: ObjBase<'static>,
+    base: ObjBase,
 }
 
 #[class(qstr!(Manual))]
 #[repr(C)]
 pub struct Manual {
-    base: ObjBase<'static>,
+    base: ObjBase,
     r: u8,
     g: u8,
     b: u8,

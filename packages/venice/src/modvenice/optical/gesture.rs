@@ -10,7 +10,7 @@ use vexide_devices::smart::optical::{Gesture, GestureDirection};
 #[class(qstr!(Gesture))]
 #[repr(C)]
 pub struct GestureObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
     direction: Obj,
     // TODO: how do we make self value accessible?
     // time: LowResolutionTime,
@@ -25,7 +25,7 @@ pub struct GestureObj {
 #[class(qstr!(GestureDirection))]
 #[repr(C)]
 pub struct GestureDirectionObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
 }
 
 #[class_methods]
@@ -49,7 +49,7 @@ impl GestureDirectionObj {
 impl GestureObj {
     pub fn new(gesture: Gesture) -> Self {
         Self {
-            base: ObjBase::new(Self::OBJ_TYPE),
+            base: Self::OBJ_TYPE.into(),
             direction: Obj::from_static(match gesture.direction {
                 GestureDirection::Up => GestureDirectionObj::UP,
                 GestureDirection::Down => GestureDirectionObj::DOWN,

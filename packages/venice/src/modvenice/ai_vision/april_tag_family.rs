@@ -7,7 +7,7 @@ use vexide_devices::smart::ai_vision::AprilTagFamily;
 #[class(qstr!(AprilTagFamily))]
 #[repr(C)]
 pub struct AprilTagFamilyObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
     family: AprilTagFamily,
 }
 

@@ -12,7 +12,7 @@ use crate::modvenice::Exception;
 #[class(qstr!(AiVisionColor))]
 #[repr(C)]
 pub struct AiVisionColorObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
     color: AiVisionColor,
 }
 
@@ -23,7 +23,7 @@ impl AiVisionColorObj {
 
     pub fn new(color: AiVisionColor) -> Self {
         Self {
-            base: ObjBase::new(Self::OBJ_TYPE),
+            base: Self::OBJ_TYPE.into(),
             color,
         }
     }

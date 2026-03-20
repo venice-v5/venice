@@ -29,7 +29,7 @@ use crate::{fun::fun_var_kw, modvenice::Exception};
 #[class(qstr!(File))]
 #[repr(C)]
 pub struct FileObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
     file: RefCell<Option<File>>,
 }
 

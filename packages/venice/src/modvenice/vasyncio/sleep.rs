@@ -14,7 +14,7 @@ use crate::modvenice::{Exception, units::time::TimeUnitObj};
 #[class(qstr!(Sleep))]
 #[repr(C)]
 pub struct Sleep {
-    base: ObjBase<'static>,
+    base: ObjBase,
     duration: time32::Duration,
     complete: Cell<bool>,
 }
@@ -22,7 +22,7 @@ pub struct Sleep {
 impl Sleep {
     pub fn new(duration: time32::Duration) -> Self {
         Self {
-            base: ObjBase::new(Self::OBJ_TYPE),
+            base: Self::OBJ_TYPE.into(),
             duration,
             complete: Cell::new(false),
         }

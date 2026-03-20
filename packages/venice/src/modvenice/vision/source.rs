@@ -16,27 +16,27 @@ use crate::modvenice::{
 #[class(qstr!(DetectionSource))]
 #[repr(C)]
 pub struct DetectionSourceObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
 }
 
 #[class(qstr!(Signature))]
 #[repr(C)]
 pub struct Signature {
-    base: ObjBase<'static>,
+    base: ObjBase,
     id: u8,
 }
 
 #[class(qstr!(Code))]
 #[repr(C)]
 pub struct Code {
-    base: ObjBase<'static>,
+    base: ObjBase,
     code: Obj,
 }
 
 #[class(qstr!(Line))]
 #[repr(C)]
 pub struct Line {
-    base: ObjBase<'static>,
+    base: ObjBase,
 }
 
 #[class_methods]

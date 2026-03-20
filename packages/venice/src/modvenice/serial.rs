@@ -33,14 +33,14 @@ use crate::{
 #[class(qstr!(SerialPort))]
 #[repr(C)]
 pub struct SerialPortObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
     guard: RegistryGuard<'static, SerialPort>,
 }
 
 #[class(qstr!(SerialPortOpenFuture))]
 #[repr(C)]
 pub struct SerialPortOpenFutureObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
     upgrade: RefCell<Option<UpgradeGuard<'static, SerialPortOpenFuture>>>,
 }
 

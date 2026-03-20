@@ -13,7 +13,7 @@ use crate::obj::alloc_obj;
 #[class(qstr!(AiVisionDetectionMode))]
 #[repr(C)]
 pub struct AiVisionDetectionModeObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
     mode: AiVisionDetectionMode,
 }
 

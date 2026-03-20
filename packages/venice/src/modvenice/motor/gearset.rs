@@ -7,7 +7,7 @@ use vexide_devices::smart::motor::Gearset;
 #[class(qstr!(Gearset))]
 #[repr(C)]
 pub struct GearsetObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
     gearset: Gearset,
 }
 

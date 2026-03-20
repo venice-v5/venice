@@ -23,7 +23,7 @@ use crate::{
 #[repr(C)]
 pub struct ObjType {
     // mp_type_type has a static lifetime
-    base: ObjBase<'static>,
+    base: ObjBase,
 
     flags: u16,
     name: u16,
@@ -54,7 +54,7 @@ pub struct ObjType {
 #[repr(C)]
 pub struct ObjFullType {
     // mp_type_type has a static lifetime
-    base: ObjBase<'static>,
+    base: ObjBase,
 
     flags: u16,
     name: u16,
@@ -110,12 +110,10 @@ pub enum Slot {
 /// associated [`ObjType`].
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
-pub struct ObjBase<'a> {
+pub struct ObjBase {
     r#type: *const ObjType,
-    _phantom: PhantomData<&'a ObjType>,
+    _phantom: PhantomData<&'static ObjType>,
 }
-
-pub type StaticObjbase = ObjBase<'static>;
 
 /// MicroPython object
 ///
@@ -798,7 +796,7 @@ impl_slot_setter!(unsafe set_iter_raw, Slot::Iter, *const c_void);
 
 // SAFETY: These types follow ownership and borrowing rules
 unsafe impl Sync for ObjFullType {}
-unsafe impl Sync for ObjBase<'_> {}
+unsafe impl Sync for ObjBase {}
 
 unsafe extern "C" {
     static mp_type_type: ObjType;
@@ -812,13 +810,19 @@ unsafe impl ObjTrait for ObjFullType {
     const OBJ_TYPE: &ObjType = unsafe { &mp_type_type };
 }
 
-impl<'a> ObjBase<'a> {
+impl ObjBase {
     /// Constructs an [`ObjBase`] from a given [`ObjType`]
-    pub const fn new(ty: &'a ObjType) -> Self {
+    pub const fn new(ty: &'static ObjType) -> Self {
         Self {
             r#type: ty,
             _phantom: PhantomData,
         }
+    }
+}
+
+impl From<&'static ObjType> for ObjBase {
+    fn from(value: &'static ObjType) -> Self {
+        Self::new(value)
     }
 }
 

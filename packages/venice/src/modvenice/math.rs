@@ -15,7 +15,7 @@ use crate::modvenice::{Exception, units::rotation::RotationUnit};
 #[class(qstr!(Vec3))]
 #[repr(C)]
 pub struct Vec3 {
-    base: ObjBase<'static>,
+    base: ObjBase,
     x: Cell<f32>,
     y: Cell<f32>,
     z: Cell<f32>,
@@ -24,7 +24,7 @@ pub struct Vec3 {
 #[class(qstr!(Quaternion))]
 #[repr(C)]
 pub struct Quaternion {
-    base: ObjBase<'static>,
+    base: ObjBase,
     // i
     x: Cell<f32>,
     // j
@@ -38,7 +38,7 @@ pub struct Quaternion {
 #[class(qstr!(EulerAngles))]
 #[repr(C)]
 pub struct EulerAngles {
-    base: ObjBase<'static>,
+    base: ObjBase,
     // z
     yaw: Cell<f32>,
     // y
@@ -50,7 +50,7 @@ pub struct EulerAngles {
 #[class(qstr!(Point2))]
 #[repr(C)]
 pub struct Point2 {
-    base: ObjBase<'static>,
+    base: ObjBase,
     x: Cell<f32>,
     y: Cell<f32>,
 }
@@ -59,7 +59,7 @@ pub struct Point2 {
 impl Vec3 {
     pub fn new(v: vexide_devices::math::Vector3<f64>) -> Self {
         Self {
-            base: ObjBase::new(Self::OBJ_TYPE),
+            base: Self::OBJ_TYPE.into(),
             x: Cell::new(v.x as f32),
             y: Cell::new(v.y as f32),
             z: Cell::new(v.z as f32),
@@ -83,7 +83,7 @@ impl Vec3 {
 impl Quaternion {
     pub fn new(q: vexide_devices::math::Quaternion<f64>) -> Self {
         Self {
-            base: ObjBase::new(Self::OBJ_TYPE),
+            base: Self::OBJ_TYPE.into(),
             x: Cell::new(q.v.x as f32),
             y: Cell::new(q.v.y as f32),
             z: Cell::new(q.v.z as f32),

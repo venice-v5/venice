@@ -24,7 +24,7 @@ use crate::{
 #[class(qstr!(OpticalSensor))]
 #[repr(C)]
 pub struct OpticalSensorObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
     guard: RegistryGuard<'static, OpticalSensor>,
 }
 

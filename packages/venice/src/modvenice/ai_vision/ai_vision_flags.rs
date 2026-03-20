@@ -13,7 +13,7 @@ use crate::obj::alloc_obj;
 #[class(qstr!(AiVisionFlags))]
 #[repr(C)]
 pub struct AiVisionFlagsObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
     flags: AiVisionFlags,
 }
 
