@@ -2,6 +2,7 @@ mod ai_vision;
 mod competition;
 mod controller;
 mod distance_sensor;
+mod gps;
 mod imu;
 mod math;
 mod motor;
@@ -37,6 +38,7 @@ use crate::modvenice::{
         state::{ButtonStateObj, ControllerStateObj, JoystickStateObj},
     },
     distance_sensor::{DistanceSensorObj, distance_object::DistanceObjectObj},
+    gps::GpsSensorObj,
     imu::{InertialOrientationObj, InertialSensorObj},
     math::{EulerAngles, Point2, Quaternion, Vec3},
     motor::{
@@ -184,6 +186,7 @@ static mut venice_globals: Dict = Dict::new(const_map![
     qstr!(WhiteBalance) => Obj::from_static(WhiteBalanceObj::OBJ_TYPE),
     // other devices
     qstr!(RotationSensor) => Obj::from_static(RotationSensorObj::OBJ_TYPE),
+    qstr!(GpsSensor) => Obj::from_static(GpsSensorObj::OBJ_TYPE),
 
     // async
     qstr!(EventLoop) => Obj::from_static(EventLoop::OBJ_TYPE),

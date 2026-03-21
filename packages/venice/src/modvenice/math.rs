@@ -48,6 +48,7 @@ pub struct EulerAngles {
 }
 
 #[class(qstr!(Point2))]
+#[derive(Clone)]
 #[repr(C)]
 pub struct Point2 {
     base: ObjBase,
@@ -160,6 +161,27 @@ impl Point2 {
         };
 
         handle_op(op, coord);
+    }
+
+    pub fn from_vexide_point2(point2: vexide_devices::math::Point2<f64>) -> Self {
+        Self {
+            base: Self::OBJ_TYPE.into(),
+            x: Cell::new(point2.x as f32),
+            y: Cell::new(point2.y as f32),
+        }
+    }
+
+    pub fn as_vexide_point2(&self) -> vexide_devices::math::Point2<f64> {
+        vexide_devices::math::Point2 {
+            x: self.x.get() as f64,
+            y: self.y.get() as f64,
+        }
+    }
+}
+
+impl From<vexide_devices::math::Point2<f64>> for Point2 {
+    fn from(value: vexide_devices::math::Point2<f64>) -> Self {
+        Self::from_vexide_point2(value)
     }
 }
 
