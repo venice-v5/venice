@@ -12,14 +12,14 @@ use crate::{
         math::{EulerAngles, Point2, Quaternion, Vec3},
         units::{rotation::RotationUnitObj, time::TimeUnitObj},
     },
-    registry::RegistryGuard,
+    registry::SmartGuard,
 };
 
 #[class(qstr!(GpsSensor))]
 #[repr(C)]
 pub struct GpsSensorObj {
     base: ObjBase,
-    guard: RegistryGuard<'static, GpsSensor>,
+    guard: SmartGuard<GpsSensor>,
 }
 
 #[class_methods]

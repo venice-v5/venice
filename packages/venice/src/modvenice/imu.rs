@@ -21,14 +21,14 @@ use crate::{
         units::{rotation::RotationUnitObj, time::TimeUnitObj},
         vasyncio::{event_loop::WAKE_SIGNAL, time32},
     },
-    registry::RegistryGuard,
+    registry::SmartGuard,
 };
 
 #[class(qstr!(InertialSensor))]
 #[repr(C)]
 pub struct InertialSensorObj {
     base: ObjBase,
-    guard: RegistryGuard<'static, InertialSensor>,
+    guard: SmartGuard<InertialSensor>,
 }
 
 #[class(qstr!(CalibrateFuture))]

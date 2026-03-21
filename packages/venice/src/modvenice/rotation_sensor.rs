@@ -12,14 +12,14 @@ use crate::{
         motor::direction::DirectionObj,
         units::{rotation::RotationUnitObj, time::TimeUnitObj},
     },
-    registry::RegistryGuard,
+    registry::SmartGuard,
 };
 
 #[class(qstr!(RotationSensor))]
 #[repr(C)]
 pub struct RotationSensorObj {
     base: ObjBase,
-    guard: RegistryGuard<'static, RotationSensor>,
+    guard: SmartGuard<RotationSensor>,
 }
 
 #[class_methods]

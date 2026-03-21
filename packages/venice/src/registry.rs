@@ -1,6 +1,5 @@
 use std::{
     cell::{Ref, RefCell, RefMut},
-    ops::{Deref, DerefMut},
     sync::{Mutex, MutexGuard},
 };
 
@@ -8,32 +7,38 @@ use micropython_rs::{except::value_error, init::token};
 use thiserror::Error;
 use vexide_devices::{controller::Controller, smart::SmartPort};
 
-pub trait PortDevice {
-    fn take_port(self) -> SmartPort;
+pub trait PortDevice<P> {
+    fn take_port(self) -> P;
 }
 
-enum RegistryDevice {
-    Available(SmartPort),
+enum RegistryDevice<P> {
+    Available(P),
     Occupied,
 }
 
-pub struct Registry {
-    device: Mutex<RegistryDevice>,
+pub struct Registry<P> {
+    device: Mutex<RegistryDevice<P>>,
 }
 
-struct ActiveRegistryGuard<'a, D: PortDevice> {
+struct ActiveRegistryGuard<'a, P, D>
+where
+    D: PortDevice<P>,
+{
     device: D,
-    guard: MutexGuard<'a, RegistryDevice>,
+    guard: MutexGuard<'a, RegistryDevice<P>>,
 }
 
-pub struct UpgradeGuard<'a, D> {
+pub struct UpgradeGuard<'a, P, D> {
     device: D,
-    guard: MutexGuard<'a, RegistryDevice>,
+    guard: MutexGuard<'a, RegistryDevice<P>>,
 }
 
 #[must_use]
-pub struct RegistryGuard<'a, D: PortDevice> {
-    guard: RefCell<Option<ActiveRegistryGuard<'a, D>>>,
+pub struct RegistryGuard<'a, P, D>
+where
+    D: PortDevice<P>,
+{
+    guard: RefCell<Option<ActiveRegistryGuard<'a, P, D>>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
@@ -44,14 +49,14 @@ pub struct DeviceFreedError;
 #[error("device occupied")]
 pub struct DeviceOccupiedError;
 
-impl RegistryDevice {
+impl<P> RegistryDevice<P> {
     fn take(&mut self) -> Self {
         std::mem::replace(self, Self::Occupied)
     }
 }
 
-impl Registry {
-    pub const fn new(port: SmartPort) -> Self {
+impl<P> Registry<P> {
+    pub const fn new(port: P) -> Self {
         Self {
             device: Mutex::new(RegistryDevice::Available(port)),
         }
@@ -60,10 +65,10 @@ impl Registry {
     pub fn try_lock<'a, D, I>(
         &'a self,
         init: I,
-    ) -> Result<RegistryGuard<'a, D>, DeviceOccupiedError>
+    ) -> Result<RegistryGuard<'a, P, D>, DeviceOccupiedError>
     where
-        D: PortDevice,
-        I: FnOnce(SmartPort) -> D,
+        D: PortDevice<P>,
+        I: FnOnce(P) -> D,
     {
         self.device
             .try_lock()
@@ -79,17 +84,20 @@ impl Registry {
             .map_err(|_| DeviceOccupiedError)
     }
 
-    pub fn lock<'a, D, I>(&'a self, init: I) -> RegistryGuard<'a, D>
+    pub fn lock<'a, D, I>(&'a self, init: I) -> RegistryGuard<'a, P, D>
     where
-        D: PortDevice,
-        I: FnOnce(SmartPort) -> D,
+        D: PortDevice<P>,
+        I: FnOnce(P) -> D,
     {
         self.try_lock(init)
             .unwrap_or_else(|_| value_error(c"port occupied").raise(token()))
     }
 }
 
-impl<'a, D: PortDevice> RegistryGuard<'a, D> {
+impl<'a, P, D> RegistryGuard<'a, P, D>
+where
+    D: PortDevice<P>,
+{
     pub fn try_borrow<'b>(&'b self) -> Result<Ref<'b, D>, DeviceFreedError> {
         Ref::filter_map(self.guard.borrow(), |guard| {
             guard.as_ref().map(|guard| &guard.device)
@@ -114,7 +122,7 @@ impl<'a, D: PortDevice> RegistryGuard<'a, D> {
             .unwrap_or_else(|_| value_error(c"attempt to use device after free").raise(token()))
     }
 
-    pub fn start_upgrade(mut self) -> Result<UpgradeGuard<'a, D>, DeviceFreedError> {
+    pub fn start_upgrade(mut self) -> Result<UpgradeGuard<'a, P, D>, DeviceFreedError> {
         let guard = std::mem::replace(self.guard.get_mut(), None);
         match guard {
             Some(guard) => Ok(UpgradeGuard {
@@ -125,7 +133,7 @@ impl<'a, D: PortDevice> RegistryGuard<'a, D> {
         }
     }
 
-    pub fn finish_upgrade(upgrade: UpgradeGuard<'a, D>) -> Self {
+    pub fn finish_upgrade(upgrade: UpgradeGuard<'a, P, D>) -> Self {
         Self {
             guard: RefCell::new(Some(ActiveRegistryGuard {
                 device: upgrade.device,
@@ -151,8 +159,8 @@ impl<'a, D: PortDevice> RegistryGuard<'a, D> {
     }
 }
 
-impl<'a, D> UpgradeGuard<'a, D> {
-    pub fn map<E, F>(self, f: F) -> UpgradeGuard<'a, E>
+impl<'a, P, D> UpgradeGuard<'a, P, D> {
+    pub fn map<E, F>(self, f: F) -> UpgradeGuard<'a, P, E>
     where
         F: FnOnce(D) -> E,
     {
@@ -167,7 +175,10 @@ impl<'a, D> UpgradeGuard<'a, D> {
     }
 }
 
-impl<'a, D: PortDevice> Drop for RegistryGuard<'a, D> {
+impl<'a, P, D> Drop for RegistryGuard<'a, P, D>
+where
+    D: PortDevice<P>,
+{
     fn drop(&mut self) {
         let guard = self.guard.get_mut().take();
         if let Some(mut guard) = guard {
@@ -175,6 +186,9 @@ impl<'a, D: PortDevice> Drop for RegistryGuard<'a, D> {
         }
     }
 }
+
+pub type SmartRegistry = Registry<SmartPort>;
+pub type SmartGuard<D> = RegistryGuard<'static, SmartPort, D>;
 
 mod impls {
     use vexide_devices::smart::{
@@ -187,14 +201,11 @@ mod impls {
     use super::PortDevice;
 
     macro_rules! impl_device {
-        ($($device:ty),*) => {
+        ($port:ty, $($device:ty),*) => {
             $(
-                impl PortDevice for $device {
-                    fn take_port(self) -> SmartPort
-                    where
-                        Self: Sized,
-                    {
-                        SmartPort::from(self)
+                impl PortDevice<$port> for $device {
+                    fn take_port(self) -> $port {
+                        self.into()
                     }
                 }
             )*
@@ -202,6 +213,7 @@ mod impls {
     }
 
     impl_device!(
+        SmartPort,
         Motor,
         RotationSensor,
         DistanceSensor,
@@ -218,107 +230,11 @@ mod impls {
     );
 }
 
-pub struct ControllerRegistry {
-    controller: Mutex<Controller>,
-}
-
-struct ActiveControllerGuard<'a> {
-    guard: MutexGuard<'a, Controller>,
-}
-
-pub struct ControllerGuard<'a> {
-    guard: RefCell<Option<ActiveControllerGuard<'a>>>,
-}
-
-pub struct ControllerRef<'a, 'b> {
-    r: Ref<'b, MutexGuard<'a, Controller>>,
-}
-
-pub struct ControllerRefMut<'a, 'b> {
-    r: RefMut<'b, MutexGuard<'a, Controller>>,
-}
-
-impl ControllerRegistry {
-    pub const fn new(controller: Controller) -> Self {
-        Self {
-            controller: Mutex::new(controller),
-        }
-    }
-
-    pub fn try_lock<'a>(&'a self) -> Result<ControllerGuard<'a>, DeviceOccupiedError> {
-        self.controller
-            .try_lock()
-            .map(|controller| ControllerGuard {
-                guard: RefCell::new(Some(ActiveControllerGuard { guard: controller })),
-            })
-            .map_err(|_| DeviceOccupiedError)
-    }
-
-    pub fn lock<'a>(&'a self) -> ControllerGuard<'a> {
-        self.try_lock()
-            .unwrap_or_else(|_| value_error(c"controller already occupied").raise(token()))
+impl PortDevice<Controller> for Controller {
+    fn take_port(self) -> Controller {
+        self
     }
 }
 
-impl<'a> ControllerGuard<'a> {
-    pub fn try_borrow<'b>(&'b self) -> Result<ControllerRef<'a, 'b>, DeviceFreedError> {
-        Ref::filter_map(self.guard.borrow(), |guard| {
-            guard.as_ref().map(|guard| &guard.guard)
-        })
-        .map(|r| ControllerRef { r })
-        .map_err(|_| DeviceFreedError)
-    }
-
-    pub fn try_borrow_mut<'b>(&'b self) -> Result<ControllerRefMut<'a, 'b>, DeviceFreedError> {
-        RefMut::filter_map(self.guard.borrow_mut(), |guard| {
-            guard.as_mut().map(|guard| &mut guard.guard)
-        })
-        .map(|r| ControllerRefMut { r })
-        .map_err(|_| DeviceFreedError)
-    }
-
-    pub fn borrow<'b>(&'b self) -> ControllerRef<'a, 'b> {
-        self.try_borrow()
-            .unwrap_or_else(|_| value_error(c"attempt to use controller after free").raise(token()))
-    }
-
-    pub fn borrow_mut<'b>(&'b self) -> ControllerRefMut<'a, 'b> {
-        self.try_borrow_mut()
-            .unwrap_or_else(|_| value_error(c"attempt to use controller after free").raise(token()))
-    }
-
-    pub fn free(&self) -> Result<(), DeviceFreedError> {
-        // guard will be dropped at the end of this function, calling MutexGuard::drop and releasing the lock
-        match self.guard.replace(None) {
-            Some(_) => Ok(()),
-            None => Err(DeviceFreedError),
-        }
-    }
-
-    pub fn free_or_raise(&self) {
-        self.free()
-            .unwrap_or_else(|_| value_error(c"attempt to free controller twice").raise(token()))
-    }
-}
-
-impl<'a, 'b> Deref for ControllerRef<'a, 'b> {
-    type Target = Controller;
-
-    fn deref(&self) -> &Self::Target {
-        &self.r
-    }
-}
-
-impl<'a, 'b> Deref for ControllerRefMut<'a, 'b> {
-    type Target = Controller;
-
-    fn deref(&self) -> &Self::Target {
-        &self.r
-    }
-}
-
-impl<'a, 'b> DerefMut for ControllerRefMut<'a, 'b> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.r
-    }
-}
+pub type ControllerRegistry = Registry<Controller>;
+pub type ControllerGuard = RegistryGuard<'static, Controller, Controller>;

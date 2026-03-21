@@ -10,14 +10,14 @@ use vexide_devices::smart::distance::{DistanceObjectError, DistanceSensor};
 use crate::{
     devices::{self},
     modvenice::{Exception, device_error, distance_sensor::distance_object::DistanceObjectObj},
-    registry::RegistryGuard,
+    registry::SmartGuard,
 };
 
 #[class(qstr!(DistanceSensor))]
 #[repr(C)]
 pub struct DistanceSensorObj {
     base: ObjBase,
-    guard: RegistryGuard<'static, DistanceSensor>,
+    guard: SmartGuard<DistanceSensor>,
 }
 
 impl From<DistanceObjectError> for Exception {

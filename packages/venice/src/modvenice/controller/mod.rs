@@ -30,7 +30,7 @@ use crate::{
 #[repr(C)]
 pub struct ControllerObj {
     base: ObjBase,
-    guard: ControllerGuard<'static>,
+    guard: ControllerGuard,
 }
 
 impl From<ControllerError> for Exception {

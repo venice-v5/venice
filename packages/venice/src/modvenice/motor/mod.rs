@@ -24,14 +24,14 @@ use crate::{
     modvenice::{
         Exception, device_error, motor::motor_type::MotorTypeObj, units::rotation::RotationUnitObj,
     },
-    registry::RegistryGuard,
+    registry::SmartGuard,
 };
 
 #[class(qstr!(Motor))]
 #[repr(C)]
 pub struct MotorObj {
     base: ObjBase,
-    guard: RegistryGuard<'static, Motor>,
+    guard: SmartGuard<Motor>,
 }
 
 impl From<SetGearsetError> for Exception {

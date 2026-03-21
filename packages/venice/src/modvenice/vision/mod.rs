@@ -25,7 +25,7 @@ use crate::{
             object::VisionObjectObj, signature::VisionSignatureObj, white_balance::WhiteBalanceArg,
         },
     },
-    registry::RegistryGuard,
+    registry::SmartGuard,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -67,7 +67,7 @@ impl From<VisionSignatureError> for Exception {
 #[class(qstr!(VisionSensor))]
 pub struct VisionSensorObj {
     base: ObjBase,
-    guard: RegistryGuard<'static, VisionSensor>,
+    guard: SmartGuard<VisionSensor>,
 }
 
 #[class_methods]

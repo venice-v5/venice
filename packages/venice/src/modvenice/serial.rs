@@ -21,27 +21,30 @@ use micropython_rs::{
     },
     write_from_fn,
 };
-use vexide_devices::smart::serial::{SerialPort, SerialPortOpenFuture};
+use vexide_devices::smart::{
+    SmartPort,
+    serial::{SerialPort, SerialPortOpenFuture},
+};
 
 use crate::{
     devices::{PortNumber, lock_port},
     modvenice::vasyncio::event_loop::WAKE_SIGNAL,
     obj::alloc_obj,
-    registry::{RegistryGuard, UpgradeGuard},
+    registry::{RegistryGuard, SmartGuard, UpgradeGuard},
 };
 
 #[class(qstr!(SerialPort))]
 #[repr(C)]
 pub struct SerialPortObj {
     base: ObjBase,
-    guard: RegistryGuard<'static, SerialPort>,
+    guard: SmartGuard<SerialPort>,
 }
 
 #[class(qstr!(SerialPortOpenFuture))]
 #[repr(C)]
 pub struct SerialPortOpenFutureObj {
     base: ObjBase,
-    upgrade: RefCell<Option<UpgradeGuard<'static, SerialPortOpenFuture>>>,
+    upgrade: RefCell<Option<UpgradeGuard<'static, SmartPort, SerialPortOpenFuture>>>,
 }
 
 #[class_methods]

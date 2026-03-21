@@ -18,14 +18,14 @@ use crate::{
         },
         units::time::TimeUnitObj,
     },
-    registry::RegistryGuard,
+    registry::SmartGuard,
 };
 
 #[class(qstr!(OpticalSensor))]
 #[repr(C)]
 pub struct OpticalSensorObj {
     base: ObjBase,
-    guard: RegistryGuard<'static, OpticalSensor>,
+    guard: SmartGuard<OpticalSensor>,
 }
 
 #[class_methods]

@@ -3,33 +3,35 @@ use std::sync::LazyLock;
 use argparse::{ArgParser, DefaultParser, IntParser};
 use vexide_devices::{controller::ControllerId, peripherals::Peripherals, smart::SmartPort};
 
-use crate::registry::{ControllerGuard, ControllerRegistry, PortDevice, Registry, RegistryGuard};
+use crate::registry::{
+    ControllerGuard, ControllerRegistry, PortDevice, Registry, RegistryGuard, SmartRegistry,
+};
 
 pub struct Devices {
     pub primary_controller: ControllerRegistry,
     pub partner_controller: ControllerRegistry,
 
-    pub port_1: Registry,
-    pub port_2: Registry,
-    pub port_3: Registry,
-    pub port_4: Registry,
-    pub port_5: Registry,
-    pub port_6: Registry,
-    pub port_7: Registry,
-    pub port_8: Registry,
-    pub port_9: Registry,
-    pub port_10: Registry,
-    pub port_11: Registry,
-    pub port_12: Registry,
-    pub port_13: Registry,
-    pub port_14: Registry,
-    pub port_15: Registry,
-    pub port_16: Registry,
-    pub port_17: Registry,
-    pub port_18: Registry,
-    pub port_19: Registry,
-    pub port_20: Registry,
-    pub port_21: Registry,
+    pub port_1: SmartRegistry,
+    pub port_2: SmartRegistry,
+    pub port_3: SmartRegistry,
+    pub port_4: SmartRegistry,
+    pub port_5: SmartRegistry,
+    pub port_6: SmartRegistry,
+    pub port_7: SmartRegistry,
+    pub port_8: SmartRegistry,
+    pub port_9: SmartRegistry,
+    pub port_10: SmartRegistry,
+    pub port_11: SmartRegistry,
+    pub port_12: SmartRegistry,
+    pub port_13: SmartRegistry,
+    pub port_14: SmartRegistry,
+    pub port_15: SmartRegistry,
+    pub port_16: SmartRegistry,
+    pub port_17: SmartRegistry,
+    pub port_18: SmartRegistry,
+    pub port_19: SmartRegistry,
+    pub port_20: SmartRegistry,
+    pub port_21: SmartRegistry,
 }
 
 impl Devices {
@@ -62,7 +64,7 @@ impl Devices {
         })
     }
 
-    fn registry_by_port(&self, port: PortNumber) -> &Registry {
+    fn registry_by_port(&self, port: PortNumber) -> &SmartRegistry {
         match port.number() {
             1 => &self.port_1,
             2 => &self.port_2,
@@ -131,17 +133,17 @@ impl PortNumber {
 
 static REGISTRIES: LazyLock<Devices> = LazyLock::new(|| Devices::new().unwrap());
 
-pub fn lock_port<D, I>(port: PortNumber, init: I) -> RegistryGuard<'static, D>
+pub fn lock_port<D, I>(port: PortNumber, init: I) -> RegistryGuard<'static, SmartPort, D>
 where
-    D: PortDevice,
+    D: PortDevice<SmartPort>,
     I: FnOnce(SmartPort) -> D,
 {
     REGISTRIES.registry_by_port(port).lock(init)
 }
 
-pub fn lock_controller(id: ControllerId) -> ControllerGuard<'static> {
+pub fn lock_controller(id: ControllerId) -> ControllerGuard {
     match id {
-        ControllerId::Primary => REGISTRIES.primary_controller.lock(),
-        ControllerId::Partner => REGISTRIES.partner_controller.lock(),
+        ControllerId::Primary => REGISTRIES.primary_controller.lock(|c| c),
+        ControllerId::Partner => REGISTRIES.partner_controller.lock(|c| c),
     }
 }

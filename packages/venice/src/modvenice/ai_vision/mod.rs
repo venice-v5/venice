@@ -27,14 +27,14 @@ use crate::{
         },
         device_error,
     },
-    registry::RegistryGuard,
+    registry::SmartGuard,
 };
 
 #[class(qstr!(AiVisionSensor))]
 #[repr(C)]
 pub struct AiVisionSensorObj {
     base: ObjBase,
-    guard: RegistryGuard<'static, AiVisionSensor>,
+    guard: SmartGuard<AiVisionSensor>,
 }
 
 impl From<AiVisionObjectError> for Exception {
