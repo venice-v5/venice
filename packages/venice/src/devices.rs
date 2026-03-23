@@ -1,10 +1,13 @@
 use std::sync::LazyLock;
 
-use argparse::{ArgParser, DefaultParser, IntParser};
-use vexide_devices::{controller::ControllerId, peripherals::Peripherals, smart::SmartPort};
+use argparse::{ArgParser, DefaultParser, IntParser, ParseError, StrParser, error_msg};
+use vexide_devices::{
+    adi::AdiPort, controller::ControllerId, peripherals::Peripherals, smart::SmartPort,
+};
 
 use crate::registry::{
-    ControllerGuard, ControllerRegistry, PortDevice, Registry, RegistryGuard, SmartRegistry,
+    AdiRegistry, ControllerGuard, ControllerRegistry, PortDevice, Registry, RegistryGuard,
+    SmartRegistry,
 };
 
 pub struct Devices {
@@ -32,6 +35,15 @@ pub struct Devices {
     pub port_19: SmartRegistry,
     pub port_20: SmartRegistry,
     pub port_21: SmartRegistry,
+
+    pub adi_a: AdiRegistry,
+    pub adi_b: AdiRegistry,
+    pub adi_c: AdiRegistry,
+    pub adi_d: AdiRegistry,
+    pub adi_e: AdiRegistry,
+    pub adi_f: AdiRegistry,
+    pub adi_g: AdiRegistry,
+    pub adi_h: AdiRegistry,
 }
 
 impl Devices {
@@ -61,6 +73,15 @@ impl Devices {
             port_19: Registry::new(peris.port_19),
             port_20: Registry::new(peris.port_20),
             port_21: Registry::new(peris.port_21),
+
+            adi_a: AdiRegistry::new(peris.adi_a),
+            adi_b: AdiRegistry::new(peris.adi_b),
+            adi_c: AdiRegistry::new(peris.adi_c),
+            adi_d: AdiRegistry::new(peris.adi_d),
+            adi_e: AdiRegistry::new(peris.adi_e),
+            adi_f: AdiRegistry::new(peris.adi_f),
+            adi_g: AdiRegistry::new(peris.adi_g),
+            adi_h: AdiRegistry::new(peris.adi_h),
         })
     }
 
@@ -88,6 +109,19 @@ impl Devices {
             20 => &self.port_20,
             21 => &self.port_21,
             _ => unreachable!(),
+        }
+    }
+
+    fn adi_registry_by_port(&self, port: AdiPortNumber) -> &AdiRegistry {
+        match port {
+            AdiPortNumber::A => &self.adi_a,
+            AdiPortNumber::B => &self.adi_b,
+            AdiPortNumber::C => &self.adi_c,
+            AdiPortNumber::D => &self.adi_d,
+            AdiPortNumber::E => &self.adi_e,
+            AdiPortNumber::F => &self.adi_f,
+            AdiPortNumber::G => &self.adi_g,
+            AdiPortNumber::H => &self.adi_h,
         }
     }
 }
@@ -146,4 +180,60 @@ pub fn lock_controller(id: ControllerId) -> ControllerGuard {
         ControllerId::Primary => REGISTRIES.primary_controller.lock(|c| c),
         ControllerId::Partner => REGISTRIES.partner_controller.lock(|c| c),
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AdiPortNumber {
+    A,
+    B,
+    C,
+    D,
+    E,
+    F,
+    G,
+    H,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct AdiPortNumberParser;
+
+impl<'a> ArgParser<'a> for AdiPortNumberParser {
+    type Output = AdiPortNumber;
+
+    fn parse(&self, obj: &'a micropython_rs::obj::Obj) -> Result<Self::Output, ParseError> {
+        let str = StrParser.parse(obj)?;
+        if str.len() != 1 {
+            return Err(ParseError::ValueError {
+                mk_msg: Box::new(|arg| {
+                    error_msg!("{arg}: adi port must only consist of one letter ('a' through 'h')")
+                }),
+            });
+        }
+
+        Ok(match str.chars().next().unwrap().to_ascii_lowercase() {
+            'a' => AdiPortNumber::A,
+            'b' => AdiPortNumber::B,
+            'c' => AdiPortNumber::C,
+            'd' => AdiPortNumber::D,
+            'e' => AdiPortNumber::E,
+            'f' => AdiPortNumber::F,
+            'g' => AdiPortNumber::G,
+            'h' => AdiPortNumber::H,
+            _ => {
+                return Err(ParseError::ValueError {
+                    mk_msg: Box::new(|arg| {
+                        error_msg!("{arg}: adi port must be a letter from 'a' through 'h'")
+                    }),
+                });
+            }
+        })
+    }
+}
+
+impl DefaultParser<'_> for AdiPortNumber {
+    type Parser = AdiPortNumberParser;
+}
+
+pub fn lock_adi_port(port: AdiPortNumber) -> AdiPort {
+    REGISTRIES.adi_registry_by_port(port).lock()
 }

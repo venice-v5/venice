@@ -5,7 +5,7 @@ use std::{
 
 use micropython_rs::{except::value_error, init::token};
 use thiserror::Error;
-use vexide_devices::{controller::Controller, smart::SmartPort};
+use vexide_devices::{adi::AdiPort, controller::Controller, smart::SmartPort};
 
 pub trait PortDevice<P> {
     fn take_port(self) -> P;
@@ -238,3 +238,24 @@ impl PortDevice<Controller> for Controller {
 
 pub type ControllerRegistry = Registry<Controller>;
 pub type ControllerGuard = RegistryGuard<'static, Controller, Controller>;
+
+pub struct AdiRegistry {
+    port: Mutex<Option<AdiPort>>,
+}
+
+impl AdiRegistry {
+    pub const fn new(port: AdiPort) -> Self {
+        Self {
+            port: Mutex::new(Some(port)),
+        }
+    }
+
+    pub fn try_lock(&self) -> Result<AdiPort, DeviceOccupiedError> {
+        self.port.lock().unwrap().take().ok_or(DeviceOccupiedError)
+    }
+
+    pub fn lock(&self) -> AdiPort {
+        self.try_lock()
+            .unwrap_or_else(|_| value_error(c"adi port occupied").raise(token()))
+    }
+}
