@@ -1,3 +1,4 @@
+mod adi;
 mod ai_vision;
 mod competition;
 mod controller;
@@ -25,6 +26,7 @@ use micropython_rs::{
 use vexide_devices::smart::PortError;
 
 use crate::modvenice::{
+    adi::motor::AdiMotorObj,
     ai_vision::{
         AiVisionSensorObj, ai_vision_color::AiVisionColorObj,
         ai_vision_color_code::AiVisionColorCodeObj,
@@ -187,6 +189,9 @@ static mut venice_globals: Dict = Dict::new(const_map![
     // other devices
     qstr!(RotationSensor) => Obj::from_static(RotationSensorObj::OBJ_TYPE),
     qstr!(GpsSensor) => Obj::from_static(GpsSensorObj::OBJ_TYPE),
+
+    // adi
+    qstr!(AdiMotor) => Obj::from_static(AdiMotorObj::OBJ_TYPE),
 
     // async
     qstr!(EventLoop) => Obj::from_static(EventLoop::OBJ_TYPE),
