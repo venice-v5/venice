@@ -26,6 +26,7 @@ impl AdiMotorObj {
         args: &[Obj],
     ) -> Result<Self, Exception> {
         let mut reader = Args::new(n_pos, n_kw, args).reader();
+        reader.assert_npos(2, 2).assert_nkw(0, 0);
         let port = reader.next_positional_with(AdiPortParser)?;
         // TODO: should this be made optional? If so, what should be its default value?
         let slew = reader.next_positional()?;
