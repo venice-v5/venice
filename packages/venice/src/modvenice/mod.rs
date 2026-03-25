@@ -30,6 +30,7 @@ use vexide_devices::smart::{PortError, SmartDeviceType};
 
 use crate::modvenice::{
     adi::{
+        digital::{AdiDigitalInObj, AdiDigitalOutObj},
         gyroscope::{AdiGyroscopeFuture, AdiGyroscopeObj},
         motor::AdiMotorObj,
     },
@@ -222,6 +223,8 @@ static mut venice_globals: Dict = Dict::new(const_map![
     qstr!(AdiMotor) => Obj::from_static(AdiMotorObj::OBJ_TYPE),
     qstr!(AdiGyroscope) => Obj::from_static(AdiGyroscopeObj::OBJ_TYPE),
     qstr!(AdiGyroscopeFuture) => Obj::from_static(AdiGyroscopeFuture::OBJ_TYPE),
+    qstr!(AdiDigitalIn) => Obj::from_static(AdiDigitalInObj::OBJ_TYPE),
+    qstr!(AdiDigitalOut) => Obj::from_static(AdiDigitalOutObj::OBJ_TYPE),
 
     // vasyncio
     qstr!(vasyncio) => Obj::from_static(&Module::new(VASYNCIO_DICT)),
