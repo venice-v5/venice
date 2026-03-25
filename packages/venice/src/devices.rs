@@ -1,4 +1,7 @@
-use std::sync::LazyLock;
+use std::{
+    fmt::{Display, Write},
+    sync::LazyLock,
+};
 
 use argparse::{ArgParser, DefaultParser, IntParser, ParseError, StrParser, error_msg};
 use vexide_devices::{
@@ -6,8 +9,8 @@ use vexide_devices::{
 };
 
 use crate::registry::{
-    AdiRegistry, ControllerGuard, ControllerRegistry, PortDevice, Registry, RegistryGuard,
-    SmartRegistry,
+    AdiRegistry, ControllerGuard, ControllerRegistry, DeviceOccupiedError, PortDevice, Registry,
+    RegistryGuard, SmartRegistry,
 };
 
 pub struct Devices {
@@ -194,6 +197,21 @@ pub enum AdiPortNumber {
     H,
 }
 
+impl Display for AdiPortNumber {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::A => f.write_char('a'),
+            Self::B => f.write_char('b'),
+            Self::C => f.write_char('c'),
+            Self::D => f.write_char('d'),
+            Self::E => f.write_char('e'),
+            Self::F => f.write_char('f'),
+            Self::G => f.write_char('g'),
+            Self::H => f.write_char('h'),
+        }
+    }
+}
+
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct AdiPortNumberParser;
 
@@ -234,6 +252,6 @@ impl DefaultParser<'_> for AdiPortNumber {
     type Parser = AdiPortNumberParser;
 }
 
-pub fn lock_adi_port(port: AdiPortNumber) -> AdiPort {
-    REGISTRIES.adi_registry_by_port(port).lock()
+pub fn try_lock_adi_port(port: AdiPortNumber) -> Result<AdiPort, DeviceOccupiedError> {
+    REGISTRIES.adi_registry_by_port(port).try_lock()
 }

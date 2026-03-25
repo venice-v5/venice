@@ -7,7 +7,7 @@ use micropython_rs::{
 };
 use vexide_devices::adi::digital::{AdiDigitalIn, AdiDigitalOut, LogicLevel};
 
-use crate::{devices, modvenice::Exception};
+use crate::modvenice::{Exception, adi::expander::AdiPortParser};
 
 #[class(qstr!(AdiDigitalIn))]
 #[repr(C)]
@@ -49,10 +49,10 @@ impl AdiDigitalInObj {
         let mut reader = Args::new(n_pos, n_kw, args).reader();
         reader.assert_npos(1, 1).assert_nkw(0, 0);
 
-        let port = reader.next_positional()?;
+        let port = reader.next_positional_with(AdiPortParser)?;
         Ok(Self {
             base: ty.into(),
-            r#in: AdiDigitalIn::new(devices::lock_adi_port(port)),
+            r#in: AdiDigitalIn::new(port),
         })
     }
 
@@ -84,7 +84,7 @@ impl AdiDigitalOutObj {
         let mut reader = Args::new(n_pos, n_kw, args).reader();
         reader.assert_npos(1, 1).assert_nkw(0, 0);
 
-        let port_number = reader.next_positional()?;
+        let port = reader.next_positional_with(AdiPortParser)?;
         let initial_level = match reader.next_positional::<bool>() {
             Ok(v) => Some(v),
             Err(e) => match e {
@@ -93,7 +93,6 @@ impl AdiDigitalOutObj {
             },
         };
 
-        let port = devices::lock_adi_port(port_number);
         let out = match initial_level {
             Some(level) => AdiDigitalOut::with_initial_level(port, bool_to_level(level)),
             None => AdiDigitalOut::new(port),

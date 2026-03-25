@@ -13,15 +13,12 @@ use vexide_devices::adi::{
     gyroscope::{AdiGyroscope, YawError},
 };
 
-use crate::{
-    devices,
-    modvenice::{
-        Exception,
-        adi::{adi_port_index, validate_expander},
-        device_error, device_handle,
-        units::{rotation::RotationUnitObj, time::TimeUnitObj},
-        vasyncio::event_loop::WAKE_SIGNAL,
-    },
+use crate::modvenice::{
+    Exception,
+    adi::{adi_port_index, expander::AdiPortParser, validate_expander},
+    device_error, device_handle,
+    units::{rotation::RotationUnitObj, time::TimeUnitObj},
+    vasyncio::event_loop::WAKE_SIGNAL,
 };
 
 #[class(qstr!(AdiGyroscope))]
@@ -67,11 +64,11 @@ impl AdiGyroscopeObj {
         let mut reader = Args::new(n_pos, n_kw, args).reader();
         reader.assert_npos(1, 1).assert_nkw(0, 0);
 
-        let port = reader.next_positional()?;
+        let port = reader.next_positional_with(AdiPortParser)?;
 
         Ok(Self {
             base: ty.into(),
-            gyro: RefCell::new(AdiGyroscope::new(devices::lock_adi_port(port))),
+            gyro: RefCell::new(AdiGyroscope::new(port)),
         })
     }
 

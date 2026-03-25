@@ -1,5 +1,6 @@
 use std::{
     cell::{Ref, RefCell, RefMut},
+    mem::forget,
     sync::{Mutex, MutexGuard},
 };
 
@@ -139,6 +140,17 @@ where
                 device: upgrade.device,
                 guard: upgrade.guard,
             })),
+        }
+    }
+
+    pub fn take(&self) -> Result<D, DeviceFreedError> {
+        let guard = self.guard.replace(None);
+        match guard {
+            Some(guard) => {
+                forget(guard.guard);
+                Ok(guard.device)
+            }
+            None => Err(DeviceFreedError),
         }
     }
 
