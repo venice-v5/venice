@@ -7,7 +7,7 @@ use micropython_rs::{
     init::token,
     obj::{Obj, ObjBase, ObjTrait, ObjType},
 };
-use vex_sdk::{V5_DeviceT, vexDeviceGetByIndex, vexDeviceImuReset, vexDeviceImuStatusGet};
+use vex_sdk::{vexDeviceImuReset, vexDeviceImuStatusGet};
 use vexide_devices::smart::{
     SmartDevice,
     imu::{InertialError, InertialOrientation, InertialSensor, InertialStatus},
@@ -16,8 +16,9 @@ use vexide_devices::smart::{
 use crate::{
     devices::{self},
     modvenice::{
-        Exception, device_error,
+        Exception, device_error, device_handle,
         math::{EulerAngles, Quaternion, Vec3},
+        smart_port_index,
         units::{rotation::RotationUnitObj, time::TimeUnitObj},
         vasyncio::{event_loop::WAKE_SIGNAL, time32},
     },
@@ -210,14 +211,6 @@ pub enum CalibrateFutureState {
         timestamp: time32::Instant,
         phase: CalibrationPhase,
     },
-}
-
-fn smart_port_index(n: u8) -> u32 {
-    (n - 1) as u32
-}
-
-unsafe fn device_handle(index: u32) -> V5_DeviceT {
-    unsafe { vexDeviceGetByIndex(index) }
 }
 
 #[class_methods]

@@ -23,10 +23,16 @@ use micropython_rs::{
     map::Dict,
     obj::{Obj, ObjTrait},
 };
-use vexide_devices::smart::PortError;
+use vex_sdk::{
+    V5_DeviceT, V5_DeviceType, V5_MAX_DEVICE_PORTS, vexDeviceGetByIndex, vexDeviceGetStatus,
+};
+use vexide_devices::smart::{PortError, SmartDeviceType};
 
 use crate::modvenice::{
-    adi::motor::AdiMotorObj,
+    adi::{
+        gyroscope::{AdiGyroscopeFuture, AdiGyroscopeObj},
+        motor::AdiMotorObj,
+    },
     ai_vision::{
         AiVisionSensorObj, ai_vision_color::AiVisionColorObj,
         ai_vision_color_code::AiVisionColorCodeObj,
@@ -117,20 +123,45 @@ pub fn device_error(msg: impl Into<Message>) -> Exception {
     Exception::new(&DEVICE_ERROR_TYPE, msg)
 }
 
-// pub fn raise_device_error(token: InitToken, msg: impl AsRef<CStr>) -> ! {
-//     raise_msg(token, &DEVICE_ERROR_TYPE, msg)
-// }
+fn smart_port_index(n: u8) -> u32 {
+    (n - 1) as u32
+}
 
-// macro_rules! raise_port_error {
-//     ($e:expr) => {
-//         $crate::modvenice::raise_device_error(
-//             ::micropython_rs::init::token(),
-//             ::argparse::error_msg!("{}", $e),
-//         )
-//     };
-// }
+unsafe fn device_handle(index: u32) -> V5_DeviceT {
+    unsafe { vexDeviceGetByIndex(index) }
+}
 
-// pub(crate) use raise_port_error;
+/// Verify that the device type is currently plugged into this port.
+///
+/// This function provides the internal implementations of [`SmartDevice::validate_port`],
+/// [`SmartPort::validate_type`], and [`AdiPort::validate_expander`].
+fn validate_port(number: u8, device_type: SmartDeviceType) -> Result<(), PortError> {
+    let mut device_types: [V5_DeviceType; V5_MAX_DEVICE_PORTS] = unsafe { core::mem::zeroed() };
+    unsafe {
+        vexDeviceGetStatus(device_types.as_mut_ptr());
+    }
+
+    let connected_type: Option<SmartDeviceType> = match device_types[(number - 1) as usize] {
+        V5_DeviceType::kDeviceTypeNoSensor => None,
+        raw_type => Some(raw_type.into()),
+    };
+
+    if let Some(connected_type) = connected_type {
+        // The connected device must match the requested type.
+        if connected_type != device_type {
+            return Err(PortError::IncorrectDevice {
+                expected: device_type,
+                actual: connected_type,
+                port: number,
+            });
+        }
+    } else {
+        // No device is plugged into the port.
+        return Err(PortError::Disconnected { port: number });
+    }
+
+    Ok(())
+}
 
 #[unsafe(no_mangle)]
 #[allow(non_upper_case_globals)]
@@ -192,6 +223,8 @@ static mut venice_globals: Dict = Dict::new(const_map![
 
     // adi
     qstr!(AdiMotor) => Obj::from_static(AdiMotorObj::OBJ_TYPE),
+    qstr!(AdiGyroscope) => Obj::from_static(AdiGyroscopeObj::OBJ_TYPE),
+    qstr!(AdiGyroscopeFuture) => Obj::from_static(AdiGyroscopeFuture::OBJ_TYPE),
 
     // async
     qstr!(EventLoop) => Obj::from_static(EventLoop::OBJ_TYPE),
