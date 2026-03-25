@@ -18,9 +18,9 @@ use argparse::{KeywordError, PositionalError, error_msg};
 use micropython_rs::{
     const_map,
     except::{EXCEPTION_TYPE, ExceptionType, Message},
-    fun::{Fun0, Fun1},
     init::InitToken,
     map::Dict,
+    module::Module,
     obj::{Obj, ObjTrait},
 };
 use vex_sdk::{
@@ -61,10 +61,7 @@ use crate::modvenice::{
     rotation_sensor::RotationSensorObj,
     serial::{SerialPortObj, SerialPortOpenFutureObj},
     units::{rotation::RotationUnitObj, time::TimeUnitObj},
-    vasyncio::{
-        event_loop::{EventLoop, vasyncio_get_running_loop, vasyncio_run, vasyncio_spawn},
-        sleep::Sleep,
-    },
+    vasyncio::VASYNCIO_DICT,
     vision::{
         VisionSensorObj, code::VisionCodeObj, led_mode::LedModeObj, mode::VisionModeObj,
         object::VisionObjectObj, signature::VisionSignatureObj, source::DetectionSourceObj,
@@ -226,12 +223,8 @@ static mut venice_globals: Dict = Dict::new(const_map![
     qstr!(AdiGyroscope) => Obj::from_static(AdiGyroscopeObj::OBJ_TYPE),
     qstr!(AdiGyroscopeFuture) => Obj::from_static(AdiGyroscopeFuture::OBJ_TYPE),
 
-    // async
-    qstr!(EventLoop) => Obj::from_static(EventLoop::OBJ_TYPE),
-    qstr!(Sleep) => Obj::from_static(Sleep::OBJ_TYPE),
-    qstr!(get_running_loop) => Obj::from_static(&Fun0::new(vasyncio_get_running_loop)),
-    qstr!(run) => Obj::from_static(&Fun1::new(vasyncio_run)),
-    qstr!(spawn) => Obj::from_static(&Fun1::new(vasyncio_spawn)),
+    // vasyncio
+    qstr!(vasyncio) => Obj::from_static(&Module::new(VASYNCIO_DICT)),
 
     // math
     qstr!(Vec3) => Obj::from_static(Vec3::OBJ_TYPE),
