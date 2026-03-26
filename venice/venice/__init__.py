@@ -737,6 +737,98 @@ class InertialSensor:
         ...
 
 
+class RotationSensor:
+    """A rotation sensor plugged into a Smart Port.
+
+    This class provides an interface to interact with the VEX V5 Rotation Sensor, which measures
+    the absolute position, rotation count, and angular velocity of a rotating shaft.
+
+    ## Hardware Overview
+
+    The sensor provides absolute rotational position tracking from 0° to 360° with 0.088°
+    accuracy. The sensor is comprised of two magnets which utilize the [Hall Effect] to indicate
+    angular position. A chip inside the rotation sensor then keeps track of the total rotations of
+    the sensor to determine total position traveled.
+
+    Position is reported by VEXos in centidegrees before being converted to the requested rotation
+    unit.
+
+    The absolute angle reading is preserved across power cycles, while the position count stores
+    the cumulative forward and reverse revolutions relative to program start. However, the position
+    reading will be reset if the sensor loses power. Angular velocity is measured in degrees per
+    second.
+
+    Like all other Smart devices, VEXos will process sensor updates every 10mS.
+
+    [Hall Effect]: https://en.wikipedia.org/wiki/Hall_effect_sensor
+    """
+
+    MIN_DATA_INTERVAL_MS: ClassVar[int]
+    """The minimum data rate that can be set, in milliseconds."""
+
+    TICKS_PER_REVOLUTION: ClassVar[int]
+    """The amount of unique sensor readings per one revolution of the sensor."""
+
+    def __init__(self, port: int, direction: Direction = Direction.FORWARD) -> None:
+        """Create a new rotation sensor on the given port.
+
+        `port` must be between 1 and 21.
+        """
+        ...
+
+    def get_angle(self, unit: RotationUnit) -> float:
+        """Return the absolute angle of rotation measured by the sensor.
+
+        This value is reported from 0 to 360 degrees, converted to the requested unit.
+        """
+        ...
+
+    def get_position(self, unit: RotationUnit) -> float:
+        """Return the total accumulated rotation of the sensor over time."""
+        ...
+
+    def set_position(self, position: float, unit: RotationUnit) -> None:
+        """Set the sensor's position reading."""
+        ...
+
+    def get_velocity(self) -> float:
+        """Return the sensor's current velocity in degrees per second."""
+        ...
+
+    def reset_position(self) -> None:
+        """Reset the sensor's position reading to zero."""
+        ...
+
+    def set_direction(self, direction: Direction) -> None:
+        """Set the sensor to operate in a given `Direction`.
+
+        This determines which way the sensor considers to be forwards.
+        """
+        ...
+
+    def get_direction(self) -> Direction:
+        """Return the `Direction` of this sensor."""
+        ...
+
+    def get_status(self) -> int:
+        """Return the sensor's internal status code as a bitfield."""
+        ...
+
+    def set_data_interval(self, interval: float, unit: TimeUnit) -> None:
+        """Set the internal computation speed of the rotation sensor.
+
+        This does not change the rate at which user code can read data from the sensor.
+        """
+        ...
+
+    def free(self) -> None:
+        """Release this rotation sensor and free its Smart Port lock."""
+        ...
+
+
+RotationSensor.MIN_DATA_INTERVAL_MS = 5
+RotationSensor.TICKS_PER_REVOLUTION = 36000
+
 ###########################################
 # Binary file provider                    #
 # Stuff for the CLI. DO NOT use in user   #
