@@ -2,6 +2,7 @@ use vexide_devices::smart::{PortError, SmartDeviceType};
 
 use crate::modvenice::validate_port;
 
+pub mod analog;
 pub mod digital;
 pub mod encoder;
 pub mod expander;
