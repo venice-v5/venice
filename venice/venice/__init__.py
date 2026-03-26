@@ -480,6 +480,79 @@ def spawn(coro: Awaitable[_T]) -> Task[_T]:
     ...
 
 
+class Vec3:
+    """A mutable three-dimensional vector.
+
+    This type stores `x`, `y`, and `z` components as floats.
+    """
+
+    x: float
+    """The x component."""
+
+    y: float
+    """The y component."""
+
+    z: float
+    """The z component."""
+
+    def __new__(cls) -> Never:
+        """`Vec3` values are returned by Venice APIs and cannot be constructed directly."""
+        ...
+
+
+class Quaternion:
+    """A mutable quaternion.
+
+    This type stores the vector components `x`, `y`, `z` and the scalar component `w`.
+    """
+
+    x: float
+    """The x component."""
+
+    y: float
+    """The y component."""
+
+    z: float
+    """The z component."""
+
+    w: float
+    """The scalar component."""
+
+    def __new__(cls) -> Never:
+        """`Quaternion` values are returned by Venice APIs and cannot be constructed directly."""
+        ...
+
+
+class EulerAngles:
+    """Mutable Euler angles.
+
+    This type stores `yaw`, `pitch`, and `roll` as floats. The same values are also available
+    through the aliases `z`, `y`, and `x`, respectively.
+    """
+
+    yaw: float
+    """The yaw component, also available as `z`."""
+
+    pitch: float
+    """The pitch component, also available as `y`."""
+
+    roll: float
+    """The roll component, also available as `x`."""
+
+    x: float
+    """Alias for `roll`."""
+
+    y: float
+    """Alias for `pitch`."""
+
+    z: float
+    """Alias for `yaw`."""
+
+    def __new__(cls) -> Never:
+        """`EulerAngles` values are returned by Venice APIs and cannot be constructed directly."""
+        ...
+
+
 ###########################################
 # Binary file provider                    #
 # Stuff for the CLI. DO NOT use in user   #
