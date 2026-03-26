@@ -26,8 +26,8 @@ qstr!(AiVisionModelObject) => Obj::from_static(ai_vision_object::Model::OBJ_TYPE
 qstr!(Competition) => Obj::from_static(Competition::OBJ_TYPE),
 qstr!(CompetitionRuntime) => Obj::from_static(CompetitionRuntime::OBJ_TYPE),
 // imu
-qstr!(InertialSensor) => Obj::from_static(InertialSensorObj::OBJ_TYPE),
-qstr!(InertialOrientation) => Obj::from_static(InertialOrientationObj::OBJ_TYPE),
+[DONE] qstr!(InertialSensor) => Obj::from_static(InertialSensorObj::OBJ_TYPE),
+[DONE] qstr!(InertialOrientation) => Obj::from_static(InertialOrientationObj::OBJ_TYPE),
 // optical
 qstr!(OpticalSensor) => Obj::from_static(OpticalSensorObj::OBJ_TYPE),
 qstr!(OpticalRgb) => Obj::from_static(OpticalRgbObj::OBJ_TYPE),
@@ -47,20 +47,20 @@ qstr!(VisionSignature) => Obj::from_static(VisionSignatureObj::OBJ_TYPE),
 qstr!(DetectionSource) => Obj::from_static(DetectionSourceObj::OBJ_TYPE),
 qstr!(WhiteBalance) => Obj::from_static(WhiteBalanceObj::OBJ_TYPE),
 // other devices
-qstr!(RotationSensor) => Obj::from_static(RotationSensorObj::OBJ_TYPE),
+[DONE] qstr!(RotationSensor) => Obj::from_static(RotationSensorObj::OBJ_TYPE),
 
 // async
-qstr!(EventLoop) => Obj::from_static(EventLoop::OBJ_TYPE),
-qstr!(Sleep) => Obj::from_static(Sleep::OBJ_TYPE),
-qstr!(get_running_loop) => Obj::from_static(&Fun0::new(vasyncio_get_running_loop)),
-qstr!(run) => Obj::from_static(&Fun1::new(vasyncio_run)),
-qstr!(spawn) => Obj::from_static(&Fun1::new(vasyncio_spawn)),
+[DONE] qstr!(EventLoop) => Obj::from_static(EventLoop::OBJ_TYPE),
+[DONE] qstr!(Sleep) => Obj::from_static(Sleep::OBJ_TYPE),
+[DONE] qstr!(get_running_loop) => Obj::from_static(&Fun0::new(vasyncio_get_running_loop)),
+[DONE] qstr!(run) => Obj::from_static(&Fun1::new(vasyncio_run)),
+[DONE] qstr!(spawn) => Obj::from_static(&Fun1::new(vasyncio_spawn)),
 
 // math
-qstr!(Vec3) => Obj::from_static(Vec3::OBJ_TYPE),
-qstr!(Quaternion) => Obj::from_static(Quaternion::OBJ_TYPE),
-qstr!(EulerAngles) => Obj::from_static(EulerAngles::OBJ_TYPE),
+[DONE] qstr!(Vec3) => Obj::from_static(Vec3::OBJ_TYPE),
+[DONE] qstr!(Quaternion) => Obj::from_static(Quaternion::OBJ_TYPE),
+[DONE] qstr!(EulerAngles) => Obj::from_static(EulerAngles::OBJ_TYPE),
 
 // units
-qstr!(RotationUnit) => Obj::from_static(RotationUnitObj::OBJ_TYPE),
-qstr!(TimeUnit) => Obj::from_static(TimeUnitObj::OBJ_TYPE)
+[DONE] qstr!(RotationUnit) => Obj::from_static(RotationUnitObj::OBJ_TYPE),
+[DONE] qstr!(TimeUnit) => Obj::from_static(TimeUnitObj::OBJ_TYPE)
