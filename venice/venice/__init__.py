@@ -553,6 +553,190 @@ class EulerAngles:
         ...
 
 
+class InertialOrientation:
+    """Represents one of six possible physical IMU orientations relative to the earth's center of gravity."""
+
+    X_DOWN: ClassVar['InertialOrientation']
+    """X-axis facing down."""
+
+    X_UP: ClassVar['InertialOrientation']
+    """X-axis facing up."""
+
+    Y_DOWN: ClassVar['InertialOrientation']
+    """Y-axis facing down."""
+
+    Y_UP: ClassVar['InertialOrientation']
+    """Y-axis facing up."""
+
+    Z_DOWN: ClassVar['InertialOrientation']
+    """Z-axis facing down (VEX logo facing up)."""
+
+    Z_UP: ClassVar['InertialOrientation']
+    """Z-axis facing up (VEX logo facing down)."""
+
+
+InertialOrientation.X_DOWN = InertialOrientation()
+InertialOrientation.X_UP = InertialOrientation()
+InertialOrientation.Y_DOWN = InertialOrientation()
+InertialOrientation.Y_UP = InertialOrientation()
+InertialOrientation.Z_DOWN = InertialOrientation()
+InertialOrientation.Z_UP = InertialOrientation()
+
+
+class CalibrateFuture:
+    """An awaitable calibration operation for an inertial sensor.
+
+    This object is returned by `InertialSensor.calibrate`. Awaiting it waits for calibration to
+    begin and then finish, or raises an error if calibration times out.
+    """
+
+    def __iter__(self) -> 'CalibrateFuture':
+        """Await this calibration operation until it completes."""
+        ...
+
+
+class InertialSensor:
+    """An inertial sensor (IMU) plugged into a Smart Port.
+
+    This class provides an interface to interact with the V5 Inertial Sensor, which combines a
+    3-axis accelerometer and 3-axis gyroscope for precise motion tracking and navigation
+    capabilities.
+
+    ## Hardware Overview
+
+    The IMU's integrated accelerometer measures linear acceleration along three axes:
+    - X-axis: Forward/backward motion
+    - Y-axis: Side-to-side motion
+    - Z-axis: Vertical motion
+
+    These accelerometer readings include the effect of gravity, which can be useful for determining
+    the sensor's orientation relative to the ground.
+
+    The IMU also has a gyroscope that measures rotational velocity and position on three axes:
+    - Roll: Rotation around X-axis
+    - Pitch: Rotation around Y-axis
+    - Yaw: Rotation around Z-axis
+
+    Like all other Smart devices, VEXos will process sensor updates every 10mS.
+
+    ## Coordinate System
+
+    The IMU uses a NED (North-East-Down) right-handed coordinate system:
+    - X-axis: Positive towards the front of the robot (North)
+    - Y-axis: Positive towards the right of the robot (East)
+    - Z-axis: Positive downwards (towards the ground)
+
+    This NED convention means that when the robot is on a flat surface:
+    - The Z acceleration will read approximately +9.81 m/s² (gravity)
+    - Positive roll represents clockwise rotation around the X-axis (when looking North)
+    - Positive pitch represents nose-down rotation around the Y-axis
+    - Positive yaw represents clockwise rotation around the Z-axis (when viewed from above)
+
+    ## Calibration & Mounting Considerations
+
+    The IMU requires a calibration period to establish its reference frame in one of six possible
+    orientations, described by `InertialOrientation`. The sensor must be mounted flat in one of
+    these orientations. Readings will be unpredictable if the IMU is mounted at an angle or was
+    moving or disturbed during calibration.
+
+    In addition, physical pressure on the sensor's housing or static electricity can cause issues
+    with the onboard gyroscope, so pressure-mounting the IMU or placing the IMU low to the ground
+    is undesirable.
+
+    ## Disconnect Behavior
+
+    If the IMU loses power due to a disconnect, even momentarily, all calibration data will be lost
+    and VEXos will re-initiate calibration automatically. The robot cannot be moving when this
+    occurs due to the aforementioned unpredictable behavior. As such, it is vital that the IMU
+    maintain a stable connection to the Brain and voltage supply during operation.
+    """
+
+    def __init__(self, port: int) -> None:
+        """Create a new inertial sensor.
+
+        This sensor must be calibrated using `InertialSensor.calibrate` before any meaningful data
+        can be read from it.
+        """
+        ...
+
+    def calibrate(self) -> CalibrateFuture:
+        """Calibrate the IMU.
+
+        Await the returned `CalibrateFuture` to wait until calibration has finished or timed out.
+        The sensor must remain still during calibration.
+        """
+        ...
+
+    def get_heading(self, unit: RotationUnit) -> float:
+        """Return the sensor's yaw angle bounded to the range `[0.0, 360.0)` in the given unit."""
+        ...
+
+    def set_heading(self, heading: float, unit: RotationUnit) -> None:
+        """Set the current heading reading to the given value.
+
+        This only affects the value returned by `InertialSensor.get_heading`.
+        """
+        ...
+
+    def reset_heading(self) -> None:
+        """Reset the current heading reading to zero."""
+        ...
+
+    def get_rotation(self, unit: RotationUnit) -> float:
+        """Return the total amount the sensor has rotated about the z-axis in the given unit."""
+        ...
+
+    def set_rotation(self, rotation: float, unit: RotationUnit) -> None:
+        """Set the current rotation reading to the given value.
+
+        This only affects the value returned by `InertialSensor.get_rotation`.
+        """
+        ...
+
+    def reset_rotation(self) -> None:
+        """Reset the current rotation reading to zero."""
+        ...
+
+    def get_euler(self, unit: RotationUnit) -> EulerAngles:
+        """Return Euler angles representing the inertial sensor's orientation.
+
+        The returned values are normalized to half a turn, meaning they range from (-180°, 180°]
+        in degree-based units.
+        """
+        ...
+
+    def get_quaternion(self) -> Quaternion:
+        """Return a quaternion representing the inertial sensor's current orientation."""
+        ...
+
+    def get_gyro_rate(self) -> Vec3:
+        """Return the sensor's raw gyroscope readings in degrees per second."""
+        ...
+
+    def get_acceleration(self) -> Vec3:
+        """Return the sensor's raw acceleration readings in g."""
+        ...
+
+    def is_calibrating(self) -> bool:
+        """Return `True` if the sensor is currently calibrating."""
+        ...
+
+    def is_auto_calibrated(self) -> bool:
+        """Return `True` if the sensor was calibrated using auto-calibration."""
+        ...
+
+    def get_physical_orientation(self) -> InertialOrientation:
+        """Return the physical orientation of the sensor as measured during calibration."""
+        ...
+
+    def set_data_interval(self, interval: float, unit: TimeUnit) -> None:
+        """Set the internal computation speed of the IMU.
+
+        This does not change the rate at which user code can read data from the IMU.
+        """
+        ...
+
+
 ###########################################
 # Binary file provider                    #
 # Stuff for the CLI. DO NOT use in user   #
