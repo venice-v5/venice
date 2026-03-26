@@ -7,6 +7,7 @@ pub mod encoder;
 pub mod expander;
 pub mod gyroscope;
 pub mod motor;
+pub mod pwm;
 
 const INTERNAL_ADI_PORT_NUMBER: u8 = 22;
 
