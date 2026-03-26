@@ -10,21 +10,21 @@ use crate::obj::alloc_obj;
 #[class(qstr!(ControllerState))]
 #[repr(C)]
 pub struct ControllerStateObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
     state: ControllerState,
 }
 
 #[class(qstr!(ButtonState))]
 #[repr(C)]
 pub struct ButtonStateObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
     state: ButtonState,
 }
 
 #[class(qstr!(JoystickState))]
 #[repr(C)]
 pub struct JoystickStateObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
     state: JoystickState,
 }
 

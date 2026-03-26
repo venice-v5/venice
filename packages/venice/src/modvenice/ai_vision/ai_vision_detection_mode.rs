@@ -1,7 +1,7 @@
 use argparse::{ArgType, error_msg};
 use micropython_rs::{
     class, class_methods,
-    except::raise_type_error,
+    except::type_error,
     init::token,
     obj::{Obj, ObjBase, ObjTrait},
     ops::BinaryOp,
@@ -13,7 +13,7 @@ use crate::obj::alloc_obj;
 #[class(qstr!(AiVisionDetectionMode))]
 #[repr(C)]
 pub struct AiVisionDetectionModeObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
     mode: AiVisionDetectionMode,
 }
 
@@ -49,25 +49,21 @@ impl AiVisionDetectionModeObj {
         let lhs = obj_1
             .try_as_obj::<AiVisionDetectionModeObj>()
             .unwrap_or_else(|| {
-                raise_type_error(
-                    token(),
-                    error_msg!(
-                        "expected <AiVisionFlags> for argument #1, found <{}>",
-                        ArgType::of(&obj_1)
-                    ),
-                )
+                type_error(error_msg!(
+                    "expected <AiVisionFlags> for argument #1, found <{}>",
+                    ArgType::of(&obj_1)
+                ))
+                .raise(token())
             })
             .mode;
         let rhs = obj_2
             .try_as_obj::<AiVisionDetectionModeObj>()
             .unwrap_or_else(|| {
-                raise_type_error(
-                    token(),
-                    error_msg!(
-                        "expected <AiVisionFlags> for argument #2, found <{}>",
-                        ArgType::of(&obj_2)
-                    ),
-                )
+                type_error(error_msg!(
+                    "expected <AiVisionFlags> for argument #2, found <{}>",
+                    ArgType::of(&obj_2)
+                ))
+                .raise(token())
             })
             .mode;
         alloc_obj(AiVisionDetectionModeObj::new(lhs.union(rhs)))

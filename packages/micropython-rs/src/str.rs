@@ -7,7 +7,7 @@ unsafe extern "C" {
 /// From: `py/objstr.h`
 #[repr(C)]
 pub struct Str {
-    base: ObjBase<'static>,
+    base: ObjBase,
     hash: usize,
     len: usize,
     data: *const u8,

@@ -1,6 +1,6 @@
-use std::{ffi::CStr, fmt::Write, ptr::copy_nonoverlapping};
+use std::{ffi::CStr, fmt::Write};
 
-use micropython_rs::{gc, init::token};
+use micropython_rs::{except::Message, init::token};
 
 pub const STACK_BUF_SIZE: usize = 128;
 pub const USABLE_STACK_BUF_SIZE: usize = STACK_BUF_SIZE - 1;
@@ -15,10 +15,6 @@ pub struct MessageWriter {
     pos: usize,
 }
 
-pub struct Message {
-    ptr: *mut u8,
-}
-
 impl MessageWriter {
     pub fn new() -> Self {
         Self {
@@ -29,25 +25,14 @@ impl MessageWriter {
 
     pub fn finish(self) -> Message {
         let size = self.pos + 1;
-        let token = token();
-        let mem = unsafe { gc::alloc(token, size, false) };
 
         let src = match &self.buf {
             Buffer::Heap(v) => &v[..size],
             Buffer::Stack(a) => &a[..size],
         };
+        let cstr = unsafe { CStr::from_bytes_with_nul_unchecked(src) };
 
-        unsafe {
-            copy_nonoverlapping(src.as_ptr(), mem, size);
-        }
-
-        Message { ptr: mem }
-    }
-}
-
-impl AsRef<CStr> for Message {
-    fn as_ref(&self) -> &CStr {
-        unsafe { CStr::from_ptr(self.ptr) }
+        Message::from_cstr(cstr, token()).unwrap()
     }
 }
 
@@ -90,7 +75,7 @@ impl Write for MessageWriter {
 macro_rules! error_msg {
     ($($arg:tt)*) => {{
         use ::std::fmt::Write;
-        let mut writer = $crate::error_msg::MessageWriter::new();
+        let mut writer = $crate::MessageWriter::new();
         // Write implementation always returns Ok, no need to check
         let _ = write!(writer, $($arg)*);
         writer.finish()

@@ -24,7 +24,7 @@ macro_rules! define_fixed_fun_type {
     ($name:ident, $fn_type:ty, $mp_type_name:ident) => {
         #[repr(C)]
         pub struct $name {
-            base: ObjBase<'static>,
+            base: ObjBase,
             fun: $fn_type,
         }
 
@@ -67,7 +67,7 @@ macro_rules! define_var_fun_type {
     ($name:ident, $ty:ty) => {
         #[repr(C)]
         pub struct $name {
-            base: ObjBase<'static>,
+            base: ObjBase,
             sig: FunSig,
             fun: $ty,
         }
@@ -140,7 +140,7 @@ macro_rules! define_static_method_type {
     ($name:ident, $mp_ty:ident) => {
         #[repr(C)]
         pub struct $name {
-            base: ObjBase<'static>,
+            base: ObjBase,
             f_obj: Obj,
         }
 

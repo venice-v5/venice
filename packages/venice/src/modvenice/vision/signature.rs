@@ -1,16 +1,17 @@
 use argparse::Args;
 use micropython_rs::{
     class, class_methods,
-    init::token,
     obj::{AttrOp, Obj, ObjBase, ObjTrait, ObjType},
     qstr::Qstr,
 };
 use vexide_devices::smart::vision::VisionSignature;
 
+use crate::modvenice::Exception;
+
 #[class(qstr!(VisionSignature))]
 #[repr(C)]
 pub struct VisionSignatureObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
     signature: VisionSignature,
 }
 
@@ -19,7 +20,7 @@ impl VisionSignatureObj {
     pub fn new(signature: VisionSignature) -> Self {
         Self {
             signature,
-            base: ObjBase::new(Self::OBJ_TYPE),
+            base: Self::OBJ_TYPE.into(),
         }
     }
 
@@ -28,24 +29,29 @@ impl VisionSignatureObj {
     }
 
     #[make_new]
-    fn make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Self {
-        let mut reader = Args::new(n_pos, n_kw, args).reader(token());
+    fn make_new(
+        ty: &'static ObjType,
+        n_pos: usize,
+        n_kw: usize,
+        args: &[Obj],
+    ) -> Result<Self, Exception> {
+        let mut reader = Args::new(n_pos, n_kw, args).reader();
         reader.assert_npos(7, 7).assert_nkw(0, 0);
 
-        let u_min = reader.next_positional();
-        let u_max = reader.next_positional();
-        let u_mean = reader.next_positional();
+        let u_min = reader.next_positional()?;
+        let u_max = reader.next_positional()?;
+        let u_mean = reader.next_positional()?;
 
-        let v_min = reader.next_positional();
-        let v_max = reader.next_positional();
-        let v_mean = reader.next_positional();
+        let v_min = reader.next_positional()?;
+        let v_max = reader.next_positional()?;
+        let v_mean = reader.next_positional()?;
 
-        let range = reader.next_positional();
+        let range = reader.next_positional()?;
 
-        Self {
+        Ok(Self {
             base: ObjBase::new(ty),
             signature: VisionSignature::new((u_min, u_max, u_mean), (v_min, v_max, v_mean), range),
-        }
+        })
     }
 
     #[attr]

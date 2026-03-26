@@ -1,12 +1,12 @@
 pub mod id;
 pub mod state;
 
-use std::{cell::RefCell, ffi::CStr, ops::RangeInclusive};
+use std::cell::RefCell;
 
-use argparse::{Args, error_msg};
+use argparse::{ArgParser, Args, DefaultParser, IntParser, error_msg};
 use micropython_rs::{
     class, class_methods,
-    except::{raise_stop_iteration, raise_value_error},
+    except::{Message, raise_stop_iteration, value_error},
     init::token,
     obj::{AttrOp, Obj, ObjBase, ObjTrait, ObjType},
     qstr::Qstr,
@@ -21,8 +21,7 @@ use crate::{
     alloc::Gc,
     devices,
     modvenice::{
-        controller::id::ControllerIdObj, raise_device_error, raise_port_error,
-        vasyncio::event_loop::WAKE_SIGNAL,
+        Exception, controller::id::ControllerIdObj, device_error, vasyncio::event_loop::WAKE_SIGNAL,
     },
     registry::ControllerGuard,
 };
@@ -30,14 +29,20 @@ use crate::{
 #[class(qstr!(Controller))]
 #[repr(C)]
 pub struct ControllerObj {
-    base: ObjBase<'static>,
-    guard: ControllerGuard<'static>,
+    base: ObjBase,
+    guard: ControllerGuard,
 }
 
-#[class(qstr!(MotorV5))]
+impl From<ControllerError> for Exception {
+    fn from(value: ControllerError) -> Self {
+        device_error(error_msg!("{value}"))
+    }
+}
+
+#[class(qstr!(ControllerConnection))]
 #[repr(C)]
 pub struct ControllerConnectionObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
 }
 
 impl ControllerConnectionObj {
@@ -50,18 +55,20 @@ impl ControllerConnectionObj {
 
 #[class_methods]
 impl ControllerConnectionObj {
+    #[constant]
     pub const OFFLINE: &Self = &Self::new();
+    #[constant]
     pub const TETHERED: &Self = &Self::new();
+    #[constant]
     pub const VEX_NET: &Self = &Self::new();
 }
 
 enum ControllerFuture {
     WaitingForIdle {
-        line: i32,
-        column: i32,
+        line: u8,
+        column: u8,
         text: Vec<u8, Gc>, // CString doesn't support custom allocators
         controller_id: ControllerId,
-        enforce_visible: bool,
     },
     Complete,
 }
@@ -70,7 +77,7 @@ enum ControllerFuture {
 #[class(qstr!(ControllerFuture))]
 #[repr(C)]
 pub struct ControllerFutureObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
     future: RefCell<ControllerFuture>,
 }
 
@@ -84,32 +91,40 @@ fn validate_connection(id: ControllerId) -> Result<(), ControllerError> {
     Ok(())
 }
 
-fn validate_line(line: &i32) {
-    const LINE_RANGE: RangeInclusive<i32> = 1..=Controller::MAX_LINES as i32;
-    if !LINE_RANGE.contains(line) {
-        raise_value_error(
-            token(),
-            error_msg!(
-                "line number ({line}) must be between ({}) and ({})",
-                LINE_RANGE.start(),
-                LINE_RANGE.end(),
-            ),
-        );
+struct Line(u8);
+#[derive(Default)]
+struct LineParser;
+
+impl<'a> ArgParser<'a> for LineParser {
+    type Output = Line;
+
+    fn parse(&self, obj: &'a Obj) -> Result<Self::Output, argparse::ParseError> {
+        IntParser::new(1..=Controller::MAX_LINES as i32)
+            .parse(obj)
+            .map(Line)
     }
 }
 
-fn validate_column(column: &i32) {
-    const COLUMN_RANGE: RangeInclusive<i32> = 1..=Controller::MAX_COLUMNS as i32;
-    if !COLUMN_RANGE.contains(column) {
-        raise_value_error(
-            token(),
-            error_msg!(
-                "column number ({column}) must be between ({}) and ({})",
-                COLUMN_RANGE.start(),
-                COLUMN_RANGE.end(),
-            ),
-        )
+impl DefaultParser<'_> for Line {
+    type Parser = LineParser;
+}
+
+struct Column(u8);
+#[derive(Default)]
+struct ColumnParser;
+
+impl<'a> ArgParser<'a> for ColumnParser {
+    type Output = Column;
+
+    fn parse(&self, obj: &'a Obj) -> Result<Self::Output, argparse::ParseError> {
+        IntParser::new(1..=Controller::MAX_COLUMNS as i32)
+            .parse(obj)
+            .map(Column)
     }
+}
+
+impl DefaultParser<'_> for Column {
+    type Parser = ColumnParser;
 }
 
 #[class_methods]
@@ -124,15 +139,8 @@ impl ControllerFutureObj {
             column,
             text,
             controller_id,
-            enforce_visible,
         } = &*future
         {
-            if *enforce_visible {
-                validate_line(line);
-            }
-
-            validate_column(column);
-
             match validate_connection(*controller_id) {
                 Ok(()) => {
                     let id = V5_ControllerId::from(*controller_id);
@@ -153,7 +161,7 @@ impl ControllerFutureObj {
                 }
                 Err(e) => {
                     *future = ControllerFuture::Complete;
-                    raise_device_error(token(), error_msg!("{e}"));
+                    Exception::from(e).raise(token());
                 }
             }
         }
@@ -162,9 +170,9 @@ impl ControllerFutureObj {
     }
 }
 
-fn str_to_cstring_vec(str: &str, error_msg: impl AsRef<CStr>) -> Vec<u8, Gc> {
+fn str_to_cstring_vec(str: &str, error_msg: impl Into<Message>) -> Vec<u8, Gc> {
     if str.find('\0').is_some() {
-        raise_value_error(token(), error_msg);
+        value_error(error_msg.into()).raise(token());
     }
 
     let mut vec = Vec::with_capacity_in(str.len() + 1, Gc { token: token() });
@@ -179,15 +187,15 @@ fn empty_cstring_vec() -> Vec<u8, Gc> {
     vec
 }
 
-fn set_text_prelude(args: &[Obj]) -> (&ControllerObj, &str, i32, i32) {
-    let mut reader = Args::new(args.len(), 0, args).reader(token());
+fn set_text_prelude(args: &[Obj]) -> Result<(&ControllerObj, &str, Line, Column), Exception> {
+    let mut reader = Args::new(args.len(), 0, args).reader();
     reader.assert_npos(4, 4);
-    let this = reader.next_positional::<&ControllerObj>();
-    let text = reader.next_positional::<&str>();
-    let line = reader.next_positional::<i32>();
-    let column = reader.next_positional::<i32>();
+    let this = reader.next_positional::<&ControllerObj>()?;
+    let text = reader.next_positional::<&str>()?;
+    let line = reader.next_positional::<Line>()?;
+    let column = reader.next_positional::<Column>()?;
 
-    (this, text, line, column)
+    Ok((this, text, line, column))
 }
 
 #[class_methods]
@@ -200,18 +208,22 @@ impl ControllerObj {
     const MAX_LINES: i32 = Controller::MAX_LINES as i32;
 
     #[make_new]
-    fn make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Self {
-        let token = token();
-        let mut reader = Args::new(n_pos, n_kw, args).reader(token);
+    fn make_new(
+        ty: &'static ObjType,
+        n_pos: usize,
+        n_kw: usize,
+        args: &[Obj],
+    ) -> Result<Self, Exception> {
+        let mut reader = Args::new(n_pos, n_kw, args).reader();
         reader.assert_npos(0, 1).assert_nkw(0, 0);
 
-        let id_obj = reader.next_positional_or(ControllerIdObj::PRIMARY);
+        let id_obj = reader.next_positional_or(ControllerIdObj::PRIMARY)?;
 
         let guard = devices::lock_controller(id_obj.id());
-        ControllerObj {
+        Ok(ControllerObj {
             base: ObjBase::new(ty),
             guard,
-        }
+        })
     }
 
     #[attr]
@@ -227,13 +239,9 @@ impl ControllerObj {
     }
 
     #[method]
-    fn read_state(&self) -> ControllerStateObj {
-        let state = self
-            .guard
-            .borrow()
-            .state()
-            .unwrap_or_else(|e| raise_port_error!(e));
-        ControllerStateObj::new(state)
+    fn read_state(&self) -> Result<ControllerStateObj, Exception> {
+        let state = self.guard.borrow().state()?;
+        Ok(ControllerStateObj::new(state))
     }
 
     #[method]
@@ -246,27 +254,18 @@ impl ControllerObj {
     }
 
     #[method]
-    fn get_battery_capacity(&self) -> f32 {
-        self.guard
-            .borrow()
-            .battery_capacity()
-            .unwrap_or_else(|e| raise_port_error!(e)) as f32
+    fn get_battery_capacity(&self) -> Result<f32, Exception> {
+        Ok(self.guard.borrow().battery_capacity()? as f32)
     }
 
     #[method]
-    fn get_battery_level(&self) -> i32 {
-        self.guard
-            .borrow()
-            .battery_level()
-            .unwrap_or_else(|e| raise_port_error!(e))
+    fn get_battery_level(&self) -> Result<i32, Exception> {
+        Ok(self.guard.borrow().battery_level()?)
     }
 
     #[method]
-    fn get_flags(&self) -> i32 {
-        self.guard
-            .borrow()
-            .flags()
-            .unwrap_or_else(|e| raise_port_error!(e))
+    fn get_flags(&self) -> Result<i32, Exception> {
+        Ok(self.guard.borrow().flags()?)
     }
 
     #[method]
@@ -279,41 +278,32 @@ impl ControllerObj {
                 column: 1,
                 text,
                 controller_id: self.guard.borrow().id(),
-                enforce_visible: false,
             }),
             base: ObjBase::new(ControllerFutureObj::OBJ_TYPE),
         }
     }
 
     #[method]
-    fn try_rumble(&self, pattern: &str) {
-        self.guard
-            .borrow_mut()
-            .try_rumble(pattern)
-            .unwrap_or_else(|e| raise_port_error!(e));
+    fn try_rumble(&self, pattern: &str) -> Result<(), Exception> {
+        Ok(self.guard.borrow_mut().try_rumble(pattern)?)
     }
 
     #[method]
-    fn clear_line(&self, line: i32) -> ControllerFutureObj {
+    fn clear_line(&self, line: Line) -> ControllerFutureObj {
         ControllerFutureObj {
             future: RefCell::new(ControllerFuture::WaitingForIdle {
-                line,
+                line: line.0,
                 column: 1,
                 text: empty_cstring_vec(),
                 controller_id: self.guard.borrow().id(),
-                enforce_visible: true,
             }),
             base: ObjBase::new(ControllerFutureObj::OBJ_TYPE),
         }
     }
 
     #[method]
-    fn try_clear_line(&self, line: i32) {
-        validate_line(&line);
-        self.guard
-            .borrow_mut()
-            .try_clear_line(line as u8)
-            .unwrap_or_else(|e| raise_port_error!(e));
+    fn try_clear_line(&self, line: Line) -> Result<(), Exception> {
+        Ok(self.guard.borrow_mut().try_clear_line(line.0 as u8)?)
     }
 
     #[method]
@@ -324,47 +314,39 @@ impl ControllerObj {
                 column: 1,
                 text: empty_cstring_vec(),
                 controller_id: self.guard.borrow().id(),
-                enforce_visible: false,
             }),
             base: ObjBase::new(ControllerFutureObj::OBJ_TYPE),
         }
     }
 
     #[method]
-    fn try_clear_screen(&self) {
-        self.guard
-            .borrow_mut()
-            .try_clear_screen()
-            .unwrap_or_else(|e| raise_port_error!(e));
+    fn try_clear_screen(&self) -> Result<(), Exception> {
+        Ok(self.guard.borrow_mut().try_clear_screen()?)
     }
 
     #[method(ty = var(min = 4))]
-    fn set_text(args: &[Obj]) -> ControllerFutureObj {
-        let (this, text, line, column) = set_text_prelude(args);
+    fn set_text(args: &[Obj]) -> Result<ControllerFutureObj, Exception> {
+        let (this, text, line, column) = set_text_prelude(args)?;
 
-        ControllerFutureObj {
+        Ok(ControllerFutureObj {
             future: RefCell::new(ControllerFuture::WaitingForIdle {
-                line,
-                column,
+                line: line.0,
+                column: column.0,
                 text: str_to_cstring_vec(text, c"text has forbidden nul byte"),
                 controller_id: this.guard.borrow().id(),
-                enforce_visible: false,
             }),
             base: ObjBase::new(ControllerFutureObj::OBJ_TYPE),
-        }
+        })
     }
 
     #[method(ty = var(min = 4))]
-    fn try_set_text(args: &[Obj]) {
-        let (this, text, line, column) = set_text_prelude(args);
+    fn try_set_text(args: &[Obj]) -> Result<(), Exception> {
+        let (this, text, line, column) = set_text_prelude(args)?;
 
-        validate_line(&line);
-        validate_column(&column);
-
-        this.guard
+        Ok(this
+            .guard
             .borrow_mut()
-            .try_set_text(text, line as u8, column as u8)
-            .unwrap_or_else(|e| raise_port_error!(e)); // technically not PortError but the macro works
+            .try_set_text(text, line.0 as u8, column.0 as u8)?)
     }
 
     #[method]

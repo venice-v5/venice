@@ -1,112 +1,202 @@
-pub mod error_msg;
+mod error_msg;
 
-use std::fmt::Display;
+use std::{
+    fmt::{Debug, Display},
+    marker::PhantomData,
+    ops::RangeInclusive,
+};
 
 use micropython_rs::{
-    except::raise_type_error,
-    init::InitToken,
+    except::{Exception, Message, type_error, value_error},
+    init::token,
     obj::{Obj, ObjTrait, ObjType, repr_c},
     str::Str,
 };
 
+pub use crate::error_msg::*;
+
 #[derive(Clone, Copy)]
 pub struct Args<'a> {
-    n_pos: usize,
-    n_kw: usize,
-    args: &'a [Obj],
+    pos_args: &'a [Obj],
+    kw_args: &'a [Obj],
 }
 
 #[derive(Clone, Copy)]
 pub struct ArgsReader<'a> {
     args: Args<'a>,
-    n: usize,
-    token: InitToken,
+    n_pos: usize,
+    n_kw: usize,
 }
 
-pub trait ArgTrait<'a>: Sized {
-    fn ty() -> ArgType<'a>;
-    fn from_arg_value(v: ArgValue<'a>) -> Option<Self>;
+pub trait ArgParser<'a> {
+    type Output;
 
-    fn coercable(ty: ArgType<'a>) -> bool {
-        Self::ty() == ty
+    fn parse(&self, obj: &'a Obj) -> Result<Self::Output, ParseError>;
+}
+
+pub trait DefaultParser<'a> {
+    type Parser: ArgParser<'a, Output = Self> + Default;
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct StrParser;
+
+#[derive(Debug, Clone)]
+pub struct IntParser<T = i32> {
+    pub range: RangeInclusive<i32>,
+    pub _phantom: PhantomData<T>,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct FloatParser;
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct BoolParser;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ObjParser<T: ObjTrait> {
+    pub _phantom: PhantomData<T>,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct AnyParser;
+
+impl<'a> ArgParser<'a> for StrParser {
+    type Output = &'a str;
+
+    fn parse(&self, obj: &'a Obj) -> Result<Self::Output, ParseError> {
+        obj.get_str()
+            .ok_or(ParseError::TypeError { expected: "str" })
     }
 }
 
-impl<'a> ArgTrait<'a> for i32 {
-    fn ty() -> ArgType<'a> {
-        ArgType::Int
-    }
+impl<'a> DefaultParser<'a> for &'a str {
+    type Parser = StrParser;
+}
 
-    fn from_arg_value(v: ArgValue<'a>) -> Option<Self> {
-        match v {
-            ArgValue::Int(i) => Some(i),
-            _ => None,
+impl<T> IntParser<T> {
+    pub const fn new(range: RangeInclusive<i32>) -> Self {
+        Self {
+            range,
+            _phantom: PhantomData,
         }
     }
 }
 
-impl<'a> ArgTrait<'a> for &'a str {
-    fn ty() -> ArgType<'static> {
-        ArgType::Str
-    }
+impl<'a, T> ArgParser<'a> for IntParser<T>
+where
+    T: TryFrom<i32>,
+    <T as TryFrom<i32>>::Error: Debug,
+{
+    type Output = T;
 
-    fn from_arg_value(v: ArgValue<'a>) -> Option<Self> {
-        match v {
-            ArgValue::Str(s) => Some(s),
-            _ => None,
+    fn parse(&self, obj: &'a Obj) -> Result<Self::Output, ParseError> {
+        let int = obj
+            .try_to_int()
+            .ok_or(ParseError::TypeError { expected: "int" })?;
+
+        if !self.range.contains(&int) {
+            let start = *self.range.start();
+            let end = *self.range.end();
+
+            return Err(ParseError::ValueError {
+                mk_msg: Box::new(move |arg| {
+                    error_msg!("{arg} must be in the range [{start}, {end}]")
+                }),
+            });
+        }
+
+        Ok(int.try_into().expect("value "))
+    }
+}
+
+macro_rules! impl_default_int_parser {
+    ($ty:ty) => {
+        impl Default for IntParser<$ty> {
+            fn default() -> Self {
+                Self::new((<$ty>::MIN as i32)..=(<$ty>::MAX as i32))
+            }
+        }
+
+        impl DefaultParser<'_> for $ty {
+            type Parser = IntParser<$ty>;
+        }
+    };
+}
+
+impl_default_int_parser!(u8);
+impl_default_int_parser!(u16);
+impl_default_int_parser!(u32);
+
+impl_default_int_parser!(i8);
+impl_default_int_parser!(i16);
+impl_default_int_parser!(i32);
+
+impl<'a> ArgParser<'a> for FloatParser {
+    type Output = f32;
+
+    fn parse(&self, obj: &'a Obj) -> Result<Self::Output, ParseError> {
+        obj.try_to_float()
+            .or_else(|| obj.try_to_int().map(|int| int as f32))
+            .ok_or(ParseError::TypeError { expected: "float" })
+    }
+}
+
+impl DefaultParser<'_> for f32 {
+    type Parser = FloatParser;
+}
+
+impl<'a> ArgParser<'a> for BoolParser {
+    type Output = bool;
+
+    fn parse(&self, obj: &'a Obj) -> Result<Self::Output, ParseError> {
+        obj.try_to_bool()
+            .ok_or(ParseError::TypeError { expected: "bool" })
+    }
+}
+
+impl DefaultParser<'_> for bool {
+    type Parser = BoolParser;
+}
+
+impl<'a, T> ArgParser<'a> for ObjParser<T>
+where
+    T: ObjTrait + 'a,
+{
+    type Output = &'a T;
+
+    fn parse(&self, obj: &'a Obj) -> Result<Self::Output, ParseError> {
+        obj.try_as_obj::<T>().ok_or(ParseError::TypeError {
+            expected: T::OBJ_TYPE.name().as_str(),
+        })
+    }
+}
+
+impl<T: ObjTrait> Default for ObjParser<T> {
+    fn default() -> Self {
+        Self {
+            _phantom: PhantomData,
         }
     }
 }
 
-impl<'a> ArgTrait<'a> for bool {
-    fn ty() -> ArgType<'static> {
-        ArgType::Bool
-    }
+impl<'a, T> DefaultParser<'a> for &'a T
+where
+    T: ObjTrait + 'a,
+{
+    type Parser = ObjParser<T>;
+}
 
-    fn from_arg_value(v: ArgValue<'a>) -> Option<Self> {
-        match v {
-            ArgValue::Bool(b) => Some(b),
-            _ => None,
-        }
+impl<'a> ArgParser<'a> for AnyParser {
+    type Output = Obj;
+
+    fn parse(&self, obj: &'a Obj) -> Result<Self::Output, ParseError> {
+        Ok(*obj)
     }
 }
 
-impl<'a> ArgTrait<'a> for f32 {
-    fn ty() -> ArgType<'static> {
-        ArgType::Float
-    }
-
-    fn from_arg_value(v: ArgValue<'a>) -> Option<Self> {
-        match v {
-            ArgValue::Float(f) => Some(f),
-            ArgValue::Int(i) => Some(i as f32),
-            _ => None,
-        }
-    }
-
-    fn coercable(ty: ArgType<'a>) -> bool {
-        matches!(ty, ArgType::Float | ArgType::Int)
-    }
-}
-
-impl<'a, O: ObjTrait> ArgTrait<'a> for &'a O {
-    fn ty() -> ArgType<'static> {
-        ArgType::Obj(O::OBJ_TYPE)
-    }
-
-    fn from_arg_value(v: ArgValue<'a>) -> Option<Self> {
-        match v {
-            ArgValue::Obj(o) => o.try_as_obj_or_coerce(),
-            _ => None,
-        }
-    }
-
-    fn coercable(ty: ArgType<'a>) -> bool {
-        match ty {
-            ArgType::Obj(o) => O::OBJ_TYPE == o || O::coercable(o),
-            _ => false,
-        }
-    }
+impl DefaultParser<'_> for Obj {
+    type Parser = AnyParser;
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -120,46 +210,77 @@ pub enum ArgType<'a> {
 }
 
 #[derive(Clone, Copy)]
-pub enum ArgValue<'a> {
-    Int(i32),
-    Str(&'a str),
-    None,
-    Bool(bool),
-    Float(f32),
-    Obj(&'a Obj),
-}
-
-#[derive(Clone, Copy)]
-pub struct KwArg<'a> {
-    pub kw: &'a str,
-    pub value: ArgValue<'a>,
-}
-
-#[derive(Clone, Copy)]
-pub struct GenericKwArg<'a, A: ArgTrait<'a>> {
-    pub kw: &'a str,
-    pub value: A,
-}
-
-#[derive(Clone, Copy)]
 pub enum Arg<'a> {
-    Positional(ArgValue<'a>),
-    Keyword(KwArg<'a>),
+    Positional(&'a Obj),
+    Keyword(&'a str, &'a Obj),
 }
 
-#[derive(Debug)]
-pub enum ArgError<'a> {
-    NotPresent,
-    TypeMismatch {
-        n: usize,
-        expected: ArgType<'a>,
-        found: ArgType<'a>,
+#[derive(Clone, Copy)]
+pub struct KeywordArg<'a> {
+    pub kw: &'a str,
+    pub obj: &'a Obj,
+}
+
+pub enum ParseError {
+    TypeError {
+        expected: &'static str,
     },
-    PositionalsExhuasted {
-        n: usize,
+    ValueError {
+        mk_msg: Box<dyn FnOnce(&str) -> Message>,
     },
-    ExpectedKeyword,
-    KeywordsExhuasted,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum PositionalError<'a> {
+    ArgumentsExhausted,
+    TypeError {
+        n: usize,
+        expected: &'a str,
+        found: &'a str,
+    },
+    ValueError {
+        msg: Message,
+    },
+}
+
+pub enum KeywordError<'a> {
+    TypeError {
+        kw: &'a str,
+        expected: &'a str,
+        found: &'a str,
+    },
+    ValueError {
+        msg: Message,
+    },
+}
+
+impl From<PositionalError<'_>> for Exception {
+    fn from(value: PositionalError<'_>) -> Self {
+        match value {
+            PositionalError::ArgumentsExhausted => {
+                type_error(c"unexpected end of positional arguments")
+            }
+            PositionalError::TypeError { n, expected, found } => type_error(error_msg!(
+                "expected '{expected}' for argument #{n}, found '{found}'"
+            )),
+            PositionalError::ValueError { msg } => value_error(msg),
+        }
+    }
+}
+
+impl From<KeywordError<'_>> for Exception {
+    fn from(value: KeywordError<'_>) -> Self {
+        match value {
+            KeywordError::TypeError {
+                kw,
+                expected,
+                found,
+            } => type_error(error_msg!(
+                "expected '{expected}' found argument '{kw}', found '{found}'"
+            )),
+            KeywordError::ValueError { msg } => value_error(msg),
+        }
+    }
 }
 
 impl<'a> ArgType<'a> {
@@ -188,275 +309,150 @@ impl<'a> ArgType<'a> {
     }
 }
 
-impl<'a> ArgValue<'a> {
-    pub fn from_obj(obj: &'a Obj) -> Self {
-        match ArgType::of(obj) {
-            ArgType::Int => Self::Int(obj.to_int()),
-            ArgType::Str => Self::Str(obj.get_str().unwrap()),
-            ArgType::None => Self::None,
-            ArgType::Bool => Self::Bool(obj.try_to_bool().unwrap()),
-            ArgType::Float => Self::Float(obj.to_float()),
-            ArgType::Obj(_) => Self::Obj(obj),
-        }
-    }
-
-    pub fn ty(self) -> ArgType<'a> {
-        match self {
-            Self::Int(_) => ArgType::Int,
-            Self::Str(_) => ArgType::Str,
-            Self::None => ArgType::None,
-            Self::Bool(_) => ArgType::Bool,
-            Self::Float(_) => ArgType::Float,
-            Self::Obj(o) => ArgType::Obj(o.obj_type().unwrap()),
-        }
-    }
-
-    pub fn as_int(self) -> i32 {
-        match self {
-            Self::Int(int) => int,
-            _ => panic!(),
-        }
-    }
-
-    pub fn as_str(self) -> &'a str {
-        match self {
-            Self::Str(str) => str,
-            _ => panic!(),
-        }
-    }
-
-    pub fn as_bool(self) -> bool {
-        match self {
-            Self::Bool(bool) => bool,
-            _ => panic!(),
-        }
-    }
-
-    pub fn as_float(self) -> f32 {
-        match self {
-            Self::Float(float) => float,
-            _ => panic!(),
-        }
-    }
-
-    pub fn as_obj(self) -> Obj {
-        match self {
-            Self::Obj(obj) => *obj,
-            _ => panic!(),
-        }
+pub fn type_name(obj: &Obj) -> &'static str {
+    match ArgType::of(obj) {
+        ArgType::Int => "int",
+        ArgType::Bool => "bool",
+        ArgType::Str => "str",
+        ArgType::None => "None",
+        ArgType::Float => "float",
+        ArgType::Obj(o) => o.name().as_str(),
     }
 }
 
-impl<'a> Arg<'a> {
-    pub const fn value(&self) -> ArgValue<'a> {
-        match self {
-            Self::Positional(value) => *value,
-            Self::Keyword(kw_arg) => kw_arg.value,
+impl<'a> KeywordArg<'a> {
+    pub fn parse<T>(&self) -> Result<T, KeywordError<'a>>
+    where
+        T: DefaultParser<'a>,
+    {
+        let parser = T::Parser::default();
+        match parser.parse(self.obj) {
+            Ok(v) => Ok(v),
+            Err(e) => Err(match e {
+                ParseError::TypeError { expected } => KeywordError::TypeError {
+                    kw: self.kw,
+                    expected,
+                    found: type_name(self.obj),
+                },
+                ParseError::ValueError { mk_msg } => KeywordError::ValueError {
+                    msg: mk_msg(&format!("argument '{}'", self.kw)),
+                },
+            }),
         }
     }
 }
 
 impl<'a> Args<'a> {
-    pub const fn new(n_pos: usize, n_kw: usize, args: &'a [Obj]) -> Self {
-        Self { n_pos, n_kw, args }
-    }
-
-    pub fn nth(&self, n: usize) -> Result<Arg<'a>, ArgError<'a>> {
-        if n < self.n_pos {
-            return Ok(Arg::Positional(ArgValue::from_obj(&self.args[n])));
-        }
-
-        let kw_index = n - self.n_pos;
-        if kw_index > self.n_kw {
-            return Err(ArgError::NotPresent);
-        }
-
-        let array_index = (kw_index * 2) + self.n_pos;
-        Ok(Arg::Keyword(KwArg {
-            kw: self.args[array_index].get_str().unwrap(),
-            value: ArgValue::from_obj(&self.args[array_index + 1]),
-        }))
-    }
-
-    pub fn nth_of_type(&self, n: usize, ty: ArgType<'a>) -> Result<Arg<'a>, ArgError<'a>> {
-        let arg = self.nth(n)?;
-        let arg_ty = arg.value().ty();
-        if ty == arg_ty {
-            Ok(arg)
-        } else {
-            Err(ArgError::TypeMismatch {
-                n,
-                expected: ty,
-                found: arg_ty,
-            })
+    pub fn new(n_pos: usize, n_kw: usize, args: &'a [Obj]) -> Self {
+        Self {
+            pos_args: &args[..n_pos],
+            kw_args: &args[n_pos..n_pos + (n_kw * 2)],
         }
     }
 
-    pub const fn reader(self, token: InitToken) -> ArgsReader<'a> {
+    pub fn count(&self) -> usize {
+        self.pos_args.len() + self.kw_args.len() / 2
+    }
+
+    pub fn nth_pos(&self, n: usize) -> Option<&'a Obj> {
+        self.pos_args.get(n)
+    }
+
+    pub fn nth_kw(&self, n: usize) -> Option<KeywordArg<'a>> {
+        let index = n * 2;
+        let kw = self.kw_args.get(index)?.get_str().unwrap();
+        let obj = self.kw_args.get(index + 1)?;
+
+        Some(KeywordArg { kw, obj })
+    }
+
+    pub const fn reader(self) -> ArgsReader<'a> {
         ArgsReader {
             args: self,
-            n: 0,
-            token,
+            n_pos: 0,
+            n_kw: 0,
         }
     }
 }
 
 impl<'a> ArgsReader<'a> {
     pub fn assert_npos(&self, min: usize, max: usize) -> &Self {
-        if self.args.n_pos < min || self.args.n_pos > max {
+        if !(min..=max).contains(&self.args.pos_args.len()) {
             if max == 0 {
-                raise_type_error(self.token, c"function does not accept positional arguments")
+                type_error(c"function does not accept positional arguments").raise(token())
             } else {
-                raise_type_error(
-                    self.token,
-                    error_msg!(
-                        "function expects at least {min} positional arguments and at most {max}"
-                    ),
-                )
+                type_error(error_msg!(
+                    "function expects at least {min} positional arguments and at most {max}"
+                ))
+                .raise(token())
             }
         }
         self
     }
 
     pub fn assert_nkw(&self, min: usize, max: usize) -> &Self {
-        if self.args.n_kw < min || self.args.n_kw > max {
+        if !(min..=max).contains(&(self.args.kw_args.len() / 2)) {
             if max == 0 {
-                raise_type_error(self.token, c"function does not accept keyword arguments")
+                type_error(c"function does not accept keyword arguments").raise(token())
             } else {
-                raise_type_error(
-                    self.token,
-                    error_msg!(
-                        "function expects at least {min} keyword arguments and at most {max}"
-                    ),
-                )
+                type_error(error_msg!(
+                    "function expects at least {min} keyword arguments and at most {max}"
+                ))
+                .raise(token())
             }
         }
         self
     }
 
-    pub fn try_next_positional_untyped(&mut self) -> Result<ArgValue<'a>, ArgError<'a>> {
-        if self.n < self.args.n_pos {
-            let arg = self.args.nth(self.n).map(|arg| arg.value())?;
-            self.n += 1;
-            Ok(arg)
-        } else {
-            Err(ArgError::PositionalsExhuasted { n: self.n })
-        }
+    pub fn next_positional_with<P>(&mut self, parser: P) -> Result<P::Output, PositionalError<'a>>
+    where
+        P: ArgParser<'a>,
+    {
+        self.args
+            .nth_pos(self.n_pos)
+            .ok_or(PositionalError::ArgumentsExhausted)
+            .and_then(|arg| {
+                let result = parser.parse(arg);
+                result
+                    .map_err(|e| match e {
+                        ParseError::TypeError { expected } => {
+                            let found = type_name(arg);
+                            PositionalError::TypeError {
+                                n: self.n_pos,
+                                expected,
+                                found,
+                            }
+                        }
+                        ParseError::ValueError { mk_msg } => PositionalError::ValueError {
+                            msg: mk_msg(&format!("argument #{}", self.n_pos)),
+                        },
+                    })
+                    .inspect(|_| self.n_pos += 1)
+            })
     }
 
-    pub fn try_next_positional<A: ArgTrait<'a>>(&mut self) -> Result<A, ArgError<'a>> {
-        if self.n < self.args.n_pos {
-            let arg = self
-                .args
-                .nth_of_type(self.n, A::ty())
-                .map(|arg| arg.value())?;
-            self.n += 1;
-            Ok(unsafe { ArgTrait::from_arg_value(arg).unwrap_unchecked() })
-        } else {
-            Err(ArgError::PositionalsExhuasted { n: self.n })
-        }
+    pub fn next_positional<T>(&mut self) -> Result<T, PositionalError<'a>>
+    where
+        T: DefaultParser<'a>,
+    {
+        self.next_positional_with(T::Parser::default())
     }
 
-    pub fn try_next_positional_or<A: ArgTrait<'a>>(
-        &mut self,
-        default: A,
-    ) -> Result<A, ArgError<'a>> {
-        match self.try_next_positional() {
+    pub fn next_positional_or<T>(&mut self, default: T) -> Result<T, PositionalError<'a>>
+    where
+        T: DefaultParser<'a>,
+    {
+        match self.next_positional_with(T::Parser::default()) {
             Ok(v) => Ok(v),
             Err(e) => match e {
-                ArgError::PositionalsExhuasted { .. } => Ok(default),
+                PositionalError::ArgumentsExhausted => Ok(default),
                 _ => Err(e),
             },
         }
     }
 
-    pub fn next_positional<A: ArgTrait<'a>>(&mut self) -> A {
-        // borrow checker moment
-        let token = self.token;
-        self.try_next_positional()
-            .unwrap_or_else(|e| e.raise_positional(token))
-    }
-
-    pub fn next_positional_or<A: ArgTrait<'a>>(&mut self, default: A) -> A {
-        let token = self.token;
-        self.try_next_positional_or(default)
-            .unwrap_or_else(|e| e.raise_positional(token))
-    }
-
-    pub fn try_get_kw<A: ArgTrait<'a>>(&self, kw: &str) -> Result<A, ArgError<'a>> {
-        for i in 0..self.args.n_kw {
-            let arg = self.args.nth(self.args.n_pos + i).unwrap();
-            match arg {
-                Arg::Keyword(KwArg { kw: arg_kw, value }) => {
-                    if kw == arg_kw && A::ty() == value.ty() {
-                        return Ok(unsafe { A::from_arg_value(value).unwrap_unchecked() });
-                    }
-                }
-                Arg::Positional(_) => unreachable!(),
-            }
-        }
-        Err(ArgError::NotPresent)
-    }
-
-    pub fn try_get_kw_or<A: ArgTrait<'a>>(&self, kw: &str, default: A) -> Result<A, ArgError<'a>> {
-        match self.try_get_kw(kw) {
-            Ok(arg) => Ok(arg),
-            Err(err) => match err {
-                ArgError::NotPresent { .. } => Ok(default),
-                _ => Err(err),
-            },
-        }
-    }
-
-    pub fn get_kw<A: ArgTrait<'a>>(&self, kw: &str) -> A {
-        self.try_get_kw(kw)
-            .unwrap_or_else(|e| e.raise_kw(self.token, kw))
-    }
-
-    pub fn get_kw_or<A: ArgTrait<'a>>(&self, kw: &str, default: A) -> A {
-        self.try_get_kw_or(kw, default)
-            .unwrap_or_else(|e| e.raise_kw(self.token, kw))
-    }
-
-    pub fn try_next_kw_untyped(&mut self) -> Result<KwArg<'a>, ArgError<'a>> {
-        match self.args.nth(self.n) {
-            Ok(arg) => match arg {
-                Arg::Keyword(kw_arg) => {
-                    self.n += 1;
-                    Ok(kw_arg)
-                }
-                Arg::Positional(_) => Err(ArgError::ExpectedKeyword),
-            },
-            Err(e) => Err(match e {
-                ArgError::NotPresent => ArgError::KeywordsExhuasted,
-                _ => unreachable!(),
-            }),
-        }
-    }
-
-    pub fn try_next_kw<A: ArgTrait<'a>>(&mut self) -> Result<GenericKwArg<'a, A>, ArgError<'a>> {
-        match self.args.nth_of_type(self.n, A::ty()) {
-            Ok(arg) => match arg {
-                Arg::Keyword(kw_arg) => {
-                    self.n += 1;
-                    Ok(GenericKwArg {
-                        kw: kw_arg.kw,
-                        value: unsafe { A::from_arg_value(kw_arg.value).unwrap_unchecked() },
-                    })
-                }
-                Arg::Positional(_) => Err(ArgError::ExpectedKeyword),
-            },
-            Err(e) => Err(match e {
-                ArgError::NotPresent => ArgError::KeywordsExhuasted,
-                ArgError::TypeMismatch { .. } => e,
-                _ => unreachable!(),
-            }),
-        }
-    }
-
-    pub fn next_kw<A: ArgTrait<'a>>(&mut self) -> GenericKwArg<'a, A> {
-        let token = self.token;
-        self.try_next_kw().unwrap_or_else(|e| e.raise_kw(token, ""))
+    pub fn next_kw(&mut self) -> Option<KeywordArg<'a>> {
+        self.args.nth_kw(self.n_kw).inspect(|_| self.n_kw += 1)
     }
 }
 
@@ -469,47 +465,6 @@ impl Display for ArgType<'_> {
             Self::Bool => write!(f, "bool"),
             Self::Float => write!(f, "float"),
             Self::Obj(ty) => write!(f, "{}", ty.name().as_str()),
-        }
-    }
-}
-
-impl ArgError<'_> {
-    pub fn raise_positional(&self, token: InitToken) -> ! {
-        match self {
-            Self::PositionalsExhuasted { n } => raise_type_error(
-                token,
-                // TODO: this may be confusing when a function accepts more than n + 1 arguments
-                error_msg!("expected at least {} positional arguments", n + 1),
-            ),
-            Self::TypeMismatch { n, expected, found } => raise_type_error(
-                token,
-                error_msg!(
-                    "expected type <{expected}> for argument #{}, found type <{found}>",
-                    n + 1
-                ),
-            ),
-            _ => panic!("invalid positional arg error"),
-        }
-    }
-
-    pub fn raise_kw(&self, token: InitToken, arg_name: impl AsRef<str>) -> ! {
-        match self {
-            Self::TypeMismatch { n, expected, found } => raise_type_error(
-                token,
-                error_msg!(
-                    "expected type <{expected}> for argument #{}, found <{found}>",
-                    n + 1
-                ),
-            ),
-            Self::NotPresent => raise_type_error(
-                token,
-                error_msg!("expected keyword argument '{}'", arg_name.as_ref()),
-            ),
-            Self::ExpectedKeyword => {
-                raise_type_error(token, c"expected keyword argument instead of positional")
-            }
-            Self::KeywordsExhuasted => raise_type_error(token, c"expected keyword argument"),
-            _ => panic!("invalid kw arg error"),
         }
     }
 }

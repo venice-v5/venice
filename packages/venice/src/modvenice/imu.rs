@@ -1,42 +1,41 @@
 use std::cell::Cell;
 
-use argparse::Args;
+use argparse::{Args, error_msg};
 use micropython_rs::{
     class, class_methods,
-    except::{raise_stop_iteration, raise_value_error},
-    fun::Fun1,
+    except::{raise_stop_iteration, value_error},
     init::token,
     obj::{Obj, ObjBase, ObjTrait, ObjType},
 };
-use vex_sdk::{V5_DeviceT, vexDeviceGetByIndex, vexDeviceImuReset, vexDeviceImuStatusGet};
+use vex_sdk::{vexDeviceImuReset, vexDeviceImuStatusGet};
 use vexide_devices::smart::{
     SmartDevice,
-    imu::{InertialOrientation, InertialSensor, InertialStatus},
+    imu::{InertialError, InertialOrientation, InertialSensor, InertialStatus},
 };
 
 use crate::{
-    devices::{self, PortNumber},
+    devices::{self},
     modvenice::{
+        Exception, device_error, device_handle,
         math::{EulerAngles, Quaternion, Vec3},
-        raise_device_error, raise_port_error,
+        smart_port_index,
         units::{rotation::RotationUnitObj, time::TimeUnitObj},
         vasyncio::{event_loop::WAKE_SIGNAL, time32},
     },
-    obj::alloc_obj,
-    registry::RegistryGuard,
+    registry::SmartGuard,
 };
 
 #[class(qstr!(InertialSensor))]
 #[repr(C)]
 pub struct InertialSensorObj {
-    base: ObjBase<'static>,
-    guard: RegistryGuard<'static, InertialSensor>,
+    base: ObjBase,
+    guard: SmartGuard<InertialSensor>,
 }
 
 #[class(qstr!(CalibrateFuture))]
 #[repr(C)]
 pub struct CalibrateFuture {
-    base: ObjBase<'static>,
+    base: ObjBase,
     state: Cell<CalibrateFutureState>,
     imu: Obj,
 }
@@ -44,8 +43,14 @@ pub struct CalibrateFuture {
 #[class(qstr!(InertialOrientation))]
 #[repr(C)]
 pub struct InertialOrientationObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
     orientation: InertialOrientation,
+}
+
+impl From<InertialError> for Exception {
+    fn from(value: InertialError) -> Self {
+        device_error(error_msg!("{value}"))
+    }
 }
 
 #[class_methods]
@@ -74,124 +79,82 @@ impl InertialOrientationObj {
 #[class_methods]
 impl InertialSensorObj {
     #[make_new]
-    fn make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Obj {
-        let mut reader = Args::new(n_pos, n_kw, args).reader(token());
-        let port = PortNumber::from_i32(reader.next_positional()).unwrap_or_else(|_| {
-            raise_value_error(token(), c"port number must be between 1 and 21")
-        });
+    fn make_new(
+        ty: &'static ObjType,
+        n_pos: usize,
+        n_kw: usize,
+        args: &[Obj],
+    ) -> Result<Self, Exception> {
+        let mut reader = Args::new(n_pos, n_kw, args).reader();
+        let port = reader.next_positional()?;
 
         let guard = devices::lock_port(port, InertialSensor::new);
 
-        alloc_obj(InertialSensorObj {
+        Ok(Self {
             base: ObjBase::new(ty),
             guard,
         })
     }
 
-    extern "C" fn calibrate(self_in: Obj) -> Obj {
-        alloc_obj(CalibrateFuture {
+    #[method]
+    fn calibrate(self_in: Obj) -> CalibrateFuture {
+        CalibrateFuture {
             base: ObjBase::new(CalibrateFuture::OBJ_TYPE),
             imu: self_in,
             state: Cell::new(CalibrateFutureState::Calibrate),
-        })
-    }
-
-    #[constant(qstr!(calibrate))]
-    const CALIBRATE: &Fun1 = &Fun1::new(Self::calibrate);
-
-    #[method]
-    fn get_heading(&self, unit: &RotationUnitObj) -> f32 {
-        unit.unit().angle_to_float(
-            self.guard
-                .borrow()
-                .heading()
-                .unwrap_or_else(|e| raise_port_error!(e)),
-        )
+        }
     }
 
     #[method]
-    fn set_heading(&self, heading: f32, unit: &RotationUnitObj) {
+    fn get_heading(&self, unit: &RotationUnitObj) -> Result<f32, Exception> {
+        Ok(unit.unit().angle_to_float(self.guard.borrow().heading()?))
+    }
+
+    #[method]
+    fn set_heading(&self, heading: f32, unit: &RotationUnitObj) -> Result<(), Exception> {
         let angle = unit.unit().float_to_angle(heading);
-        self.guard
-            .borrow_mut()
-            .set_heading(angle)
-            .unwrap_or_else(|e| raise_port_error!(e));
+        Ok(self.guard.borrow_mut().set_heading(angle)?)
     }
 
     #[method]
-    fn reset_heading(&self) {
-        self.guard
-            .borrow_mut()
-            .reset_heading()
-            .unwrap_or_else(|e| raise_port_error!(e));
+    fn reset_heading(&self) -> Result<(), Exception> {
+        Ok(self.guard.borrow_mut().reset_heading()?)
     }
 
     #[method]
-    fn get_rotation(&self, unit: &RotationUnitObj) -> f32 {
-        unit.unit().angle_to_float(
-            self.guard
-                .borrow()
-                .heading()
-                .unwrap_or_else(|e| raise_port_error!(e)),
-        )
+    fn get_rotation(&self, unit: &RotationUnitObj) -> Result<f32, Exception> {
+        Ok(unit.unit().angle_to_float(self.guard.borrow().heading()?))
     }
 
     #[method]
-    fn set_rotation(&self, rotation: f32, unit: &RotationUnitObj) {
+    fn set_rotation(&self, rotation: f32, unit: &RotationUnitObj) -> Result<(), Exception> {
         let angle = unit.unit().float_to_angle(rotation);
-        self.guard
-            .borrow_mut()
-            .set_rotation(angle)
-            .unwrap_or_else(|e| raise_port_error!(e));
+        Ok(self.guard.borrow_mut().set_rotation(angle)?)
     }
 
     #[method]
-    fn reset_rotation(&self) {
-        self.guard
-            .borrow_mut()
-            .reset_rotation()
-            .unwrap_or_else(|e| raise_port_error!(e));
+    fn reset_rotation(&self) -> Result<(), Exception> {
+        Ok(self.guard.borrow_mut().reset_rotation()?)
     }
 
     #[method]
-    fn get_euler(&self, unit: &RotationUnitObj) -> EulerAngles {
-        EulerAngles::new(
-            self.guard
-                .borrow()
-                .euler()
-                .unwrap_or_else(|e| raise_port_error!(e)),
-            unit.unit(),
-        )
+    fn get_euler(&self, unit: &RotationUnitObj) -> Result<EulerAngles, Exception> {
+        Ok(EulerAngles::new(self.guard.borrow().euler()?, unit.unit()))
     }
 
     #[method]
-    fn get_quaternion(&self) -> Quaternion {
-        Quaternion::new(
-            self.guard
-                .borrow()
-                .quaternion()
-                .unwrap_or_else(|e| raise_port_error!(e)),
-        )
+    fn get_quaternion(&self) -> Result<Quaternion, Exception> {
+        Ok(Quaternion::new(self.guard.borrow().quaternion()?))
     }
 
     #[method]
-    fn get_gyro_rate(&self) -> Vec3 {
-        Vec3::new(
-            self.guard
-                .borrow()
-                .gyro_rate()
-                .unwrap_or_else(|e| raise_port_error!(e)),
-        )
+    fn get_gyro_rate(&self) -> Result<Vec3, Exception> {
+        Ok(Vec3::new(self.guard.borrow().gyro_rate()?))
     }
 
     #[method]
-    fn get_acceleration(&self) -> Vec3 {
-        Vec3::new(
-            self.guard
-                .borrow()
-                .acceleration()
-                .unwrap_or_else(|e| raise_port_error!(e)),
-        )
+    fn get_acceleration(&self) -> Result<Vec3, Exception> {
+        Ok(Vec3::new(self.guard.borrow().acceleration()?))
     }
 
     // TODO: figure out how to return the bitflags struct InertialStatus
@@ -200,29 +163,18 @@ impl InertialSensorObj {
     // }
 
     #[method]
-    fn is_calibrating(&self) -> bool {
-        self.guard
-            .borrow()
-            .is_calibrating()
-            .unwrap_or_else(|e| raise_port_error!(e))
+    fn is_calibrating(&self) -> Result<bool, Exception> {
+        Ok(self.guard.borrow().is_calibrating()?)
     }
 
     #[method]
-    fn is_auto_calibrated(&self) -> bool {
-        self.guard
-            .borrow()
-            .is_auto_calibrated()
-            .unwrap_or_else(|e| raise_port_error!(e))
+    fn is_auto_calibrated(&self) -> Result<bool, Exception> {
+        Ok(self.guard.borrow().is_auto_calibrated()?)
     }
 
     #[method]
-    fn get_physical_orientation(&self) -> Obj {
-        match self
-            .guard
-            .borrow()
-            .physical_orientation()
-            .unwrap_or_else(|e| raise_port_error!(e))
-        {
+    fn get_physical_orientation(&self) -> Result<Obj, Exception> {
+        Ok(match self.guard.borrow().physical_orientation()? {
             InertialOrientation::XDown => Obj::from_static(InertialOrientationObj::X_DOWN),
             InertialOrientation::XUp => Obj::from_static(InertialOrientationObj::X_UP),
 
@@ -231,19 +183,17 @@ impl InertialSensorObj {
 
             InertialOrientation::ZDown => Obj::from_static(InertialOrientationObj::Z_DOWN),
             InertialOrientation::ZUp => Obj::from_static(InertialOrientationObj::Z_UP),
-        }
+        })
     }
 
     #[method]
-    fn set_data_interval(&self, interval: f32, unit: &TimeUnitObj) {
+    fn set_data_interval(&self, interval: f32, unit: &TimeUnitObj) -> Result<(), Exception> {
         if interval < 0.0 {
-            raise_value_error(token(), c"interval cannot be negative");
+            Err(value_error(c"interval cannot be negative"))?
         }
         let dur = unit.unit().float_to_dur(interval);
-        self.guard
-            .borrow_mut()
-            .set_data_interval(dur)
-            .unwrap_or_else(|e| raise_port_error!(e));
+        self.guard.borrow_mut().set_data_interval(dur)?;
+        Ok(())
     }
 }
 
@@ -261,14 +211,6 @@ pub enum CalibrateFutureState {
         timestamp: time32::Instant,
         phase: CalibrationPhase,
     },
-}
-
-fn smart_port_index(n: u8) -> u32 {
-    (n - 1) as u32
-}
-
-unsafe fn device_handle(index: u32) -> V5_DeviceT {
-    unsafe { vexDeviceGetByIndex(index) }
 }
 
 #[class_methods]
@@ -289,7 +231,7 @@ impl CalibrateFuture {
         // Get the sensor's status flags, which tell us whether or not we are still calibrating.
         let status = InertialStatus::from_bits_retain(if let Err(e) = imu.validate_port() {
             // IMU got unplugged, so we'll resolve early.
-            raise_port_error!(e);
+            Exception::from(e).raise(token());
         } else {
             // Get status flags from VEXos.
             let flags = unsafe { vexDeviceImuStatusGet(device) };
@@ -358,7 +300,7 @@ impl CalibrateFuture {
                     })
                 {
                     // Waiting took too long and exceeded a timeout.
-                    raise_device_error(token(), c"calibration timed out");
+                    device_error(c"calibration timed out");
                 }
 
                 if status.contains(InertialStatus::CALIBRATING) && phase == CalibrationPhase::Start

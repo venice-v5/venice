@@ -1,61 +1,60 @@
 pub mod distance_object;
 
-use argparse::Args;
+use argparse::{Args, error_msg};
 use micropython_rs::{
     class, class_methods,
-    except::raise_value_error,
-    init::token,
     obj::{Obj, ObjBase, ObjType},
 };
-use vexide_devices::smart::distance::DistanceSensor;
+use vexide_devices::smart::distance::{DistanceObjectError, DistanceSensor};
 
 use crate::{
-    devices::{self, PortNumber},
-    modvenice::{distance_sensor::distance_object::DistanceObjectObj, raise_port_error},
-    registry::RegistryGuard,
+    devices::{self},
+    modvenice::{Exception, device_error, distance_sensor::distance_object::DistanceObjectObj},
+    registry::SmartGuard,
 };
 
 #[class(qstr!(DistanceSensor))]
 #[repr(C)]
 pub struct DistanceSensorObj {
-    base: ObjBase<'static>,
-    guard: RegistryGuard<'static, DistanceSensor>,
+    base: ObjBase,
+    guard: SmartGuard<DistanceSensor>,
+}
+
+impl From<DistanceObjectError> for Exception {
+    fn from(value: DistanceObjectError) -> Self {
+        device_error(error_msg!("{value}"))
+    }
 }
 
 #[class_methods]
 impl DistanceSensorObj {
     #[make_new]
-    fn make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Self {
-        let token = token();
-        let mut reader = Args::new(n_pos, n_kw, args).reader(token);
+    fn make_new(
+        ty: &'static ObjType,
+        n_pos: usize,
+        n_kw: usize,
+        args: &[Obj],
+    ) -> Result<Self, Exception> {
+        let mut reader = Args::new(n_pos, n_kw, args).reader();
         reader.assert_npos(1, 1).assert_nkw(0, 0);
 
-        let port = PortNumber::from_i32(reader.next_positional())
-            .unwrap_or_else(|_| raise_value_error(token, c"port number must be between 1 and 21"));
-
+        let port = reader.next_positional()?;
         let guard = devices::lock_port(port, DistanceSensor::new);
 
-        DistanceSensorObj {
+        Ok(DistanceSensorObj {
             base: ObjBase::new(ty),
             guard,
-        }
+        })
     }
 
     #[method]
-    fn get_status(&self) -> i32 {
-        self.guard
-            .borrow()
-            .status()
-            .unwrap_or_else(|e| raise_port_error!(e)) as i32
+    fn get_status(&self) -> Result<i32, Exception> {
+        Ok(self.guard.borrow().status()? as i32)
     }
 
     #[method]
-    fn get_object(&self) -> Option<DistanceObjectObj> {
-        self.guard
-            .borrow()
-            .object()
-            .unwrap_or_else(|e| raise_port_error!(e))
-            .map(DistanceObjectObj::new)
+    fn get_object(&self) -> Result<Option<DistanceObjectObj>, Exception> {
+        Ok(self.guard.borrow().object()?.map(DistanceObjectObj::new))
     }
 
     #[method]

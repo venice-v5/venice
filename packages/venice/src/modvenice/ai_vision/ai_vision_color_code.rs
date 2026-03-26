@@ -1,18 +1,18 @@
 use std::cell::Cell;
 
-use argparse::Args;
+use argparse::{Args, PositionalError};
 use micropython_rs::{
     class, class_methods,
-    init::token,
     obj::{Obj, ObjBase, ObjTrait, ObjType, SubscrOp},
 };
 use vexide_devices::smart::ai_vision::AiVisionColorCode;
 
+use crate::modvenice::Exception;
 
 #[class(qstr!(AiVisionColorCode))]
 #[repr(C)]
 pub struct AiVisionColorCodeObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
     // this is the backing type for AiVisionColorCode
     // we store it this way to make mutability easier
     code: Cell<[Option<u8>; 7]>,
@@ -29,7 +29,7 @@ impl AiVisionColorCodeObj {
             *code = Some(c);
         }
         Self {
-            base: ObjBase::new(Self::OBJ_TYPE),
+            base: Self::OBJ_TYPE.into(),
             code: Cell::new(codes),
         }
     }
@@ -38,24 +38,31 @@ impl AiVisionColorCodeObj {
 #[class_methods]
 impl AiVisionColorCodeObj {
     #[make_new]
-    fn make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Self {
-        let mut reader = Args::new(n_pos, n_kw, args).reader(token());
-        reader.assert_npos(1, 7);
+    fn make_new(
+        ty: &'static ObjType,
+        n_pos: usize,
+        n_kw: usize,
+        args: &[Obj],
+    ) -> Result<Self, Exception> {
+        let mut reader = Args::new(n_pos, n_kw, args).reader();
+        reader.assert_npos(1, 7).assert_nkw(0, 0);
+
         let mut values = [None; 7];
         for value in values.iter_mut() {
-            let res = reader.try_next_positional::<i32>();
-            if let Ok(v) = res {
-                // TODO: this conversion needs a bounds check
-                *value = Some(v as u8);
-            } else {
-                break;
+            let res = reader.next_positional::<u8>();
+            match res {
+                Ok(v) => *value = Some(v),
+                Err(e) => match e {
+                    PositionalError::ArgumentsExhausted => break,
+                    _ => return Err(e.into()),
+                },
             }
         }
 
-        Self {
+        Ok(Self {
             base: ObjBase::new(ty),
             code: Cell::new(values),
-        }
+        })
     }
 
     #[subscr]

@@ -25,7 +25,7 @@ pub struct Map {
 /// From: `py/obj.h`
 #[repr(C)]
 pub struct Dict {
-    base: ObjBase<'static>,
+    base: ObjBase,
     pub map: Map,
 }
 

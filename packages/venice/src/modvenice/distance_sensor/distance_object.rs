@@ -5,11 +5,10 @@ use micropython_rs::{
 };
 use vexide_devices::smart::distance::DistanceObject;
 
-
 #[class(qstr!(DistanceObject))]
 #[repr(C)]
 pub struct DistanceObjectObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
     object: DistanceObject,
 }
 

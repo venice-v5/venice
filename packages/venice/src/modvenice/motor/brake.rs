@@ -4,11 +4,10 @@ use micropython_rs::{
 };
 use vexide_devices::smart::motor::BrakeMode;
 
-
 #[class(qstr!(BrakeMode))]
 #[repr(C)]
 pub struct BrakeModeObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
     mode: BrakeMode,
 }
 

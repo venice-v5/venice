@@ -1,46 +1,49 @@
-use argparse::{ArgType, Args, error_msg};
+use argparse::{ArgType, Args, PositionalError};
 use micropython_rs::{
     class, class_methods,
-    except::raise_type_error,
+    except::type_error,
     init::token,
     obj::{AttrOp, Obj, ObjBase, ObjTrait, ObjType},
     qstr::Qstr,
 };
 use vexide_devices::smart::vision::DetectionSource;
 
-use crate::modvenice::vision::validate_id;
+use crate::modvenice::{
+    Exception,
+    vision::{SignatureId, code::VisionCodeObj},
+};
 
 #[class(qstr!(DetectionSource))]
 #[repr(C)]
 pub struct DetectionSourceObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
 }
 
 #[class(qstr!(Signature))]
 #[repr(C)]
 pub struct Signature {
-    base: ObjBase<'static>,
+    base: ObjBase,
     id: u8,
 }
 
 #[class(qstr!(Code))]
 #[repr(C)]
 pub struct Code {
-    base: ObjBase<'static>,
+    base: ObjBase,
     code: Obj,
 }
 
 #[class(qstr!(Line))]
 #[repr(C)]
 pub struct Line {
-    base: ObjBase<'static>,
+    base: ObjBase,
 }
 
 #[class_methods]
 impl DetectionSourceObj {
     #[make_new]
     fn make_new(_: &ObjType, _: usize, _: usize, _: &[Obj]) {
-        raise_type_error(token(), c"DetectionSource is an abstract base class; use a variant like DetectionSource.Signature");
+        type_error(c"DetectionSource is an abstract base class; use a variant like DetectionSource.Signature").raise(token());
     }
 
     #[constant(qstr!(Signature))]
@@ -57,15 +60,21 @@ impl Signature {
     const PARENT: &ObjType = DetectionSourceObj::OBJ_TYPE;
 
     #[make_new]
-    fn make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Self {
-        let mut reader = Args::new(n_pos, n_kw, args).reader(token());
+    fn make_new(
+        ty: &'static ObjType,
+        n_pos: usize,
+        n_kw: usize,
+        args: &[Obj],
+    ) -> Result<Self, Exception> {
+        let mut reader = Args::new(n_pos, n_kw, args).reader();
         reader.assert_npos(1, 1).assert_nkw(0, 0);
 
-        let id = validate_id(reader.next_positional());
-        Self {
+        let id = reader.next_positional::<SignatureId>()?.id();
+
+        Ok(Self {
             base: ObjBase::new(ty),
             id,
-        }
+        })
     }
 
     #[attr]
@@ -84,24 +93,28 @@ impl Code {
     const PARENT: &ObjType = DetectionSourceObj::OBJ_TYPE;
 
     #[make_new]
-    fn make_new(ty: &'static ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Self {
-        let mut reader = Args::new(n_pos, n_kw, args).reader(token());
+    fn make_new(
+        ty: &'static ObjType,
+        n_pos: usize,
+        n_kw: usize,
+        args: &[Obj],
+    ) -> Result<Self, Exception> {
+        let mut reader = Args::new(n_pos, n_kw, args).reader();
         reader.assert_npos(1, 1).assert_nkw(0, 0);
 
-        let code_argvalue = reader.try_next_positional_untyped().unwrap();
-        let argty = code_argvalue.ty();
-        if let ArgType::Obj(obj_type) = argty
-            && obj_type == super::code::VisionCodeObj::OBJ_TYPE
-        {
-            Self {
+        let code_obj = reader.next_positional::<Obj>().unwrap();
+        if code_obj.is(VisionCodeObj::OBJ_TYPE) {
+            Ok(Self {
                 base: ObjBase::new(ty),
-                code: code_argvalue.as_obj(),
-            }
+                code: code_obj,
+            })
         } else {
-            raise_type_error(
-                token(),
-                error_msg!("expected <VisionCode> for argument #1, found <{argty}>"),
-            );
+            Err(PositionalError::TypeError {
+                n: 1,
+                expected: "VisionCode",
+                found: &format!("{}", ArgType::of(&code_obj)),
+            }
+            .into())
         }
     }
 
@@ -125,15 +138,15 @@ impl Line {
     };
 
     #[make_new]
-    fn make_new(_: &ObjType, _: usize, _: usize, args: &[Obj]) -> Obj {
+    fn make_new(_: &ObjType, _: usize, _: usize, args: &[Obj]) -> Result<Obj, Exception> {
         if args.len() != 0 {
-            raise_type_error(
-                token(),
+            Err(type_error(
                 c"constructor does not accept arguments; just call DetectionSource.Line()",
-            );
+            )
+            .into())
+        } else {
+            Ok(Obj::from_static(Self::SELF))
         }
-
-        Obj::from_static(Self::SELF)
     }
 }
 
