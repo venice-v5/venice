@@ -66,7 +66,7 @@ pub fn class(attr: TokenStream, item: TokenStream) -> TokenStream {
         // ObjBase identity check
         // (check that the first field is an ObjBase)
         const _: () = {
-            fn assert_type(_: &::micropython_rs::obj::ObjBase<'static>) {}
+            fn assert_type(_: &::micropython_rs::obj::ObjBase) {}
             fn validate(s: &#struct_name) {
                 assert_type(#first_field_accessor);
             }

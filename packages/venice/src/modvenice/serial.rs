@@ -9,7 +9,7 @@ use std::{
 use micropython_rs::{
     class, class_methods,
     errno::{MP_EINVAL, MP_EIO},
-    except::{raise_stop_iteration, raise_value_error},
+    except::raise_stop_iteration,
     fun::{Fun1, Fun2, FunVarBetween},
     init::token,
     ioctl_from_fn,
@@ -21,27 +21,30 @@ use micropython_rs::{
     },
     write_from_fn,
 };
-use vexide_devices::smart::serial::{SerialPort, SerialPortOpenFuture};
+use vexide_devices::smart::{
+    SmartPort,
+    serial::{SerialPort, SerialPortOpenFuture},
+};
 
 use crate::{
     devices::{PortNumber, lock_port},
     modvenice::vasyncio::event_loop::WAKE_SIGNAL,
     obj::alloc_obj,
-    registry::{RegistryGuard, UpgradeGuard},
+    registry::{RegistryGuard, SmartGuard, UpgradeGuard},
 };
 
 #[class(qstr!(SerialPort))]
 #[repr(C)]
 pub struct SerialPortObj {
-    base: ObjBase<'static>,
-    guard: RegistryGuard<'static, SerialPort>,
+    base: ObjBase,
+    guard: SmartGuard<SerialPort>,
 }
 
 #[class(qstr!(SerialPortOpenFuture))]
 #[repr(C)]
 pub struct SerialPortOpenFutureObj {
-    base: ObjBase<'static>,
-    upgrade: RefCell<Option<UpgradeGuard<'static, SerialPortOpenFuture>>>,
+    base: ObjBase,
+    upgrade: RefCell<Option<UpgradeGuard<'static, SmartPort, SerialPortOpenFuture>>>,
 }
 
 #[class_methods]
@@ -52,11 +55,7 @@ impl SerialPortObj {
     const MAX_BAUD_RATE: i32 = SerialPort::MAX_BAUD_RATE as i32;
 
     #[method(binding = "static")]
-    fn open(port: i32, baud_rate: i32) -> SerialPortOpenFutureObj {
-        let port_number = PortNumber::from_i32(port).unwrap_or_else(|_| {
-            raise_value_error(token(), c"port number must be between 1 and 21")
-        });
-
+    fn open(port_number: PortNumber, baud_rate: i32) -> SerialPortOpenFutureObj {
         let upgrade = lock_port(port_number, |p| p)
             .start_upgrade()
             .unwrap()

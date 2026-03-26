@@ -1,7 +1,9 @@
+mod adi;
 mod ai_vision;
 mod competition;
 mod controller;
 mod distance_sensor;
+mod gps;
 mod imu;
 mod math;
 mod motor;
@@ -12,18 +14,25 @@ mod units;
 mod vasyncio;
 mod vision;
 
-use std::ffi::CStr;
-
+use argparse::{KeywordError, PositionalError, error_msg};
 use micropython_rs::{
     const_map,
-    except::{mp_type_Exception, new_exception_type, raise_msg},
-    fun::{Fun0, Fun1},
+    except::{EXCEPTION_TYPE, ExceptionType, Message},
     init::InitToken,
     map::Dict,
-    obj::{Obj, ObjFullType, ObjTrait},
+    module::Module,
+    obj::{Obj, ObjTrait},
 };
+use vex_sdk::{
+    V5_DeviceT, V5_DeviceType, V5_MAX_DEVICE_PORTS, vexDeviceGetByIndex, vexDeviceGetStatus,
+};
+use vexide_devices::smart::{PortError, SmartDeviceType};
 
 use crate::modvenice::{
+    adi::{
+        gyroscope::{AdiGyroscopeFuture, AdiGyroscopeObj},
+        motor::AdiMotorObj,
+    },
     ai_vision::{
         AiVisionSensorObj, ai_vision_color::AiVisionColorObj,
         ai_vision_color_code::AiVisionColorCodeObj,
@@ -37,8 +46,9 @@ use crate::modvenice::{
         state::{ButtonStateObj, ControllerStateObj, JoystickStateObj},
     },
     distance_sensor::{DistanceSensorObj, distance_object::DistanceObjectObj},
+    gps::GpsSensorObj,
     imu::{InertialOrientationObj, InertialSensorObj},
-    math::{EulerAngles, Quaternion, Vec3},
+    math::{EulerAngles, Point2, Quaternion, Vec3},
     motor::{
         MotorObj, brake::BrakeModeObj, direction::DirectionObj, gearset::GearsetObj,
         motor_type::MotorTypeObj,
@@ -51,10 +61,7 @@ use crate::modvenice::{
     rotation_sensor::RotationSensorObj,
     serial::{SerialPortObj, SerialPortOpenFutureObj},
     units::{rotation::RotationUnitObj, time::TimeUnitObj},
-    vasyncio::{
-        event_loop::{EventLoop, vasyncio_get_running_loop, vasyncio_run, vasyncio_spawn},
-        sleep::Sleep,
-    },
+    vasyncio::VASYNCIO_DICT,
     vision::{
         VisionSensorObj, code::VisionCodeObj, led_mode::LedModeObj, mode::VisionModeObj,
         object::VisionObjectObj, signature::VisionSignatureObj, source::DetectionSourceObj,
@@ -62,23 +69,96 @@ use crate::modvenice::{
     },
 };
 
-static DEVICE_ERROR_OBJ_TYPE: ObjFullType =
-    new_exception_type(qstr!(DeviceError), &mp_type_Exception);
+static DEVICE_ERROR_TYPE: ExceptionType = ExceptionType::new(qstr!(DeviceError), EXCEPTION_TYPE);
 
-pub fn raise_device_error(token: InitToken, msg: impl AsRef<CStr>) -> ! {
-    raise_msg(token, DEVICE_ERROR_OBJ_TYPE.as_obj_type(), msg)
+pub struct Exception(pub micropython_rs::except::Exception);
+
+impl Exception {
+    pub fn new(ty: &'static ExceptionType, msg: impl Into<Message>) -> Self {
+        Self(micropython_rs::except::Exception {
+            ty,
+            msg: msg.into(),
+        })
+    }
+
+    pub fn raise(&self, token: InitToken) -> ! {
+        self.0.raise(token);
+    }
 }
 
-macro_rules! raise_port_error {
-    ($e:expr) => {
-        $crate::modvenice::raise_device_error(
-            ::micropython_rs::init::token(),
-            ::argparse::error_msg!("{}", $e),
-        )
+impl From<micropython_rs::except::Exception> for Exception {
+    fn from(value: micropython_rs::except::Exception) -> Self {
+        Self(value)
+    }
+}
+
+impl From<Exception> for micropython_rs::except::Exception {
+    fn from(value: Exception) -> Self {
+        value.0
+    }
+}
+
+impl From<PositionalError<'_>> for Exception {
+    fn from(value: PositionalError<'_>) -> Self {
+        Self(value.into())
+    }
+}
+
+impl From<KeywordError<'_>> for Exception {
+    fn from(value: KeywordError<'_>) -> Self {
+        Self(value.into())
+    }
+}
+
+impl From<PortError> for Exception {
+    fn from(value: PortError) -> Self {
+        device_error(error_msg!("{value}"))
+    }
+}
+
+pub fn device_error(msg: impl Into<Message>) -> Exception {
+    Exception::new(&DEVICE_ERROR_TYPE, msg)
+}
+
+fn smart_port_index(n: u8) -> u32 {
+    (n - 1) as u32
+}
+
+unsafe fn device_handle(index: u32) -> V5_DeviceT {
+    unsafe { vexDeviceGetByIndex(index) }
+}
+
+/// Verify that the device type is currently plugged into this port.
+///
+/// This function provides the internal implementations of [`SmartDevice::validate_port`],
+/// [`SmartPort::validate_type`], and [`AdiPort::validate_expander`].
+fn validate_port(number: u8, device_type: SmartDeviceType) -> Result<(), PortError> {
+    let mut device_types: [V5_DeviceType; V5_MAX_DEVICE_PORTS] = unsafe { core::mem::zeroed() };
+    unsafe {
+        vexDeviceGetStatus(device_types.as_mut_ptr());
+    }
+
+    let connected_type: Option<SmartDeviceType> = match device_types[(number - 1) as usize] {
+        V5_DeviceType::kDeviceTypeNoSensor => None,
+        raw_type => Some(raw_type.into()),
     };
-}
 
-pub(crate) use raise_port_error;
+    if let Some(connected_type) = connected_type {
+        // The connected device must match the requested type.
+        if connected_type != device_type {
+            return Err(PortError::IncorrectDevice {
+                expected: device_type,
+                actual: connected_type,
+                port: number,
+            });
+        }
+    } else {
+        // No device is plugged into the port.
+        return Err(PortError::Disconnected { port: number });
+    }
+
+    Ok(())
+}
 
 #[unsafe(no_mangle)]
 #[allow(non_upper_case_globals)]
@@ -136,18 +216,21 @@ static mut venice_globals: Dict = Dict::new(const_map![
     qstr!(WhiteBalance) => Obj::from_static(WhiteBalanceObj::OBJ_TYPE),
     // other devices
     qstr!(RotationSensor) => Obj::from_static(RotationSensorObj::OBJ_TYPE),
+    qstr!(GpsSensor) => Obj::from_static(GpsSensorObj::OBJ_TYPE),
 
-    // async
-    qstr!(EventLoop) => Obj::from_static(EventLoop::OBJ_TYPE),
-    qstr!(Sleep) => Obj::from_static(Sleep::OBJ_TYPE),
-    qstr!(get_running_loop) => Obj::from_static(&Fun0::new(vasyncio_get_running_loop)),
-    qstr!(run) => Obj::from_static(&Fun1::new(vasyncio_run)),
-    qstr!(spawn) => Obj::from_static(&Fun1::new(vasyncio_spawn)),
+    // adi
+    qstr!(AdiMotor) => Obj::from_static(AdiMotorObj::OBJ_TYPE),
+    qstr!(AdiGyroscope) => Obj::from_static(AdiGyroscopeObj::OBJ_TYPE),
+    qstr!(AdiGyroscopeFuture) => Obj::from_static(AdiGyroscopeFuture::OBJ_TYPE),
+
+    // vasyncio
+    qstr!(vasyncio) => Obj::from_static(&Module::new(VASYNCIO_DICT)),
 
     // math
     qstr!(Vec3) => Obj::from_static(Vec3::OBJ_TYPE),
     qstr!(Quaternion) => Obj::from_static(Quaternion::OBJ_TYPE),
     qstr!(EulerAngles) => Obj::from_static(EulerAngles::OBJ_TYPE),
+    qstr!(Point2) => Obj::from_static(Point2::OBJ_TYPE),
 
     // units
     qstr!(RotationUnit) => Obj::from_static(RotationUnitObj::OBJ_TYPE),

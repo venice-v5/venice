@@ -4,7 +4,6 @@ use micropython_rs::{
 };
 use vexide_devices::math::Angle;
 
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RotationUnit {
     Radians,
@@ -15,7 +14,7 @@ pub enum RotationUnit {
 #[class(qstr!(RotationUnit))]
 #[repr(C)]
 pub struct RotationUnitObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
     unit: RotationUnit,
 }
 

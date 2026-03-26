@@ -1,17 +1,16 @@
 use micropython_rs::{
     class, class_methods,
-    except::{mp_type_AttributeError, raise_msg},
+    except::{ATTRIBUTE_ERROR_TYPE, raise_msg},
     init::token,
     obj::{AttrOp, Obj, ObjBase, ObjTrait},
     qstr::Qstr,
 };
 use vexide_devices::smart::optical::{Gesture, GestureDirection};
 
-
 #[class(qstr!(Gesture))]
 #[repr(C)]
 pub struct GestureObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
     direction: Obj,
     // TODO: how do we make self value accessible?
     // time: LowResolutionTime,
@@ -26,7 +25,7 @@ pub struct GestureObj {
 #[class(qstr!(GestureDirection))]
 #[repr(C)]
 pub struct GestureDirectionObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
 }
 
 #[class_methods]
@@ -50,7 +49,7 @@ impl GestureDirectionObj {
 impl GestureObj {
     pub fn new(gesture: Gesture) -> Self {
         Self {
-            base: ObjBase::new(Self::OBJ_TYPE),
+            base: Self::OBJ_TYPE.into(),
             direction: Obj::from_static(match gesture.direction {
                 GestureDirection::Up => GestureDirectionObj::UP,
                 GestureDirection::Down => GestureDirectionObj::DOWN,
@@ -72,7 +71,7 @@ impl GestureObj {
     #[attr]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let AttrOp::Load { result } = op else {
-            raise_msg(token(), &mp_type_AttributeError, c"cannot write to Gesture")
+            raise_msg(token(), ATTRIBUTE_ERROR_TYPE, c"cannot write to Gesture")
         };
 
         result.return_value(match attr.as_str() {

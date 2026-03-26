@@ -1,34 +1,49 @@
 use std::sync::LazyLock;
 
-use vexide_devices::{controller::ControllerId, peripherals::Peripherals, smart::SmartPort};
+use argparse::{ArgParser, DefaultParser, IntParser, ParseError, StrParser, error_msg};
+use vexide_devices::{
+    adi::AdiPort, controller::ControllerId, peripherals::Peripherals, smart::SmartPort,
+};
 
-use crate::registry::{ControllerGuard, ControllerRegistry, PortDevice, Registry, RegistryGuard};
+use crate::registry::{
+    AdiRegistry, ControllerGuard, ControllerRegistry, PortDevice, Registry, RegistryGuard,
+    SmartRegistry,
+};
 
 pub struct Devices {
     pub primary_controller: ControllerRegistry,
     pub partner_controller: ControllerRegistry,
 
-    pub port_1: Registry,
-    pub port_2: Registry,
-    pub port_3: Registry,
-    pub port_4: Registry,
-    pub port_5: Registry,
-    pub port_6: Registry,
-    pub port_7: Registry,
-    pub port_8: Registry,
-    pub port_9: Registry,
-    pub port_10: Registry,
-    pub port_11: Registry,
-    pub port_12: Registry,
-    pub port_13: Registry,
-    pub port_14: Registry,
-    pub port_15: Registry,
-    pub port_16: Registry,
-    pub port_17: Registry,
-    pub port_18: Registry,
-    pub port_19: Registry,
-    pub port_20: Registry,
-    pub port_21: Registry,
+    pub port_1: SmartRegistry,
+    pub port_2: SmartRegistry,
+    pub port_3: SmartRegistry,
+    pub port_4: SmartRegistry,
+    pub port_5: SmartRegistry,
+    pub port_6: SmartRegistry,
+    pub port_7: SmartRegistry,
+    pub port_8: SmartRegistry,
+    pub port_9: SmartRegistry,
+    pub port_10: SmartRegistry,
+    pub port_11: SmartRegistry,
+    pub port_12: SmartRegistry,
+    pub port_13: SmartRegistry,
+    pub port_14: SmartRegistry,
+    pub port_15: SmartRegistry,
+    pub port_16: SmartRegistry,
+    pub port_17: SmartRegistry,
+    pub port_18: SmartRegistry,
+    pub port_19: SmartRegistry,
+    pub port_20: SmartRegistry,
+    pub port_21: SmartRegistry,
+
+    pub adi_a: AdiRegistry,
+    pub adi_b: AdiRegistry,
+    pub adi_c: AdiRegistry,
+    pub adi_d: AdiRegistry,
+    pub adi_e: AdiRegistry,
+    pub adi_f: AdiRegistry,
+    pub adi_g: AdiRegistry,
+    pub adi_h: AdiRegistry,
 }
 
 impl Devices {
@@ -58,10 +73,19 @@ impl Devices {
             port_19: Registry::new(peris.port_19),
             port_20: Registry::new(peris.port_20),
             port_21: Registry::new(peris.port_21),
+
+            adi_a: AdiRegistry::new(peris.adi_a),
+            adi_b: AdiRegistry::new(peris.adi_b),
+            adi_c: AdiRegistry::new(peris.adi_c),
+            adi_d: AdiRegistry::new(peris.adi_d),
+            adi_e: AdiRegistry::new(peris.adi_e),
+            adi_f: AdiRegistry::new(peris.adi_f),
+            adi_g: AdiRegistry::new(peris.adi_g),
+            adi_h: AdiRegistry::new(peris.adi_h),
         })
     }
 
-    fn registry_by_port(&self, port: PortNumber) -> &Registry {
+    fn registry_by_port(&self, port: PortNumber) -> &SmartRegistry {
         match port.number() {
             1 => &self.port_1,
             2 => &self.port_2,
@@ -87,10 +111,41 @@ impl Devices {
             _ => unreachable!(),
         }
     }
+
+    fn adi_registry_by_port(&self, port: AdiPortNumber) -> &AdiRegistry {
+        match port {
+            AdiPortNumber::A => &self.adi_a,
+            AdiPortNumber::B => &self.adi_b,
+            AdiPortNumber::C => &self.adi_c,
+            AdiPortNumber::D => &self.adi_d,
+            AdiPortNumber::E => &self.adi_e,
+            AdiPortNumber::F => &self.adi_f,
+            AdiPortNumber::G => &self.adi_g,
+            AdiPortNumber::H => &self.adi_h,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PortNumber(u8);
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct PortNumberParser;
+
+impl<'a> ArgParser<'a> for PortNumberParser {
+    type Output = PortNumber;
+
+    fn parse(
+        &self,
+        obj: &'a micropython_rs::obj::Obj,
+    ) -> Result<Self::Output, argparse::ParseError> {
+        IntParser::new(1..=21).parse(obj).map(|int| PortNumber(int))
+    }
+}
+
+impl DefaultParser<'_> for PortNumber {
+    type Parser = PortNumberParser;
+}
 
 impl PortNumber {
     pub const fn new(number: u8) -> Result<Self, ()> {
@@ -112,17 +167,73 @@ impl PortNumber {
 
 static REGISTRIES: LazyLock<Devices> = LazyLock::new(|| Devices::new().unwrap());
 
-pub fn lock_port<D, I>(port: PortNumber, init: I) -> RegistryGuard<'static, D>
+pub fn lock_port<D, I>(port: PortNumber, init: I) -> RegistryGuard<'static, SmartPort, D>
 where
-    D: PortDevice,
+    D: PortDevice<SmartPort>,
     I: FnOnce(SmartPort) -> D,
 {
     REGISTRIES.registry_by_port(port).lock(init)
 }
 
-pub fn lock_controller(id: ControllerId) -> ControllerGuard<'static> {
+pub fn lock_controller(id: ControllerId) -> ControllerGuard {
     match id {
-        ControllerId::Primary => REGISTRIES.primary_controller.lock(),
-        ControllerId::Partner => REGISTRIES.partner_controller.lock(),
+        ControllerId::Primary => REGISTRIES.primary_controller.lock(|c| c),
+        ControllerId::Partner => REGISTRIES.partner_controller.lock(|c| c),
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AdiPortNumber {
+    A,
+    B,
+    C,
+    D,
+    E,
+    F,
+    G,
+    H,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct AdiPortNumberParser;
+
+impl<'a> ArgParser<'a> for AdiPortNumberParser {
+    type Output = AdiPortNumber;
+
+    fn parse(&self, obj: &'a micropython_rs::obj::Obj) -> Result<Self::Output, ParseError> {
+        let str = StrParser.parse(obj)?;
+        if str.len() != 1 {
+            return Err(ParseError::ValueError {
+                mk_msg: Box::new(|arg| {
+                    error_msg!("{arg}: adi port must only consist of one letter ('a' through 'h')")
+                }),
+            });
+        }
+
+        Ok(match str.chars().next().unwrap().to_ascii_lowercase() {
+            'a' => AdiPortNumber::A,
+            'b' => AdiPortNumber::B,
+            'c' => AdiPortNumber::C,
+            'd' => AdiPortNumber::D,
+            'e' => AdiPortNumber::E,
+            'f' => AdiPortNumber::F,
+            'g' => AdiPortNumber::G,
+            'h' => AdiPortNumber::H,
+            _ => {
+                return Err(ParseError::ValueError {
+                    mk_msg: Box::new(|arg| {
+                        error_msg!("{arg}: adi port must be a letter from 'a' through 'h'")
+                    }),
+                });
+            }
+        })
+    }
+}
+
+impl DefaultParser<'_> for AdiPortNumber {
+    type Parser = AdiPortNumberParser;
+}
+
+pub fn lock_adi_port(port: AdiPortNumber) -> AdiPort {
+    REGISTRIES.adi_registry_by_port(port).lock()
 }

@@ -36,7 +36,7 @@ impl TimeUnit {
 #[class(qstr!(TimeUnit))]
 #[repr(C)]
 pub struct TimeUnitObj {
-    base: ObjBase<'static>,
+    base: ObjBase,
     unit: TimeUnit,
 }
 
