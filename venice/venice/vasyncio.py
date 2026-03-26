@@ -2,7 +2,7 @@
 Venice implements its own async runtime on top of Micropython. `vasyncio` provides primitives for working with async Python in Venice.
 """
 from __future__ import annotations
-from typing import TypeVar, Generic, Awaitable, Any, TYPE_CHECKING
+from typing import TypeVar, Generic, Awaitable, Any, TYPE_CHECKING, Never
 
 if TYPE_CHECKING:
     from . import TimeUnit
@@ -16,6 +16,10 @@ class Task(Generic[_T]):
     by the event loop until it completes, at which point awaiting the task yields the coroutine's
     return value.
     """
+
+    def __new__(cls) -> Never:
+        """`Task` values are created by the event loop and cannot be constructed directly."""
+        ...
 
     def __iter__(self) -> 'Task[_T]':
         """Await this task until it completes.

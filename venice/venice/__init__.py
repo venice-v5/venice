@@ -2,7 +2,7 @@
 Venice is an open-source Micropython runtime for VEX V5 robots.
 
 ```python
-from venice import Direction, Gearset, Motor, Sleep, TimeUnit, run
+from venice import *
 
 async def main():
     my_motor = Motor(
@@ -13,9 +13,9 @@ async def main():
     my_motor.set_voltage(10.0)
 
     while True:
-        await Sleep(50, TimeUnit.MILLIS)
+        await vasyncio.Sleep(10, TimeUnit.MILLIS)
 
-run(main())
+vasyncio.run(main())
 ```
 """
 
@@ -227,19 +227,16 @@ class Motor:
         """
         ...
 
-    def is_exp(self) -> bool:
-        """Return `True` if the motor is a 5.5W (EXP) Smart Motor."""
-        ...
+    is_exp: bool
+    """Whether this motor is a 5.5W (EXP) Smart Motor."""
 
-    def is_v5(self) -> bool:
-        """Return `True` if the motor is an 11W (V5) Smart Motor."""
-        ...
+    is_v5: bool
+    """Whether this motor is an 11W (V5) Smart Motor."""
 
-    def get_max_voltage(self) -> float:
-        """Return the maximum voltage for the motor based on its motor type."""
-        ...
+    max_voltage: float
+    """The maximum voltage for this motor based on its motor type."""
 
-    def gearset(self) -> Gearset:
+    def get_gearset(self) -> Gearset:
         """Return the gearset of the motor.
 
         For 5.5W motors, this is always returned as `Gearset.GREEN`.
@@ -341,12 +338,11 @@ class Motor:
         """Return `True` if the motor's H-bridge has an over-current fault."""
         ...
 
-    def get_motor_type(self) -> MotorType:
-        """Return the type of the motor.
+    motor_type: MotorType
+    """The type of the motor.
 
-        This does not check the hardware; it returns the type the motor was created with.
-        """
-        ...
+    This does not check the hardware; it returns the type the motor was created with.
+    """
 
     def get_position(self, unit: RotationUnit) -> float:
         """Return the angular position of the motor as measured by the integrated motor encoder.
@@ -513,6 +509,10 @@ class CalibrateFuture:
     This object is returned by `InertialSensor.calibrate`. Awaiting it waits for calibration to
     begin and then finish, or raises an error if calibration times out.
     """
+
+    def __new__(cls) -> Never:
+        """`CalibrateFuture` values are returned by Venice APIs and cannot be constructed directly."""
+        ...
 
     def __iter__(self) -> 'CalibrateFuture':
         """Await this calibration operation until it completes."""
