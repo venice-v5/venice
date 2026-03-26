@@ -15,6 +15,9 @@ members = [
     "test",
 ]
 
+[tool.ty.rules]
+invalid-return-type = "ignore"
+empty-body = "ignore"
 
 [build-system]
 requires = ["setuptools>=61.0"]
