@@ -1,8 +1,11 @@
 """
 Venice implements its own async runtime on top of Micropython. `vasyncio` provides primitives for working with async Python in Venice.
 """
-from typing import TypeVar, Generic, Awaitable, Any
-from . import TimeUnit
+from __future__ import annotations
+from typing import TypeVar, Generic, Awaitable, Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from . import TimeUnit
 
 _T = TypeVar('_T')
 
