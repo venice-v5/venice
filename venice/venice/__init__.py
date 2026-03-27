@@ -398,6 +398,13 @@ TimeUnit.MILLIS = TimeUnit()
 TimeUnit.SECOND = TimeUnit()
 
 
+def monotonic_time() -> float:
+    """Return monotonic time in seconds since the Venice runtime started.
+
+    This clock only moves forwards and is intended for measuring elapsed time, not wall-clock
+    time.
+    """
+    ...
 
 
 class Vec3:
