@@ -14,7 +14,7 @@ mod units;
 mod vasyncio;
 mod vision;
 
-use argparse::{KeywordError, PositionalError, error_msg};
+use argparse::{Args, KeywordError, PositionalError, error_msg};
 use micropython_rs::{
     const_map,
     except::{EXCEPTION_TYPE, ExceptionType, Message},
@@ -124,12 +124,12 @@ pub fn device_error(msg: impl Into<Message>) -> Exception {
 unsafe extern "C" fn monotonic_time(n: usize, ptr: *const Obj) -> Obj {
     let args = unsafe { core::slice::from_raw_parts(ptr, n) };
     let mut reader = Args::new(n, 0, args).reader();
-    reader.assert_npos(0, 1).unwrap();
+    reader.assert_npos(0, 1).assert_nkw(0, 0);
 
     let unit = if n == 0 {
         crate::modvenice::units::time::TimeUnit::Second
     } else {
-        reader.next_positional::<&TimeUnitObj>().unwrap().unit()
+        *reader.next_positional::<&TimeUnitObj>().unwrap().unit()
     };
 
     let duration = std::time::Duration::from_micros(unsafe { vex_sdk::vexSystemHighResTimeGet() });
