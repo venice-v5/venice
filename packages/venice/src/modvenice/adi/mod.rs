@@ -8,6 +8,7 @@ pub mod digital;
 pub mod encoder;
 pub mod expander;
 pub mod gyroscope;
+pub mod light_sensor;
 pub mod motor;
 pub mod pwm;
 

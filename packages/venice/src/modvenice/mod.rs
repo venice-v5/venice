@@ -36,6 +36,7 @@ use crate::modvenice::{
         encoder::AdiEncoderObj,
         expander::{AdiExpanderObj, AdiExpanderPortObj},
         gyroscope::{AdiGyroscopeFuture, AdiGyroscopeObj},
+        light_sensor::AdiLightSensorObj,
         motor::AdiMotorObj,
         pwm::AdiPwmOutObj,
     },
@@ -238,6 +239,7 @@ static mut venice_globals: Dict = Dict::new(const_map![
     qstr!(AdiAnalogIn) => Obj::from_static(AdiAnalogInObj::OBJ_TYPE),
     qstr!(AdiAccelerometer) => Obj::from_static(AdiAccelerometerObj::OBJ_TYPE),
     qstr!(AdiAccelerometerSensitivity) => Obj::from_static(SensitivityObj::OBJ_TYPE),
+    qstr!(AdiLightSensor) => Obj::from_static(AdiLightSensorObj::OBJ_TYPE),
 
     // vasyncio
     qstr!(vasyncio) => Obj::from_static(&Module::new(VASYNCIO_DICT)),
