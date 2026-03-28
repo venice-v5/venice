@@ -1,13 +1,18 @@
 use std::cell::RefCell;
 
-use argparse::Args;
+use argparse::{Args, error_msg};
 use micropython_rs::{
     class, class_methods,
+    except::value_error,
     obj::{Obj, ObjBase, ObjType},
 };
-use vexide_devices::adi::encoder::AdiEncoder;
+use vexide_devices::adi::{AdiPort, encoder::AdiEncoder};
 
-use crate::modvenice::{Exception, adi::expander::AdiPortParser, units::rotation::RotationUnitObj};
+use crate::modvenice::{
+    Exception,
+    adi::{adi_port_name, expander::AdiPortParser, expander_index},
+    units::rotation::RotationUnitObj,
+};
 
 #[class(qstr!(AdiEncoder))]
 pub struct AdiEncoderObj {
@@ -18,6 +23,34 @@ pub struct AdiEncoderObj {
     // ticks = (theta * tpr) / TAU
     encoder: RefCell<AdiEncoder<1>>,
     tpr: i32,
+}
+
+fn check_ports(top_port: &AdiPort, bottom_port: &AdiPort) -> Result<(), Exception> {
+    if expander_index(top_port.expander_number()) != expander_index(bottom_port.expander_number()) {
+        Err(value_error(error_msg!(
+            "The specified top and bottom ports belong to different ADI expanders. Both expanders {:?} and {:?} were provided.",
+            top_port.expander_number(),
+            bottom_port.expander_number(),
+        )))?;
+    }
+
+    let top_number = top_port.number();
+    let bottom_number = bottom_port.number();
+    let valid_combo = if top_number.is_multiple_of(2) {
+        bottom_number == top_number - 1
+    } else {
+        bottom_number == top_number + 1
+    };
+
+    if !valid_combo {
+        Err(value_error(error_msg!(
+            "Encoder ports must be placed directly next to each other and in some combination of AB, CD, EF, GH, or BA, CD, EF, HG. (Got `{}{}`)",
+            adi_port_name(top_number),
+            adi_port_name(bottom_number),
+        )))?;
+    }
+
+    Ok(())
 }
 
 #[class_methods]
@@ -34,6 +67,7 @@ impl AdiEncoderObj {
 
         let top_port = reader.next_positional_with(AdiPortParser)?;
         let bottom_port = reader.next_positional_with(AdiPortParser)?;
+        check_ports(&top_port, &bottom_port)?;
         let tpr = reader.next_positional_or(360)?;
 
         Ok(Self {
