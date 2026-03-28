@@ -40,6 +40,7 @@ use crate::modvenice::{
         line_tracker::AdiLineTrackerObj,
         motor::AdiMotorObj,
         pwm::AdiPwmOutObj,
+        servo::AdiServoObj,
     },
     ai_vision::{
         AiVisionSensorObj, ai_vision_color::AiVisionColorObj,
@@ -242,6 +243,7 @@ static mut venice_globals: Dict = Dict::new(const_map![
     qstr!(AdiAccelerometerSensitivity) => Obj::from_static(SensitivityObj::OBJ_TYPE),
     qstr!(AdiLightSensor) => Obj::from_static(AdiLightSensorObj::OBJ_TYPE),
     qstr!(AdiLineTracker) => Obj::from_static(AdiLineTrackerObj::OBJ_TYPE),
+    qstr!(AdiServo) => Obj::from_static(AdiServoObj::OBJ_TYPE),
 
     // vasyncio
     qstr!(vasyncio) => Obj::from_static(&Module::new(VASYNCIO_DICT)),
