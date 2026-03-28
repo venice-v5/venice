@@ -15,10 +15,11 @@ mod units;
 mod vasyncio;
 mod vision;
 
-use argparse::{KeywordError, PositionalError, error_msg};
+use argparse::{Args, KeywordError, PositionalError, error_msg};
 use micropython_rs::{
     const_map,
     except::{EXCEPTION_TYPE, ExceptionType, Message},
+    fun::FunVarBetween,
     init::InitToken,
     map::Dict,
     module::Module,
@@ -128,6 +129,21 @@ impl From<PortError> for Exception {
 
 pub fn device_error(msg: impl Into<Message>) -> Exception {
     Exception::new(&DEVICE_ERROR_TYPE, msg)
+}
+
+unsafe extern "C" fn monotonic_time(n: usize, ptr: *const Obj) -> Obj {
+    let args = unsafe { core::slice::from_raw_parts(ptr, n) };
+    let mut reader = Args::new(n, 0, args).reader();
+    reader.assert_npos(0, 1).assert_nkw(0, 0);
+
+    let unit = if n == 0 {
+        crate::modvenice::units::time::TimeUnit::Second
+    } else {
+        *reader.next_positional::<&TimeUnitObj>().unwrap().unit()
+    };
+
+    let duration = std::time::Duration::from_micros(unsafe { vex_sdk::vexSystemHighResTimeGet() });
+    unit.dur_to_float(duration).into()
 }
 
 fn smart_port_index(n: u8) -> u32 {
@@ -247,6 +263,9 @@ static mut venice_globals: Dict = Dict::new(const_map![
 
     // vasyncio
     qstr!(vasyncio) => Obj::from_static(&Module::new(VASYNCIO_DICT)),
+
+    // time
+    qstr!(monotonic_time) => Obj::from_static(&FunVarBetween::new(monotonic_time, 0, 1)),
 
     // math
     qstr!(Vec3) => Obj::from_static(Vec3::OBJ_TYPE),
