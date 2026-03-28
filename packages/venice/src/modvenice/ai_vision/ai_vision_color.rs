@@ -4,10 +4,9 @@ use micropython_rs::{
     obj::{AttrOp, Obj, ObjBase, ObjTrait, ObjType},
     qstr::Qstr,
 };
-use rgb::Rgb;
 use vexide_devices::smart::ai_vision::AiVisionColor;
 
-use crate::modvenice::Exception;
+use crate::modvenice::{Exception, color::ColorObj};
 
 #[class(qstr!(AiVisionColor))]
 #[repr(C)]
@@ -53,19 +52,18 @@ impl AiVisionColorObj {
     ) -> Result<Self, Exception> {
         let mut reader = Args::new(n_pos, n_kw, args).reader();
         reader.assert_npos(5, 5).assert_nkw(0, 0);
-        let rgb = Rgb::<u8>::new(
-            reader.next_positional::<u8>()?,
-            reader.next_positional::<u8>()?,
-            reader.next_positional::<u8>()?,
-        );
-        let color = AiVisionColor {
-            rgb,
-            hue_range: reader.next_positional::<f32>()?,
-            saturation_range: reader.next_positional::<f32>()?,
-        };
+
+        let rgb = reader.next_positional::<&ColorObj>()?;
+        let hue_range = reader.next_positional()?;
+        let saturation_range = reader.next_positional()?;
+
         Ok(Self {
             base: ObjBase::new(ty),
-            color,
+            color: AiVisionColor {
+                rgb: rgb.color(),
+                hue_range,
+                saturation_range,
+            },
         })
     }
 }

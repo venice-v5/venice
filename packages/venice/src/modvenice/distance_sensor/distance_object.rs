@@ -29,7 +29,7 @@ impl DistanceObjectObj {
         result.return_value(match attr.as_str() {
             "confidence" => Obj::from_float(self.object.confidence as _),
             "distance" => Obj::from_int(self.object.distance as _),
-            "relative_size" => Obj::from_int(self.object.relative_size as _),
+            "relative_size" => self.object.relative_size.map(|v| v as i32).into(),
             "velocity" => Obj::from_float(self.object.velocity as _),
             _ => return,
         });

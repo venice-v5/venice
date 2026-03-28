@@ -11,7 +11,7 @@ use micropython_rs::{
     obj::{AttrOp, Obj, ObjBase, ObjTrait, ObjType},
     qstr::Qstr,
 };
-use vex_sdk::{
+use vex_sdk_jumptable::{
     V5_ControllerId, V5_ControllerStatus, vexControllerConnectionStatusGet, vexControllerTextSet,
 };
 use vexide_devices::controller::{Controller, ControllerConnection, ControllerError, ControllerId};

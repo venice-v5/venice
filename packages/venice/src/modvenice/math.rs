@@ -185,7 +185,7 @@ impl From<vexide_devices::math::Point2<f64>> for Point2 {
     }
 }
 
-fn handle_op(op: AttrOp, val: &Cell<f32>) {
+pub fn handle_op(op: AttrOp, val: &Cell<f32>) {
     match op {
         AttrOp::Load { result } => result.return_value(Obj::from_float(val.get())),
         AttrOp::Store { src, result } => {

@@ -1,5 +1,6 @@
 mod adi;
 mod ai_vision;
+mod color;
 mod competition;
 mod controller;
 mod distance_sensor;
@@ -23,9 +24,8 @@ use micropython_rs::{
     module::Module,
     obj::{Obj, ObjTrait},
 };
-use vex_sdk::{
-    V5_DeviceT, V5_DeviceType, V5_MAX_DEVICE_PORTS, vexDeviceGetByIndex, vexDeviceGetStatus,
-};
+use vex_sdk::V5_MAX_DEVICE_PORTS;
+use vex_sdk_jumptable::{V5_DeviceT, V5_DeviceType, vexDeviceGetByIndex, vexDeviceGetStatus};
 use vexide_devices::smart::{PortError, SmartDeviceType};
 
 use crate::modvenice::{
@@ -44,6 +44,7 @@ use crate::modvenice::{
         ai_vision_detection_mode::AiVisionDetectionModeObj, ai_vision_flags::AiVisionFlagsObj,
         ai_vision_object,
     },
+    color::ColorObj,
     competition::{Competition, CompetitionRuntime},
     controller::{
         ControllerObj,
@@ -243,6 +244,8 @@ static mut venice_globals: Dict = Dict::new(const_map![
     qstr!(Quaternion) => Obj::from_static(Quaternion::OBJ_TYPE),
     qstr!(EulerAngles) => Obj::from_static(EulerAngles::OBJ_TYPE),
     qstr!(Point2) => Obj::from_static(Point2::OBJ_TYPE),
+    // color
+    qstr!(Color) => Obj::from_static(ColorObj::OBJ_TYPE),
 
     // units
     qstr!(RotationUnit) => Obj::from_static(RotationUnitObj::OBJ_TYPE),
