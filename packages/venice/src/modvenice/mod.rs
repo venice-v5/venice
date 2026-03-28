@@ -30,6 +30,7 @@ use vexide_devices::smart::{PortError, SmartDeviceType};
 
 use crate::modvenice::{
     adi::{
+        accelerometer::{AdiAccelerometerObj, SensitivityObj},
         analog::AdiAnalogInObj,
         digital::{AdiDigitalInObj, AdiDigitalOutObj},
         encoder::AdiEncoderObj,
@@ -235,6 +236,8 @@ static mut venice_globals: Dict = Dict::new(const_map![
     qstr!(AdiEncoder) => Obj::from_static(AdiEncoderObj::OBJ_TYPE),
     qstr!(AdiPwmOut) => Obj::from_static(AdiPwmOutObj::OBJ_TYPE),
     qstr!(AdiAnalogIn) => Obj::from_static(AdiAnalogInObj::OBJ_TYPE),
+    qstr!(AdiAccelerometer) => Obj::from_static(AdiAccelerometerObj::OBJ_TYPE),
+    qstr!(AdiAccelerometerSensitivity) => Obj::from_static(SensitivityObj::OBJ_TYPE),
 
     // vasyncio
     qstr!(vasyncio) => Obj::from_static(&Module::new(VASYNCIO_DICT)),
