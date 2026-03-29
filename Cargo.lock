@@ -312,6 +312,7 @@ dependencies = [
  "cty",
  "lock_api",
  "micropython-rs",
+ "mint",
  "paste",
  "regex",
  "spin",

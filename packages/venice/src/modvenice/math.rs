@@ -8,6 +8,7 @@ use micropython_rs::{
     obj::{AttrOp, Obj, ObjBase, ObjTrait, ObjType},
     qstr::Qstr,
 };
+use mint::{EulerAngles, IntraZYX};
 use vexide_devices::math::Angle;
 
 use crate::modvenice::{Exception, units::rotation::RotationUnit};
@@ -35,15 +36,12 @@ pub struct Quaternion {
     w: Cell<f32>,
 }
 
-#[class(qstr!(EulerAngles))]
+#[class(qstr!(EulerZYX))]
 #[repr(C)]
-pub struct EulerAngles {
+pub struct EulerZYX {
     base: ObjBase,
-    // z
     yaw: Cell<f32>,
-    // y
     pitch: Cell<f32>,
-    // x
     roll: Cell<f32>,
 }
 
@@ -107,8 +105,8 @@ impl Quaternion {
 }
 
 #[class_methods]
-impl EulerAngles {
-    pub fn new<B>(e: vexide_devices::math::EulerAngles<Angle, B>, unit: RotationUnit) -> Self {
+impl EulerZYX {
+    pub fn new(e: EulerAngles<Angle, IntraZYX>, unit: RotationUnit) -> Self {
         Self {
             base: ObjBase::new(Self::OBJ_TYPE),
             yaw: Cell::new(unit.angle_to_float(e.b)),
@@ -120,9 +118,9 @@ impl EulerAngles {
     #[attr]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let val = match attr.as_str() {
-            "yaw" | "z" => &self.yaw,
-            "pitch" | "y" => &self.pitch,
-            "roll" | "x" => &self.roll,
+            "yaw" => &self.yaw,
+            "pitch" => &self.pitch,
+            "roll" => &self.roll,
             _ => return,
         };
 

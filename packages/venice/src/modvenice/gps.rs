@@ -9,7 +9,7 @@ use crate::{
     devices,
     modvenice::{
         Exception,
-        math::{EulerAngles, Point2, Quaternion, Vec3},
+        math::{EulerZYX, Point2, Quaternion, Vec3},
         units::{rotation::RotationUnitObj, time::TimeUnitObj},
     },
     registry::SmartGuard,
@@ -109,8 +109,8 @@ impl GpsSensorObj {
     }
 
     #[method]
-    fn get_euler(&self, unit: &RotationUnitObj) -> Result<EulerAngles, Exception> {
-        Ok(EulerAngles::new(self.guard.borrow().euler()?, unit.unit()))
+    fn get_euler(&self, unit: &RotationUnitObj) -> Result<EulerZYX, Exception> {
+        Ok(EulerZYX::new(self.guard.borrow().euler()?, unit.unit()))
     }
 
     #[method]

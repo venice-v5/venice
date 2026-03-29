@@ -58,7 +58,7 @@ use crate::modvenice::{
     distance_sensor::{DistanceSensorObj, distance_object::DistanceObjectObj},
     gps::GpsSensorObj,
     imu::{InertialOrientationObj, InertialSensorObj},
-    math::{EulerAngles, Point2, Quaternion, Vec3},
+    math::{EulerZYX, Point2, Quaternion, Vec3},
     motor::{
         MotorObj, brake::BrakeModeObj, direction::DirectionObj, gearset::GearsetObj,
         motor_type::MotorTypeObj,
@@ -251,7 +251,7 @@ static mut venice_globals: Dict = Dict::new(const_map![
     // math
     qstr!(Vec3) => Obj::from_static(Vec3::OBJ_TYPE),
     qstr!(Quaternion) => Obj::from_static(Quaternion::OBJ_TYPE),
-    qstr!(EulerAngles) => Obj::from_static(EulerAngles::OBJ_TYPE),
+    qstr!(EulerZYX) => Obj::from_static(EulerZYX::OBJ_TYPE),
     qstr!(Point2) => Obj::from_static(Point2::OBJ_TYPE),
     // color
     qstr!(Color) => Obj::from_static(ColorObj::OBJ_TYPE),

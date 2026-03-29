@@ -17,7 +17,7 @@ use crate::{
     devices::{self},
     modvenice::{
         Exception, device_error, device_handle,
-        math::{EulerAngles, Quaternion, Vec3},
+        math::{EulerZYX, Quaternion, Vec3},
         smart_port_index,
         units::{rotation::RotationUnitObj, time::TimeUnitObj},
         vasyncio::{event_loop::WAKE_SIGNAL, time32},
@@ -138,8 +138,8 @@ impl InertialSensorObj {
     }
 
     #[method]
-    fn get_euler(&self, unit: &RotationUnitObj) -> Result<EulerAngles, Exception> {
-        Ok(EulerAngles::new(self.guard.borrow().euler()?, unit.unit()))
+    fn get_euler(&self, unit: &RotationUnitObj) -> Result<EulerZYX, Exception> {
+        Ok(EulerZYX::new(self.guard.borrow().euler()?, unit.unit()))
     }
 
     #[method]
