@@ -6,8 +6,8 @@ use std::{
     task::{Context, Waker},
 };
 
+use micropython_macros::{class, class_methods};
 use micropython_rs::{
-    class, class_methods,
     errno::{MP_EINVAL, MP_EIO},
     except::raise_stop_iteration,
     fun::{Fun1, Fun2, FunVarBetween},

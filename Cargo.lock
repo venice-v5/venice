@@ -113,7 +113,6 @@ name = "micropython-rs"
 version = "0.1.0"
 dependencies = [
  "bitflags",
- "micropython-macros",
  "thiserror",
 ]
 
@@ -311,6 +310,7 @@ dependencies = [
  "cc",
  "cty",
  "lock_api",
+ "micropython-macros",
  "micropython-rs",
  "mint",
  "paste",

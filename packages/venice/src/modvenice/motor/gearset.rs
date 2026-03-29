@@ -1,7 +1,5 @@
-use micropython_rs::{
-    class, class_methods,
-    obj::{ObjBase, ObjTrait},
-};
+use micropython_macros::{class, class_methods};
+use micropython_rs::obj::{ObjBase, ObjTrait};
 use vexide_devices::smart::motor::Gearset;
 
 #[class(qstr!(Gearset))]

@@ -26,5 +26,3 @@ pub mod str;
 pub mod stream;
 pub mod tuple;
 pub mod vstr;
-
-pub use micropython_macros::*;

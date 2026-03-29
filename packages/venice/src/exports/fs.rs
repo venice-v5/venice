@@ -6,8 +6,8 @@ use std::{
 };
 
 use argparse::{ArgParser, Args, DefaultParser, KeywordError, ParseError, StrParser, type_name};
+use micropython_macros::{class, class_methods};
 use micropython_rs::{
-    class, class_methods,
     errno::{MP_EBADF, MP_EINVAL, MP_EIO},
     except::{Message, raise_os_error},
     fun::{Fun1, Fun2, FunVarBetween, FunVarKw},

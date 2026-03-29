@@ -1,8 +1,8 @@
 use std::cell::RefCell;
 
 use argparse::{Args, error_msg};
+use micropython_macros::{class, class_methods};
 use micropython_rs::{
-    class, class_methods,
     except::value_error,
     obj::{Obj, ObjBase, ObjType},
 };

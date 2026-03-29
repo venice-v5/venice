@@ -3,8 +3,8 @@ use std::{
     collections::{binary_heap::BinaryHeap, vec_deque::VecDeque},
 };
 
+use micropython_macros::{class, class_methods};
 use micropython_rs::{
-    class, class_methods,
     except::{RUNTIME_ERROR_TYPE, raise_msg, type_error},
     fun::{Fun1, Fun2},
     generator::{GEN_INSTANCE_TYPE, VmReturnKind, resume_gen},

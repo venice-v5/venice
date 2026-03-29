@@ -1,5 +1,5 @@
+use micropython_macros::{class, class_methods};
 use micropython_rs::{
-    class, class_methods,
     except::{ATTRIBUTE_ERROR_TYPE, raise_msg},
     init::token,
     obj::{AttrOp, Obj, ObjBase, ObjTrait},

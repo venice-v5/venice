@@ -1,10 +1,8 @@
 use std::cell::Cell;
 
 use argparse::{Args, PositionalError};
-use micropython_rs::{
-    class, class_methods,
-    obj::{Obj, ObjBase, ObjTrait, ObjType, SubscrOp},
-};
+use micropython_macros::{class, class_methods};
+use micropython_rs::obj::{Obj, ObjBase, ObjTrait, ObjType, SubscrOp};
 use vexide_devices::smart::ai_vision::AiVisionColorCode;
 
 use crate::modvenice::Exception;

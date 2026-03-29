@@ -1,10 +1,8 @@
 pub mod distance_object;
 
 use argparse::{Args, error_msg};
-use micropython_rs::{
-    class, class_methods,
-    obj::{Obj, ObjBase, ObjType},
-};
+use micropython_macros::{class, class_methods};
+use micropython_rs::obj::{Obj, ObjBase, ObjType};
 use vexide_devices::smart::distance::{DistanceObjectError, DistanceSensor};
 
 use crate::{

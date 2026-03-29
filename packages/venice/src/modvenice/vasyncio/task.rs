@@ -1,7 +1,7 @@
 use std::cell::{Cell, Ref, RefCell};
 
+use micropython_macros::{class, class_methods};
 use micropython_rs::{
-    class, class_methods,
     except::{raise_stop_iteration, type_error},
     init::token,
     obj::{Obj, ObjBase, ObjTrait},

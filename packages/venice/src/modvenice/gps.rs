@@ -1,8 +1,6 @@
 use argparse::Args;
-use micropython_rs::{
-    class, class_methods,
-    obj::{Obj, ObjBase, ObjType},
-};
+use micropython_macros::{class, class_methods};
+use micropython_rs::obj::{Obj, ObjBase, ObjType};
 use vexide_devices::smart::gps::GpsSensor;
 
 use crate::{

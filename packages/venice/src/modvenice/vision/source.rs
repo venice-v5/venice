@@ -1,6 +1,6 @@
 use argparse::{ArgType, Args, PositionalError};
+use micropython_macros::{class, class_methods};
 use micropython_rs::{
-    class, class_methods,
     except::type_error,
     init::token,
     obj::{AttrOp, Obj, ObjBase, ObjTrait, ObjType},

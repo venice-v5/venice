@@ -1,9 +1,7 @@
 use std::time::Duration;
 
-use micropython_rs::{
-    class, class_methods,
-    obj::{ObjBase, ObjTrait},
-};
+use micropython_macros::{class, class_methods};
+use micropython_rs::obj::{ObjBase, ObjTrait};
 
 use crate::modvenice::vasyncio::time32::{MILLIS_PER_SEC, NANOS_PER_MILLI};
 

@@ -7,8 +7,8 @@ use argparse::{Args, error_msg};
 use brake::BrakeModeObj;
 use direction::DirectionObj;
 use gearset::GearsetObj;
+use micropython_macros::{class, class_methods};
 use micropython_rs::{
-    class, class_methods,
     except::{attribute_error, type_error},
     init::token,
     obj::{AttrOp, Obj, ObjBase, ObjTrait, ObjType},

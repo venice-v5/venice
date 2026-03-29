@@ -4,8 +4,8 @@ pub mod state;
 use std::cell::RefCell;
 
 use argparse::{ArgParser, Args, DefaultParser, IntParser, error_msg};
+use micropython_macros::{class, class_methods};
 use micropython_rs::{
-    class, class_methods,
     except::{Message, raise_stop_iteration, value_error},
     init::token,
     obj::{AttrOp, Obj, ObjBase, ObjTrait, ObjType},

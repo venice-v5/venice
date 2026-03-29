@@ -6,8 +6,8 @@ pub mod flags;
 pub mod object;
 
 use argparse::{Args, error_msg};
+use micropython_macros::{class, class_methods};
 use micropython_rs::{
-    class, class_methods,
     obj::{Obj, ObjBase, ObjType},
     tuple::new_tuple,
 };
