@@ -1,9 +1,9 @@
-pub mod ai_vision_color;
-pub mod ai_vision_color_code;
-pub mod ai_vision_detection_mode;
-pub mod ai_vision_flags;
-pub mod ai_vision_object;
 pub mod april_tag_family;
+pub mod color;
+pub mod color_code;
+pub mod detection_mode;
+pub mod flags;
+pub mod object;
 
 use argparse::{Args, error_msg};
 use micropython_rs::{
@@ -21,9 +21,9 @@ use crate::{
     modvenice::{
         Exception,
         ai_vision::{
-            ai_vision_color::AiVisionColorObj, ai_vision_color_code::AiVisionColorCodeObj,
-            ai_vision_detection_mode::AiVisionDetectionModeObj, ai_vision_flags::AiVisionFlagsObj,
-            april_tag_family::AprilTagFamilyObj,
+            april_tag_family::AprilTagFamilyObj, color::AiVisionColorObj,
+            color_code::AiVisionColorCodeObj, detection_mode::AiVisionDetectionModeObj,
+            flags::AiVisionFlagsObj,
         },
         device_error,
     },
@@ -144,7 +144,7 @@ impl AiVisionSensorObj {
         let objects = self.guard.borrow().objects()?;
         let objects = objects
             .into_iter()
-            .map(ai_vision_object::create_obj)
+            .map(object::create_obj)
             .collect::<Vec<_>>();
         Ok(new_tuple(&objects[..]))
     }
