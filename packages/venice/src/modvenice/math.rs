@@ -65,6 +65,28 @@ impl Vec3 {
         }
     }
 
+    #[make_new]
+    fn make_new(
+        ty: &'static ObjType,
+        n_pos: usize,
+        n_kw: usize,
+        args: &[Obj],
+    ) -> Result<Self, Exception> {
+        let mut reader = Args::new(n_pos, n_kw, args).reader();
+        reader.assert_npos(0, 3).assert_nkw(0, 0);
+
+        let x = reader.next_positional_or(0.0)?;
+        let y = reader.next_positional_or(0.0)?;
+        let z = reader.next_positional_or(0.0)?;
+
+        Ok(Self {
+            base: ty.into(),
+            x: x.into(),
+            y: y.into(),
+            z: z.into(),
+        })
+    }
+
     #[attr]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let coord = match attr.as_str() {
@@ -80,14 +102,38 @@ impl Vec3 {
 
 #[class_methods]
 impl Quaternion {
-    pub fn new(q: vexide_devices::math::Quaternion<f64>) -> Self {
+    pub fn new(quat: vexide_devices::math::Quaternion<f64>) -> Self {
         Self {
             base: Self::OBJ_TYPE.into(),
-            x: Cell::new(q.v.x as f32),
-            y: Cell::new(q.v.y as f32),
-            z: Cell::new(q.v.z as f32),
-            w: Cell::new(q.s as f32),
+            x: Cell::new(quat.v.x as f32),
+            y: Cell::new(quat.v.y as f32),
+            z: Cell::new(quat.v.z as f32),
+            w: Cell::new(quat.s as f32),
         }
+    }
+
+    #[make_new]
+    fn make_new(
+        ty: &'static ObjType,
+        n_pos: usize,
+        n_kw: usize,
+        args: &[Obj],
+    ) -> Result<Self, Exception> {
+        let mut reader = Args::new(n_pos, n_kw, args).reader();
+        reader.assert_npos(0, 4).assert_nkw(0, 0);
+
+        let w = reader.next_positional_or(1.0)?;
+        let x = reader.next_positional_or(0.0)?;
+        let y = reader.next_positional_or(0.0)?;
+        let z = reader.next_positional_or(0.0)?;
+
+        Ok(Self {
+            base: ty.into(),
+            w: w.into(),
+            x: x.into(),
+            y: y.into(),
+            z: z.into(),
+        })
     }
 
     #[attr]
@@ -115,6 +161,28 @@ impl EulerZYX {
         }
     }
 
+    #[make_new]
+    fn make_new(
+        ty: &'static ObjType,
+        n_pos: usize,
+        n_kw: usize,
+        args: &[Obj],
+    ) -> Result<Self, Exception> {
+        let mut reader = Args::new(n_pos, n_kw, args).reader();
+        reader.assert_npos(0, 3).assert_nkw(0, 0);
+
+        let yaw = reader.next_positional_or(0.0)?;
+        let pitch = reader.next_positional_or(0.0)?;
+        let roll = reader.next_positional_or(0.0)?;
+
+        Ok(Self {
+            base: ty.into(),
+            yaw: yaw.into(),
+            pitch: pitch.into(),
+            roll: roll.into(),
+        })
+    }
+
     #[attr]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let val = match attr.as_str() {
@@ -138,15 +206,15 @@ impl Point2 {
         args: &[Obj],
     ) -> Result<Self, Exception> {
         let mut reader = Args::new(n_pos, n_kw, args).reader();
-        reader.assert_npos(2, 2).assert_nkw(0, 0);
+        reader.assert_npos(0, 2).assert_nkw(0, 0);
 
-        let x = reader.next_positional()?;
-        let y = reader.next_positional()?;
+        let x = reader.next_positional_or(0.0)?;
+        let y = reader.next_positional_or(0.0)?;
 
         Ok(Self {
-            base: ObjBase::new(ty),
-            x: Cell::new(x),
-            y: Cell::new(y),
+            base: ty.into(),
+            x: x.into(),
+            y: y.into(),
         })
     }
 
