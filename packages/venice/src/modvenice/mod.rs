@@ -1,5 +1,6 @@
 mod adi;
 mod ai_vision;
+mod battery;
 mod color;
 mod competition;
 mod controller;
@@ -48,6 +49,7 @@ use crate::modvenice::{
         ai_vision_detection_mode::AiVisionDetectionModeObj, ai_vision_flags::AiVisionFlagsObj,
         ai_vision_object,
     },
+    battery::BATTERY_DICT,
     color::ColorObj,
     competition::{Competition, CompetitionRuntime},
     controller::{
@@ -245,8 +247,9 @@ static mut venice_globals: Dict = Dict::new(const_map![
     qstr!(AdiLineTracker) => Obj::from_static(AdiLineTrackerObj::OBJ_TYPE),
     qstr!(AdiServo) => Obj::from_static(AdiServoObj::OBJ_TYPE),
 
-    // vasyncio
+    // submodules
     qstr!(vasyncio) => Obj::from_static(&Module::new(VASYNCIO_DICT)),
+    qstr!(battery) => Obj::from_static(&Module::new(BATTERY_DICT)),
 
     // math
     qstr!(Vec3) => Obj::from_static(Vec3::OBJ_TYPE),
