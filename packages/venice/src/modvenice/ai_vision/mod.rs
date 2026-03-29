@@ -8,8 +8,8 @@ pub mod april_tag_family;
 use argparse::{Args, error_msg};
 use micropython_rs::{
     class, class_methods,
-    list::new_list,
     obj::{Obj, ObjBase, ObjType},
+    tuple::new_tuple,
 };
 use vexide_devices::smart::{
     PortError,
@@ -146,7 +146,7 @@ impl AiVisionSensorObj {
             .into_iter()
             .map(ai_vision_object::create_obj)
             .collect::<Vec<_>>();
-        Ok(new_list(&objects[..]))
+        Ok(new_tuple(&objects[..]))
     }
 
     #[method]
@@ -156,7 +156,7 @@ impl AiVisionSensorObj {
             .map(|n| guard.color_code(n))
             .map(|code| code.map(|code| Obj::from(code.map(AiVisionColorCodeObj::new))))
             .collect::<Result<Vec<_>, PortError>>()?;
-        Ok(new_list(&codes[..]))
+        Ok(new_tuple(&codes[..]))
     }
 
     #[method]

@@ -9,8 +9,8 @@ pub mod white_balance;
 use argparse::{ArgParser, Args, DefaultParser, IntParser, error_msg};
 use micropython_rs::{
     class, class_methods,
-    list::new_list,
     obj::{Obj, ObjBase, ObjType},
+    tuple::new_tuple,
 };
 use vexide_devices::smart::vision::{
     VisionMode, VisionObjectError, VisionSensor, VisionSignatureError,
@@ -137,7 +137,7 @@ impl VisionSensorObj {
             .map(|s| s.map(VisionSignatureObj::new))
             .map(Obj::from)
             .collect::<Vec<_>>();
-        Ok(new_list(&vec))
+        Ok(new_tuple(&vec))
     }
 
     #[method]
@@ -159,7 +159,7 @@ impl VisionSensorObj {
             .map(VisionObjectObj::new)
             .map(Obj::from)
             .collect::<Vec<_>>();
-        Ok(new_list(&obj_objects))
+        Ok(new_tuple(&obj_objects))
     }
 
     #[method]
