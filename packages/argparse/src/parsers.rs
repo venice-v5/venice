@@ -1,4 +1,4 @@
-use std::{fmt::Debug, marker::PhantomData, ops::RangeInclusive};
+use std::{ffi::c_void, fmt::Debug, marker::PhantomData, ops::RangeInclusive, ptr::NonNull};
 
 use bytemuck::{AnyBitPattern, PodCastError};
 use micropython_rs::{
@@ -38,6 +38,12 @@ where
 {
     pub _phantom: PhantomData<T>,
 }
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct CallableParser;
+
+#[derive(Clone, Copy)]
+pub struct Callable(NonNull<c_void>);
 
 impl<'a> ArgParser<'a> for StrParser {
     type Output = &'a str;
@@ -223,4 +229,32 @@ where
     T: AnyBitPattern,
 {
     type Parser = BufferParser<T>;
+}
+
+impl<'a> ArgParser<'a> for CallableParser {
+    type Output = Callable;
+
+    fn parse(&self, obj: &'a Obj) -> Result<Self::Output, ParseError> {
+        if !obj.is_callable() {
+            return Err(ParseError::TypeError {
+                expected: "callable object",
+            });
+        }
+
+        Ok(Callable(unsafe { NonNull::new_unchecked(obj.inner()) }))
+    }
+}
+
+impl DefaultParser<'_> for Callable {
+    type Parser = CallableParser;
+}
+
+impl Callable {
+    pub fn into_inner(self) -> Obj {
+        unsafe { Obj::from_ptr(self.0.as_ptr()) }
+    }
+
+    pub fn call(&self, n_kw: usize, args: &[Obj]) -> Obj {
+        unsafe { self.into_inner().call(n_kw, args).unwrap_unchecked() }
+    }
 }
