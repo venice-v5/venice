@@ -1,8 +1,13 @@
-use vexide_devices::smart::{PortError, SmartDeviceType};
+use vex_sdk_jumptable::{V5_DeviceT, vexDeviceAdiPortConfigSet, vexDeviceGetByIndex};
+use vexide_devices::{
+    adi::{AdiDeviceType, AdiPort},
+    smart::{PortError, SmartDeviceType},
+};
 
 use crate::modvenice::validate_port;
 
 pub mod accelerometer;
+pub mod addrled;
 pub mod analog;
 pub mod digital;
 pub mod encoder;
@@ -42,5 +47,19 @@ fn adi_port_name(port: u8) -> char {
         7 => 'G',
         8 => 'H',
         _ => '?',
+    }
+}
+
+fn device_handle(port: &AdiPort) -> V5_DeviceT {
+    unsafe { vexDeviceGetByIndex(expander_index(port.expander_number())) }
+}
+
+fn configure_port(port: &AdiPort, config: AdiDeviceType) {
+    unsafe {
+        vexDeviceAdiPortConfigSet(
+            device_handle(port),
+            adi_port_index(port.number()),
+            config.into(),
+        );
     }
 }
