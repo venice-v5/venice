@@ -1113,7 +1113,10 @@ impl Obj {
     }
 
     pub fn is_callable(&self) -> bool {
-        self.obj_type().slot_value_raw(Slot::Call).is_some()
+        unsafe extern "C" {
+            fn mp_obj_is_callable(o_in: Obj) -> bool;
+        }
+        unsafe { mp_obj_is_callable(*self) }
     }
 }
 
