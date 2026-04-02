@@ -1,10 +1,7 @@
 mod error_msg;
+mod parsers;
 
-use std::{
-    fmt::{Debug, Display},
-    marker::PhantomData,
-    ops::RangeInclusive,
-};
+use std::fmt::{Debug, Display};
 
 use micropython_rs::{
     except::{Exception, Message, type_error, value_error},
@@ -13,7 +10,7 @@ use micropython_rs::{
     str::Str,
 };
 
-pub use crate::error_msg::*;
+pub use crate::{error_msg::*, parsers::*};
 
 #[derive(Clone, Copy)]
 pub struct Args<'a> {
@@ -36,167 +33,6 @@ pub trait ArgParser<'a> {
 
 pub trait DefaultParser<'a> {
     type Parser: ArgParser<'a, Output = Self> + Default;
-}
-
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
-pub struct StrParser;
-
-#[derive(Debug, Clone)]
-pub struct IntParser<T = i32> {
-    pub range: RangeInclusive<i32>,
-    pub _phantom: PhantomData<T>,
-}
-
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
-pub struct FloatParser;
-
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
-pub struct BoolParser;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ObjParser<T: ObjTrait> {
-    pub _phantom: PhantomData<T>,
-}
-
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
-pub struct AnyParser;
-
-impl<'a> ArgParser<'a> for StrParser {
-    type Output = &'a str;
-
-    fn parse(&self, obj: &'a Obj) -> Result<Self::Output, ParseError> {
-        obj.get_str()
-            .ok_or(ParseError::TypeError { expected: "str" })
-    }
-}
-
-impl<'a> DefaultParser<'a> for &'a str {
-    type Parser = StrParser;
-}
-
-impl<T> IntParser<T> {
-    pub const fn new(range: RangeInclusive<i32>) -> Self {
-        Self {
-            range,
-            _phantom: PhantomData,
-        }
-    }
-}
-
-impl<'a, T> ArgParser<'a> for IntParser<T>
-where
-    T: TryFrom<i32>,
-    <T as TryFrom<i32>>::Error: Debug,
-{
-    type Output = T;
-
-    fn parse(&self, obj: &'a Obj) -> Result<Self::Output, ParseError> {
-        let int = obj
-            .try_to_int()
-            .ok_or(ParseError::TypeError { expected: "int" })?;
-
-        if !self.range.contains(&int) {
-            let start = *self.range.start();
-            let end = *self.range.end();
-
-            return Err(ParseError::ValueError {
-                mk_msg: Box::new(move |arg| {
-                    error_msg!("{arg} must be in the range [{start}, {end}]")
-                }),
-            });
-        }
-
-        Ok(int.try_into().expect("value "))
-    }
-}
-
-macro_rules! impl_default_int_parser {
-    ($ty:ty) => {
-        impl Default for IntParser<$ty> {
-            fn default() -> Self {
-                Self::new((<$ty>::MIN as i32)..=(<$ty>::MAX as i32))
-            }
-        }
-
-        impl DefaultParser<'_> for $ty {
-            type Parser = IntParser<$ty>;
-        }
-    };
-}
-
-impl_default_int_parser!(u8);
-impl_default_int_parser!(u16);
-impl_default_int_parser!(u32);
-
-impl_default_int_parser!(i8);
-impl_default_int_parser!(i16);
-impl_default_int_parser!(i32);
-
-impl<'a> ArgParser<'a> for FloatParser {
-    type Output = f32;
-
-    fn parse(&self, obj: &'a Obj) -> Result<Self::Output, ParseError> {
-        obj.try_to_float()
-            .or_else(|| obj.try_to_int().map(|int| int as f32))
-            .ok_or(ParseError::TypeError { expected: "float" })
-    }
-}
-
-impl DefaultParser<'_> for f32 {
-    type Parser = FloatParser;
-}
-
-impl<'a> ArgParser<'a> for BoolParser {
-    type Output = bool;
-
-    fn parse(&self, obj: &'a Obj) -> Result<Self::Output, ParseError> {
-        obj.try_to_bool()
-            .ok_or(ParseError::TypeError { expected: "bool" })
-    }
-}
-
-impl DefaultParser<'_> for bool {
-    type Parser = BoolParser;
-}
-
-impl<'a, T> ArgParser<'a> for ObjParser<T>
-where
-    T: ObjTrait + 'a,
-{
-    type Output = &'a T;
-
-    fn parse(&self, obj: &'a Obj) -> Result<Self::Output, ParseError> {
-        obj.try_as_obj::<T>().ok_or(ParseError::TypeError {
-            expected: T::OBJ_TYPE.name().as_str(),
-        })
-    }
-}
-
-impl<T: ObjTrait> Default for ObjParser<T> {
-    fn default() -> Self {
-        Self {
-            _phantom: PhantomData,
-        }
-    }
-}
-
-impl<'a, T> DefaultParser<'a> for &'a T
-where
-    T: ObjTrait + 'a,
-{
-    type Parser = ObjParser<T>;
-}
-
-impl<'a> ArgParser<'a> for AnyParser {
-    type Output = Obj;
-
-    fn parse(&self, obj: &'a Obj) -> Result<Self::Output, ParseError> {
-        Ok(*obj)
-    }
-}
-
-impl DefaultParser<'_> for Obj {
-    type Parser = AnyParser;
 }
 
 #[derive(Debug, PartialEq, Eq)]
