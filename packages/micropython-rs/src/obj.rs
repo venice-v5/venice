@@ -1107,8 +1107,9 @@ pub struct CallError;
 impl Obj {
     pub fn call(&self, n_kw: usize, args: &[Obj]) -> Result<Obj, CallError> {
         let ty = self.obj_type();
-        let call_ptr = ty.slot_value_raw(Slot::Call).ok_or(CallError)? as *const CallFn;
-        let ret = unsafe { (*call_ptr)(*self, args.len() - n_kw, n_kw, args.as_ptr()) };
+        let call_fn = ty.slot_value_raw(Slot::Call).ok_or(CallError)?;
+        let call_fn: CallFn = unsafe { std::mem::transmute(call_fn) };
+        let ret = unsafe { call_fn(*self, args.len() - n_kw, n_kw, args.as_ptr()) };
         Ok(ret)
     }
 
