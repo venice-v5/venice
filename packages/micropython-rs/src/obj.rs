@@ -1,4 +1,8 @@
-use std::{ffi::c_void, marker::PhantomData, ptr::NonNull};
+use std::{
+    ffi::{c_int, c_void},
+    marker::PhantomData,
+    ptr::NonNull,
+};
 
 use bitflags::bitflags;
 use thiserror::Error;
@@ -276,6 +280,15 @@ bitflags! {
         const INSTANCE_TYPE = 0x0200;
     }
 }
+
+#[repr(C)]
+pub struct BufferInfo {
+    pub buf: *mut c_void,
+    pub len: usize,
+    pub typecode: c_int,
+}
+
+pub type BufferFn = unsafe extern "C" fn(obj: Obj, bufinfo: *mut BufferInfo, flags: u32) -> i32;
 
 pub type MakeNewFn =
     unsafe extern "C" fn(ty: *const ObjType, n_args: usize, n_kw: usize, args: *const Obj) -> Obj;

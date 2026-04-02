@@ -7,6 +7,7 @@ mod raw;
 
 pub(crate) mod print;
 
+pub mod buffer;
 pub mod class;
 pub mod errno;
 pub mod except;

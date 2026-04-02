@@ -5,4 +5,5 @@ edition = "2024"
 
 [dependencies]
 bitflags = "2.9.2"
+bytemuck = "1.25.0"
 thiserror = { version = "2.0.14", default-features = false }
