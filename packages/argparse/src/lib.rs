@@ -298,7 +298,7 @@ impl<'a> ArgType<'a> {
             }
             Ty::Float => Self::Float,
             Ty::Ptr => {
-                let obj_type = obj.obj_type().unwrap();
+                let obj_type = obj.obj_type();
                 if obj_type == Str::OBJ_TYPE {
                     Self::Str
                 } else {

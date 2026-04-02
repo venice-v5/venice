@@ -972,7 +972,7 @@ impl Obj {
     }
 
     pub fn is(self, ty: &ObjType) -> bool {
-        self.obj_type().map(|t| ty == t).unwrap_or(false)
+        self.obj_type() == ty
     }
 
     pub fn ty(self) -> Option<repr_c::Ty> {
@@ -1032,9 +1032,7 @@ impl Obj {
     /// Returns `Some(ptr)` if the [`Obj`] is a pointer object.
     /// Returns `None` if it is not.
     pub fn try_as_obj_raw<T: ObjTrait>(self) -> Option<NonNull<T>> {
-        if let Some(ty) = self.obj_type()
-            && ty == T::OBJ_TYPE
-        {
+        if self.obj_type() == T::OBJ_TYPE {
             Some(NonNull::new(self.0 as *mut T).unwrap())
         } else {
             None
@@ -1050,7 +1048,7 @@ impl Obj {
     /// Returns `Some(&T)` if the [`Obj`] is a pointer object to `T` or is coercable to `T`.
     /// Returns `None` if it is not.
     pub fn try_as_obj_or_coerce<T: ObjTrait>(&self) -> Option<&T> {
-        let ty = self.obj_type()?;
+        let ty = self.obj_type();
         if ty == T::OBJ_TYPE || T::coercable(ty) {
             Some(unsafe { &*(self.0 as *const T) })
         } else {
@@ -1092,37 +1090,30 @@ impl Obj {
     }
 
     // TODO: is this really static?
-    pub fn obj_type(&self) -> Option<&ObjType> {
-        if self.is_ptr() && !self.is_null() {
-            let ptr = self.0 as *const ObjBase;
-            Some(unsafe { &*(*ptr).r#type })
-        } else {
-            None
+    pub fn obj_type(&self) -> &ObjType {
+        unsafe extern "C" {
+            fn mp_obj_get_type(o_in: Obj) -> *const ObjType;
         }
+
+        unsafe { &*mp_obj_get_type(*self) }
     }
 }
 
 /// Object call operation error.
-#[derive(Debug)]
-pub enum CallError {
-    /// The object is a non-callable primitive.
-    PrimitiveObj,
-    /// The object's call slot is not defined.
-    NoCallSlot,
-}
+#[derive(Debug, Error)]
+#[error("object is not callable")]
+pub struct CallError;
 
 impl Obj {
     pub fn call(&self, n_kw: usize, args: &[Obj]) -> Result<Obj, CallError> {
-        let ty = self.obj_type().ok_or(CallError::PrimitiveObj)?;
-        let call_ptr = ty.slot_value_raw(Slot::Call).ok_or(CallError::NoCallSlot)? as *const CallFn;
+        let ty = self.obj_type();
+        let call_ptr = ty.slot_value_raw(Slot::Call).ok_or(CallError)? as *const CallFn;
         let ret = unsafe { (*call_ptr)(*self, args.len() - n_kw, n_kw, args.as_ptr()) };
         Ok(ret)
     }
 
     pub fn is_callable(&self) -> bool {
-        self.obj_type()
-            .and_then(|ty| ty.slot_value_raw(Slot::Call))
-            .is_some()
+        self.obj_type().slot_value_raw(Slot::Call).is_some()
     }
 }
 

@@ -27,7 +27,7 @@ impl Obj {
 
         let buffer_fn = self
             .obj_type()
-            .and_then(|ty| ty.slot_value_raw(Slot::Buffer))
+            .slot_value_raw(Slot::Buffer)
             .ok_or(BufferError::NonBuffer)?;
 
         let info = unsafe {
