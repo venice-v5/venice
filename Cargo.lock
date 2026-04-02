@@ -15,6 +15,7 @@ dependencies = [
 name = "argparse"
 version = "0.1.0"
 dependencies = [
+ "bytemuck",
  "micropython-rs",
 ]
 

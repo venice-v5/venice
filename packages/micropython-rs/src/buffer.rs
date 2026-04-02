@@ -1,13 +1,13 @@
 use std::mem::MaybeUninit;
 
-use bytemuck::PodCastError;
+use bytemuck::{AnyBitPattern, NoUninit, PodCastError};
 use thiserror::Error;
 
 use crate::obj::{BufferFn, Obj, Slot};
 
-pub struct Buffer<'a> {
+pub struct Buffer<'a, T> {
     typecode: u8,
-    buffer: &'a [u8],
+    buffer: &'a [T],
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
@@ -19,7 +19,7 @@ pub enum BufferError {
 }
 
 impl Obj {
-    pub fn buffer<'a>(&'a self) -> Result<Buffer<'a>, BufferError> {
+    pub fn buffer<'a>(&'a self) -> Result<Buffer<'a, u8>, BufferError> {
         const MP_BUFFER_READ: u32 = 1;
         // const MP_BUFFER_WRITE: u32 = 2;
         // const MP_BUFFER_RW: u32 = MP_BUFFER_READ | MP_BUFFER_WRITE;
@@ -46,19 +46,27 @@ impl Obj {
     }
 }
 
-impl<'a> Buffer<'a> {
+impl<'a, T> Buffer<'a, T> {
     pub fn typecode(&self) -> u8 {
         self.typecode
     }
 
-    pub fn buffer(&self) -> &'a [u8] {
+    pub fn buffer(&self) -> &'a [T] {
         self.buffer
     }
+}
 
-    pub fn buffer_as<T>(&self) -> Result<&'a [T], PodCastError>
+impl<'a, T> Buffer<'a, T>
+where
+    T: NoUninit,
+{
+    pub fn cast<U>(self) -> Result<Buffer<'a, U>, PodCastError>
     where
-        T: bytemuck::AnyBitPattern,
+        U: AnyBitPattern,
     {
-        bytemuck::try_cast_slice(self.buffer)
+        Ok(Buffer {
+            buffer: bytemuck::try_cast_slice(self.buffer)?,
+            typecode: self.typecode,
+        })
     }
 }

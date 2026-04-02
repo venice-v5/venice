@@ -1,6 +1,10 @@
 use std::{fmt::Debug, marker::PhantomData, ops::RangeInclusive};
 
-use micropython_rs::obj::{Obj, ObjTrait};
+use bytemuck::{AnyBitPattern, PodCastError};
+use micropython_rs::{
+    buffer::{Buffer, BufferError},
+    obj::{Obj, ObjTrait},
+};
 
 use crate::{ArgParser, DefaultParser, ParseError, error_msg};
 
@@ -26,6 +30,14 @@ pub struct ObjParser<T: ObjTrait> {
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct AnyParser;
+
+#[derive(Debug)]
+pub struct BufferParser<T>
+where
+    T: AnyBitPattern,
+{
+    pub _phantom: PhantomData<T>,
+}
 
 impl<'a> ArgParser<'a> for StrParser {
     type Output = &'a str;
@@ -163,4 +175,52 @@ impl<'a> ArgParser<'a> for AnyParser {
 
 impl DefaultParser<'_> for Obj {
     type Parser = AnyParser;
+}
+
+impl<'a, T> ArgParser<'a> for BufferParser<T>
+where
+    T: AnyBitPattern,
+{
+    type Output = Buffer<'a, T>;
+
+    fn parse(&self, obj: &'a Obj) -> Result<Self::Output, ParseError> {
+        let buffer = obj.buffer().map_err(|e| match e {
+            BufferError::NonBuffer => ParseError::TypeError {
+                expected: "buffer object (e.g. 'array' or 'memoryview')",
+            },
+            BufferError::BufferUnavailable => ParseError::ValueError {
+                mk_msg: Box::new(|arg| error_msg!("{arg} is unavailable for reading")),
+            },
+        })?;
+
+        buffer.cast().map_err(|e| match e {
+            PodCastError::OutputSliceWouldHaveSlop => ParseError::ValueError {
+                mk_msg: Box::new(|arg| {
+                    error_msg!("{arg} length must be a multiple of {}", size_of::<T>())
+                }),
+            },
+            PodCastError::TargetAlignmentGreaterAndInputNotAligned => {
+                panic!("buffer unaligned")
+            }
+            _ => unreachable!(),
+        })
+    }
+}
+
+impl<T> Default for BufferParser<T>
+where
+    T: AnyBitPattern,
+{
+    fn default() -> Self {
+        Self {
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<'a, T> DefaultParser<'a> for Buffer<'a, T>
+where
+    T: AnyBitPattern,
+{
+    type Parser = BufferParser<T>;
 }
