@@ -39,9 +39,17 @@ impl Obj {
             buffer_info.assume_init()
         };
 
+        // info.ptr might be null if info.len = 0, so avoid passing that pointer to from_raw_parts
+        // and just use an empty slice
+        let slice = if info.len == 0 {
+            &[]
+        } else {
+            unsafe { std::slice::from_raw_parts(info.buf as *const u8, info.len) }
+        };
+
         Ok(Buffer {
             typecode: info.typecode as u8,
-            buffer: unsafe { std::slice::from_raw_parts(info.buf as *const u8, info.len) },
+            buffer: slice,
         })
     }
 }
