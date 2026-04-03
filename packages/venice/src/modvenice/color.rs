@@ -83,4 +83,9 @@ impl ColorObj {
     pub fn color(&self) -> Color {
         Color::new(self.r.get(), self.g.get(), self.b.get())
     }
+
+    #[method]
+    fn as_int(&self) -> i32 {
+        self.color().into_raw() as i32
+    }
 }
