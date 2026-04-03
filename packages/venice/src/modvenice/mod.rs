@@ -41,6 +41,7 @@ use crate::modvenice::{
         light_sensor::AdiLightSensorObj,
         line_tracker::AdiLineTrackerObj,
         motor::AdiMotorObj,
+        potentiometer::{AdiPotentiometerObj, PotentiometerTypeObj},
         pwm::AdiPwmOutObj,
         servo::AdiServoObj,
     },
@@ -246,6 +247,8 @@ static mut venice_globals: Dict = Dict::new(const_map![
     qstr!(AdiLineTracker) => Obj::from_static(AdiLineTrackerObj::OBJ_TYPE),
     qstr!(AdiServo) => Obj::from_static(AdiServoObj::OBJ_TYPE),
     qstr!(AdiAddrLed) => Obj::from_static(AdiAddrLedObj::OBJ_TYPE),
+    qstr!(AdiPotentiometer) => Obj::from_static(AdiPotentiometerObj::OBJ_TYPE),
+    qstr!(PotentiometerType) => Obj::from_static(PotentiometerTypeObj::OBJ_TYPE),
 
     // submodules
     qstr!(vasyncio) => Obj::from_static(&Module::new(VASYNCIO_DICT)),

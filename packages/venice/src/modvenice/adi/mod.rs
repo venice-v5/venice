@@ -16,6 +16,7 @@ pub mod gyroscope;
 pub mod light_sensor;
 pub mod line_tracker;
 pub mod motor;
+pub mod potentiometer;
 pub mod pwm;
 pub mod servo;
 
