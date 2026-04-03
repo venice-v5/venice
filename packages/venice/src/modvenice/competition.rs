@@ -1,11 +1,10 @@
 use std::cell::Cell;
 
-use argparse::{ArgType, error_msg};
+use argparse::{ArgType, Callable, error_msg};
 use bitflags::bitflags;
 use micropython_macros::{class, class_methods};
 use micropython_rs::{
     except::type_error,
-    fun::Fun2,
     generator::GEN_INSTANCE_TYPE,
     init::token,
     obj::{Obj, ObjBase, ObjTrait, ObjType},
@@ -76,11 +75,11 @@ impl Phase {
 pub struct Competition {
     base: ObjBase,
 
-    connected: Cell<Obj>,
-    disconnected: Cell<Obj>,
-    driver: Cell<Obj>,
-    autonomous: Cell<Obj>,
-    disabled: Cell<Obj>,
+    connected: Cell<Option<Callable>>,
+    disconnected: Cell<Option<Callable>>,
+    driver: Cell<Option<Callable>>,
+    autonomous: Cell<Option<Callable>>,
+    disabled: Cell<Option<Callable>>,
 }
 
 #[class(qstr!(CompetitionRuntime))]
@@ -93,11 +92,11 @@ pub struct CompetitionRuntime {
     status: Cell<Status>,
     phase: Cell<Phase>,
 
-    connected: Obj,
-    disconnected: Obj,
-    driver: Obj,
-    autonomous: Obj,
-    disabled: Obj,
+    connected: Option<Callable>,
+    disconnected: Option<Callable>,
+    driver: Option<Callable>,
+    autonomous: Option<Callable>,
+    disabled: Option<Callable>,
 
     // nullable
     coro: Cell<Obj>,
@@ -163,8 +162,8 @@ impl CompetitionRuntime {
                     Phase::Mode(Mode::Autonomous) => self.autonomous,
                     Phase::Mode(Mode::Disabled) => self.disabled,
                 }
-                .call(0, &[])
-                .unwrap(); // object is verified to be callable in make_new
+                .map(|c| c.call(0, &[]))
+                .unwrap_or(Obj::NULL);
 
                 if !coro.is(GEN_INSTANCE_TYPE) && !coro.is_null() {
                     let phase_name = match self.phase.get() {
@@ -187,29 +186,6 @@ impl CompetitionRuntime {
     }
 }
 
-fn assert_callable(routine: Obj) {
-    if !routine.is_callable() {
-        type_error(c"routine object is not callable").raise(token());
-    }
-}
-
-macro_rules! routine_decorator {
-    ($fn_name:ident, $routine_name:ident) => {
-        extern "C" fn $fn_name(self_in: Obj, routine: Obj) -> Obj {
-            let comp = self_in.try_as_obj::<Competition>().unwrap();
-            assert_callable(routine);
-            comp.$routine_name.set(routine);
-            routine
-        }
-    };
-}
-
-routine_decorator!(competition_connected, connected);
-routine_decorator!(competition_disconnected, disconnected);
-routine_decorator!(competition_driver, driver);
-routine_decorator!(competition_autonomous, autonomous);
-routine_decorator!(competition_disabled, disabled);
-
 #[class_methods]
 impl Competition {
     #[make_new]
@@ -221,24 +197,43 @@ impl Competition {
         Self {
             base: ObjBase::new(ty),
 
-            connected: Cell::new(Obj::NULL),
-            disconnected: Cell::new(Obj::NULL),
-            driver: Cell::new(Obj::NULL),
-            autonomous: Cell::new(Obj::NULL),
-            disabled: Cell::new(Obj::NULL),
+            connected: Cell::new(None),
+            disconnected: Cell::new(None),
+            driver: Cell::new(None),
+            autonomous: Cell::new(None),
+            disabled: Cell::new(None),
         }
     }
 
-    #[constant(qstr!(connected))]
-    const CONNECTED: &Fun2 = &Fun2::new(competition_connected);
-    #[constant(qstr!(disconnected))]
-    const DISCONNECTED: &Fun2 = &Fun2::new(competition_disconnected);
-    #[constant(qstr!(driver))]
-    const DRIVER: &Fun2 = &Fun2::new(competition_driver);
-    #[constant(qstr!(autonomous))]
-    const AUTONOMOUS: &Fun2 = &Fun2::new(competition_autonomous);
-    #[constant(qstr!(disabled))]
-    const DISABLED: &Fun2 = &Fun2::new(competition_disabled);
+    #[method]
+    fn connected(&self, routine: Callable) -> Obj {
+        self.connected.set(Some(routine));
+        routine.into_inner()
+    }
+
+    #[method]
+    fn disconnected(&self, routine: Callable) -> Obj {
+        self.disconnected.set(Some(routine));
+        routine.into_inner()
+    }
+
+    #[method]
+    fn driver(&self, routine: Callable) -> Obj {
+        self.driver.set(Some(routine));
+        routine.into_inner()
+    }
+
+    #[method]
+    fn autonomous(&self, routine: Callable) -> Obj {
+        self.autonomous.set(Some(routine));
+        routine.into_inner()
+    }
+
+    #[method]
+    fn disabled(&self, routine: Callable) -> Obj {
+        self.disabled.set(Some(routine));
+        routine.into_inner()
+    }
 
     #[method]
     fn run(&self) -> CompetitionRuntime {
