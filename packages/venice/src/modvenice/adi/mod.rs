@@ -18,6 +18,7 @@ pub mod line_tracker;
 pub mod motor;
 pub mod potentiometer;
 pub mod pwm;
+pub mod range_finder;
 pub mod servo;
 
 const INTERNAL_ADI_PORT_NUMBER: u8 = 22;

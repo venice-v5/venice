@@ -43,6 +43,7 @@ use crate::modvenice::{
         motor::AdiMotorObj,
         potentiometer::{AdiPotentiometerObj, PotentiometerTypeObj},
         pwm::AdiPwmOutObj,
+        range_finder::AdiRangeFinderObj,
         servo::AdiServoObj,
     },
     ai_vision::{
@@ -249,6 +250,7 @@ static mut venice_globals: Dict = Dict::new(const_map![
     qstr!(AdiAddrLed) => Obj::from_static(AdiAddrLedObj::OBJ_TYPE),
     qstr!(AdiPotentiometer) => Obj::from_static(AdiPotentiometerObj::OBJ_TYPE),
     qstr!(PotentiometerType) => Obj::from_static(PotentiometerTypeObj::OBJ_TYPE),
+    qstr!(AdiRangeFinder) => Obj::from_static(AdiRangeFinderObj::OBJ_TYPE),
 
     // submodules
     qstr!(vasyncio) => Obj::from_static(&Module::new(VASYNCIO_DICT)),
