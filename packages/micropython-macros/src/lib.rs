@@ -2,15 +2,18 @@ mod constants;
 mod methods;
 
 use proc_macro::TokenStream;
-use quote::{quote, quote_spanned};
+use quote::{format_ident, quote, quote_spanned};
 use syn::{
-    ExprMacro, ImplItem, ImplItemConst, ItemImpl, ItemStruct, Signature,
+    ExprMacro, ImplItem, ImplItemConst, ItemFn, ItemImpl, ItemStruct, Meta, Signature,
     parse::{Parse, ParseStream},
     parse_macro_input,
     spanned::Spanned,
 };
 
-use crate::{constants::generate_constant, methods::generate_fun};
+use crate::{
+    constants::generate_constant,
+    methods::{MethodArgs, generate_fun},
+};
 
 struct ClassArgs {
     pub qstr_macro: ExprMacro,
@@ -268,7 +271,20 @@ pub fn class_methods(_: TokenStream, item: TokenStream) -> TokenStream {
 
     let method_tokens = match methods
         .into_iter()
-        .map(|(sig, attr)| generate_fun(&ty, &sig, &attr))
+        .map(|(sig, attr)| {
+            generate_fun(
+                Some(&ty),
+                &sig,
+                match &attr.meta {
+                    Meta::Path(_) => MethodArgs::default(),
+                    Meta::List(list) => syn::parse2(list.tokens.clone())?,
+                    Meta::NameValue(nv) => {
+                        return Err(syn::Error::new(nv.span(), "unsupported `=` format"));
+                    }
+                },
+                true,
+            )
+        })
         .collect::<syn::Result<Vec<_>>>()
     {
         Ok(tokens) => tokens,
@@ -306,22 +322,31 @@ pub fn class_methods(_: TokenStream, item: TokenStream) -> TokenStream {
     .into()
 }
 
-// macro_rules! dummy_macro {
-//     ($name:ident) => {
-//         #[proc_macro_attribute]
-//         pub fn $name(_: TokenStream, item: TokenStream) -> TokenStream {
-//             item
-//         }
-//     };
-// }
+#[proc_macro_attribute]
+pub fn fun(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let item2 = proc_macro2::TokenStream::from(item.clone());
 
-// dummy_macro!(method);
-// dummy_macro!(constant);
-// dummy_macro!(make_new);
-// dummy_macro!(parent);
-// dummy_macro!(iter);
-// dummy_macro!(attr);
-// dummy_macro!(subscr);
-// dummy_macro!(stream);
-// dummy_macro!(unary_op);
-// dummy_macro!(binary_op);
+    let f = parse_macro_input!(item as ItemFn);
+
+    let args = if attr.is_empty() {
+        MethodArgs::default()
+    } else {
+        parse_macro_input!(attr as MethodArgs)
+    };
+
+    let generated_fun = match generate_fun(None, &f.sig, args, false) {
+        Ok(v) => v,
+        Err(e) => return e.into_compile_error().into(),
+    };
+
+    let obj_name = format_ident!("{}_obj", &f.sig.ident);
+    let vis = &f.vis;
+
+    quote! {
+        #item2
+
+        #[allow(non_upper_case_globals)]
+        #vis const #obj_name: ::micropython_rs::obj::Obj = #generated_fun;
+    }
+    .into()
+}

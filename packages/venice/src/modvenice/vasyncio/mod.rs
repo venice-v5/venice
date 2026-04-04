@@ -1,12 +1,11 @@
 use micropython_rs::{
     const_dict,
-    fun::{Fun0, Fun1},
     map::Dict,
     obj::{Obj, ObjTrait},
 };
 
 use crate::modvenice::vasyncio::{
-    event_loop::{EventLoop, vasyncio_get_running_loop, vasyncio_run, vasyncio_spawn},
+    event_loop::{EventLoop, get_running_loop_obj, run_obj, spawn_obj},
     sleep::Sleep,
 };
 
@@ -19,7 +18,7 @@ pub const VASYNCIO_DICT: &Dict = const_dict![
     qstr!(__name__) => Obj::from_qstr(qstr!(vasyncio)),
     qstr!(EventLoop) => Obj::from_static(EventLoop::OBJ_TYPE),
     qstr!(Sleep) => Obj::from_static(Sleep::OBJ_TYPE),
-    qstr!(get_running_loop) => Obj::from_static(&Fun0::new(vasyncio_get_running_loop)),
-    qstr!(run) => Obj::from_static(&Fun1::new(vasyncio_run)),
-    qstr!(spawn) => Obj::from_static(&Fun1::new(vasyncio_spawn)),
+    qstr!(get_running_loop) => get_running_loop_obj,
+    qstr!(run) => run_obj,
+    qstr!(spawn) => spawn_obj,
 ];

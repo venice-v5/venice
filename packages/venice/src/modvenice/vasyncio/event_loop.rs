@@ -3,7 +3,7 @@ use std::{
     collections::{binary_heap::BinaryHeap, vec_deque::VecDeque},
 };
 
-use micropython_macros::{class, class_methods};
+use micropython_macros::{class, class_methods, fun};
 use micropython_rs::{
     except::{RUNTIME_ERROR_TYPE, raise_msg, type_error},
     fun::{Fun1, Fun2},
@@ -213,7 +213,8 @@ impl EventLoop {
     const RUN: &Fun1 = &Fun1::new(Self::py_run);
 }
 
-pub extern "C" fn vasyncio_run(coro: Obj) -> Obj {
+#[fun]
+pub fn run(coro: Obj) -> Obj {
     if !coro.is(GEN_INSTANCE_TYPE) {
         type_error(c"expected coroutine").raise(token());
     }
@@ -223,9 +224,8 @@ pub extern "C" fn vasyncio_run(coro: Obj) -> Obj {
     EventLoop::py_run(alloc_obj(eloop))
 }
 
-// this function can't use a Fun generator because a Generator struct would be needed to write out
-// its type signature, and that struct does not exist
-pub extern "C" fn vasyncio_spawn(coro: Obj) -> Obj {
+#[fun]
+pub fn spawn(coro: Obj) -> Obj {
     let eloop = RUNNING_LOOP.get();
     if eloop.is_none() {
         raise_msg(token(), RUNTIME_ERROR_TYPE, c"no running event loop");
@@ -234,6 +234,7 @@ pub extern "C" fn vasyncio_spawn(coro: Obj) -> Obj {
     EventLoop::py_spawn(eloop, coro)
 }
 
-pub extern "C" fn vasyncio_get_running_loop() -> Obj {
+#[fun]
+pub fn get_running_loop() -> Obj {
     RUNNING_LOOP.get()
 }

@@ -1,7 +1,7 @@
 use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned};
 use syn::{
-    Attribute, ExprMacro, FnArg, Ident, LitInt, LitStr, Meta, Signature, Token, Type,
+    ExprMacro, FnArg, Ident, LitInt, LitStr, Signature, Token, Type,
     parse::{Parse, ParseStream},
     spanned::Spanned,
 };
@@ -165,7 +165,7 @@ impl Parse for FunType {
     }
 }
 
-fn generate_fixed_fun(ty: &Type, sig: &Signature) -> syn::Result<TokenStream> {
+fn generate_fixed_fun(ty: Option<&Type>, sig: &Signature) -> syn::Result<TokenStream> {
     if sig.inputs.len() > 3 {
         return Err(syn::Error::new(
             sig.inputs.span(),
@@ -272,20 +272,28 @@ fn generate_fixed_fun(ty: &Type, sig: &Signature) -> syn::Result<TokenStream> {
         _ => unreachable!(),
     };
 
+    let full_fn_name = match ty {
+        Some(ty) => quote! {#ty::#fn_name},
+        None => quote! {self::#fn_name},
+    };
     Ok(quote! {{
         extern "C" fn trampoline(#args) -> ::micropython_rs::obj::Obj {
             #first_arg_def
             #second_arg_def
             #third_arg_def
 
-            #ty::#fn_name(#call_args).into()
+            #full_fn_name(#call_args).into()
         }
 
         ::micropython_rs::fun::#fun_ty::new(trampoline)
     }})
 }
 
-fn generate_var_fun(ty: &Type, sig: &Signature, fun_type: FunType) -> syn::Result<TokenStream> {
+fn generate_var_fun(
+    ty: Option<&Type>,
+    sig: &Signature,
+    fun_type: FunType,
+) -> syn::Result<TokenStream> {
     let spanned_ty = quote_spanned! (sig.span()=> <#ty>);
 
     let f_ty = match fun_type {
@@ -348,13 +356,12 @@ fn generate_var_fun(ty: &Type, sig: &Signature, fun_type: FunType) -> syn::Resul
     }})
 }
 
-pub fn generate_fun(ty: &Type, sig: &Signature, attr: &Attribute) -> syn::Result<TokenStream> {
-    let args = match &attr.meta {
-        Meta::Path(_) => MethodArgs::default(),
-        Meta::List(_) => attr.parse_args()?,
-        Meta::NameValue(_) => return Err(syn::Error::new(attr.span(), "unsupported `=` format")),
-    };
-
+pub fn generate_fun(
+    ty: Option<&Type>,
+    sig: &Signature,
+    args: MethodArgs,
+    in_locals_dict: bool,
+) -> syn::Result<TokenStream> {
     let mut fun_expr = match args.ty {
         FunType::Fixed => generate_fixed_fun(ty, sig)?,
         _ => generate_var_fun(ty, sig, args.ty)?,
@@ -367,18 +374,24 @@ pub fn generate_fun(ty: &Type, sig: &Signature, attr: &Attribute) -> syn::Result
         Binding::Class => fun_expr = quote! { ::micropython_rs::fun::ClassMethod::new(&#fun_expr) },
     }
 
-    let attr_qstr = match &args.qstr {
-        Some(m) => {
-            let mac = &m.mac;
-            quote! { #mac }
-        }
-        None => {
-            let fn_ident = &sig.ident;
-            quote! { qstr!(#fn_ident) }
-        }
-    };
+    if in_locals_dict {
+        let attr_qstr = match &args.qstr {
+            Some(m) => {
+                let mac = &m.mac;
+                quote! { #mac }
+            }
+            None => {
+                let fn_ident = &sig.ident;
+                quote! { qstr!(#fn_ident) }
+            }
+        };
 
-    Ok(quote! {
-        #attr_qstr => ::micropython_rs::obj::Obj::from_static(&#fun_expr),
-    })
+        Ok(quote! {
+            #attr_qstr => ::micropython_rs::obj::Obj::from_static(&#fun_expr),
+        })
+    } else {
+        Ok(quote! {
+            ::micropython_rs::obj::Obj::from_static(&#fun_expr)
+        })
+    }
 }

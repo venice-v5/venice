@@ -272,4 +272,5 @@ fn open(pos_args: &[Obj], kw_map: &Map) -> Obj {
 
 #[allow(non_upper_case_globals)]
 #[unsafe(no_mangle)]
+// cant use #[fun] cause it only generates an Obj :(
 static mut mp_builtin_open_obj: FunVarKw = fun_var_kw!(open, 1);
