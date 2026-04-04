@@ -294,7 +294,7 @@ fn generate_var_fun(
     sig: &Signature,
     fun_type: FunType,
 ) -> syn::Result<TokenStream> {
-    let spanned_ty = quote_spanned! (sig.span()=> <#ty>);
+    //let spanned_ty = quote_spanned! (sig.span()=> <#ty>);
 
     let f_ty = match fun_type {
         FunType::FunVar { .. } | FunType::FunVarBetween { .. } => quote! {
@@ -307,6 +307,10 @@ fn generate_var_fun(
     };
 
     let fn_name = &sig.ident;
+    let full_fn_name = match ty {
+        Some(ty) => quote_spanned! (sig.span()=> <#ty>::#fn_name),
+        None => quote! { self::#fn_name },
+    };
 
     let (map_arg, map_def, map_call_arg) = if let FunType::FunVarKw { .. } = fun_type {
         (
@@ -332,7 +336,7 @@ fn generate_var_fun(
         }
 
         unsafe extern "C" fn trampoline(n_args: usize, ptr: *const ::micropython_rs::obj::Obj, #map_arg) -> ::micropython_rs::obj::Obj {
-            unsafe { trampoline_inner(#spanned_ty::#fn_name, n_args, ptr, #map_call_arg) }
+            unsafe { trampoline_inner(#full_fn_name, n_args, ptr, #map_call_arg) }
         }
     };
 
