@@ -13,7 +13,9 @@ use micropython_rs::{
 };
 use vexide_devices::{
     color::Color,
-    display::{Circle, Font, FontFamily, FontSize, Line, Rect, RenderMode, Text},
+    display::{
+        Circle, Font, FontFamily, FontSize, Line, Rect, RenderMode, Text, TouchEvent, TouchState,
+    },
     math::Point2,
 };
 
@@ -29,8 +31,9 @@ pub const DISPLAY_DICT: &Dict = const_dict![
     qstr!(RenderMode) => Obj::from_static(RenderModeObj::OBJ_TYPE),
     qstr!(FontFamily) => Obj::from_static(FontFamilyObj::OBJ_TYPE),
     qstr!(FontSize) => Obj::from_static(FontSizeObj::OBJ_TYPE),
+    qstr!(TouchEvent) => Obj::from_static(TouchEventObj::OBJ_TYPE),
 
-    // functions
+    // drawing
     qstr!(draw_pixel) => draw_pixel_obj,
     qstr!(draw_line) => draw_line_obj,
     qstr!(draw_circle) => draw_circle_obj,
@@ -39,12 +42,21 @@ pub const DISPLAY_DICT: &Dict = const_dict![
     qstr!(fill_rect) => fill_rect_obj,
     qstr!(draw_buffer) => draw_buffer_obj,
     qstr!(draw_text) => draw_text_obj,
-    qstr!(print) => print_obj,
+    // scroll
     qstr!(scroll) => scroll_obj,
     qstr!(scroll_region) => scroll_region_obj,
+    // render
     qstr!(set_render_mode) => set_render_mode_obj,
     qstr!(render) => render_obj,
     qstr!(erase) => erase_obj,
+    // print
+    qstr!(print) => print_obj,
+    // touch
+    qstr!(get_touch_status) => get_touch_status_obj,
+    qstr!(is_now_pressed) => is_now_pressed_obj,
+    qstr!(is_pressed) => is_pressed_obj,
+    qstr!(is_released) => is_released_obj,
+    qstr!(is_held) => is_held_obj,
 ];
 
 #[class(qstr!(RenderMode))]
@@ -362,4 +374,67 @@ fn render() {
 #[fun]
 fn erase(color: &ColorObj) {
     lock_display().erase(color.color());
+}
+
+#[class(qstr!(TouchEvent))]
+#[repr(C)]
+struct TouchEventObj {
+    base: ObjBase,
+    event: TouchEvent,
+}
+
+#[class_methods]
+impl TouchEventObj {
+    #[attr]
+    fn attr(&self, attr: Qstr, op: AttrOp) {
+        let AttrOp::Load { result } = op else { return };
+        result.return_value(match attr.as_str() {
+            "x" => Obj::from(self.event.point.x as i32),
+            "y" => Obj::from(self.event.point.y as i32),
+
+            "press_count" => Obj::from(self.event.press_count),
+            "release_count" => Obj::from(self.event.release_count),
+
+            "is_now_pressed" => Obj::from(self.event.state == TouchState::Pressed),
+            "is_pressed" => Obj::from(matches!(
+                self.event.state,
+                TouchState::Pressed | TouchState::Held
+            )),
+            "is_released" => Obj::from(self.event.state == TouchState::Released),
+            "is_held" => Obj::from(self.event.state == TouchState::Held),
+
+            _ => return,
+        });
+    }
+}
+
+#[fun]
+fn get_touch_status() -> TouchEventObj {
+    TouchEventObj {
+        base: TouchEventObj::OBJ_TYPE.into(),
+        event: lock_display().touch_status(),
+    }
+}
+
+#[fun]
+fn is_now_pressed() -> bool {
+    lock_display().touch_status().state == TouchState::Pressed
+}
+
+#[fun]
+fn is_pressed() -> bool {
+    matches!(
+        lock_display().touch_status().state,
+        TouchState::Pressed | TouchState::Held
+    )
+}
+
+#[fun]
+fn is_released() -> bool {
+    lock_display().touch_status().state == TouchState::Released
+}
+
+#[fun]
+fn is_held() -> bool {
+    lock_display().touch_status().state == TouchState::Held
 }
