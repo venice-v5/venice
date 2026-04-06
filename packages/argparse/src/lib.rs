@@ -157,11 +157,10 @@ pub fn type_name(obj: &Obj) -> &'static str {
 }
 
 impl<'a> KeywordArg<'a> {
-    pub fn parse<T>(&self) -> Result<T, KeywordError<'a>>
+    pub fn parse_with<P>(&self, parser: P) -> Result<P::Output, KeywordError<'a>>
     where
-        T: DefaultParser<'a>,
+        P: ArgParser<'a>,
     {
-        let parser = T::Parser::default();
         match parser.parse(self.obj) {
             Ok(v) => Ok(v),
             Err(e) => Err(match e {
@@ -175,6 +174,13 @@ impl<'a> KeywordArg<'a> {
                 },
             }),
         }
+    }
+
+    pub fn parse<T>(&self) -> Result<T, KeywordError<'a>>
+    where
+        T: DefaultParser<'a>,
+    {
+        self.parse_with(T::Parser::default())
     }
 }
 
