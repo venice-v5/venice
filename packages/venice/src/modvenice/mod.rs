@@ -278,5 +278,10 @@ static mut venice_globals: Dict = Dict::new(const_map![
 
     // units
     qstr!(RotationUnit) => Obj::from_static(RotationUnitObj::OBJ_TYPE),
-    qstr!(TimeUnit) => Obj::from_static(TimeUnitObj::OBJ_TYPE)
+    qstr!(RADIANS) => Obj::from_static(RotationUnitObj::RADIANS),
+    qstr!(DEGREES) => Obj::from_static(RotationUnitObj::DEGREES),
+    qstr!(TURNS) => Obj::from_static(RotationUnitObj::TURNS),
+    qstr!(TimeUnit) => Obj::from_static(TimeUnitObj::OBJ_TYPE),
+    qstr!(MILLIS) => Obj::from_static(TimeUnitObj::MILLIS),
+    qstr!(SECOND) => Obj::from_static(TimeUnitObj::SECOND),
 ]);
