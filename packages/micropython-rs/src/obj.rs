@@ -628,6 +628,11 @@ impl ObjType {
         self.slot_value_raw(Slot::LocalsDict)
             .map(|ptr| unsafe { &*(ptr as *const Dict) })
     }
+
+    pub fn print(&self) -> Option<PrintFn> {
+        self.slot_value_raw(Slot::Print)
+            .map(|ptr| unsafe { std::mem::transmute(ptr) })
+    }
 }
 
 impl ObjFullType {
@@ -1128,6 +1133,11 @@ impl Obj {
 #[error("object is not callable")]
 pub struct CallError;
 
+/// Object print operation error.
+#[derive(Debug, Error)]
+#[error("object is not callable")]
+pub struct PrintError;
+
 impl Obj {
     pub fn call(&self, n_kw: usize, args: &[Obj]) -> Result<Obj, CallError> {
         let ty = self.obj_type();
@@ -1142,6 +1152,12 @@ impl Obj {
             fn mp_obj_is_callable(o_in: Obj) -> bool;
         }
         unsafe { mp_obj_is_callable(*self) }
+    }
+
+    pub fn print(&self, print: &mut Print, kind: PrintKind) -> Result<(), PrintError> {
+        let print_fn = self.obj_type().print().ok_or(PrintError)?;
+        unsafe { print_fn(print as *mut Print, *self, kind) }
+        Ok(())
     }
 }
 

@@ -5,8 +5,6 @@ compile_error!(
 
 mod raw;
 
-pub(crate) mod print;
-
 pub mod buffer;
 pub mod class;
 pub mod errno;
@@ -21,6 +19,7 @@ pub mod module;
 pub mod nlr;
 pub mod obj;
 pub mod ops;
+pub mod print;
 pub mod qstr;
 pub mod state;
 pub mod str;

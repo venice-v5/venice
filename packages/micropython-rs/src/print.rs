@@ -1,4 +1,7 @@
-use std::ffi::{c_char, c_void};
+use std::{
+    ffi::{c_char, c_void},
+    marker::PhantomData,
+};
 
 use crate::obj::Obj;
 
@@ -8,8 +11,8 @@ pub type PrintStrn = unsafe extern "C" fn(data: *mut c_void, str: *const c_char,
 /// From: `py/mpprint.h`
 #[repr(C)]
 pub struct Print {
-    pub data: *mut c_void,
-    pub print_strn: PrintStrn,
+    data: *mut c_void,
+    print_strn: PrintStrn,
 }
 
 #[allow(dead_code)]
@@ -29,8 +32,41 @@ pub enum PrintKind {
 
 unsafe extern "C" {
     /// From: `py/mpprint.h`
-    pub static mp_plat_print: Print;
+    pub(crate) static mp_plat_print: Print;
 
     /// From: `py/obj.h`
-    pub fn mp_obj_print_exception(print: *const Print, exc: Obj);
+    pub(crate) fn mp_obj_print_exception(print: *const Print, exc: Obj);
+}
+
+pub struct StringPrint<'a> {
+    print: Print,
+    _phantom: PhantomData<&'a mut String>,
+}
+
+unsafe extern "C" fn string_print_print_strn(data: *mut c_void, str: *const c_char, len: usize) {
+    unsafe {
+        let string = &mut *(data as *mut String);
+        let str = str::from_utf8_unchecked(std::slice::from_raw_parts(str, len));
+        string.push_str(str);
+    }
+}
+
+impl<'a> StringPrint<'a> {
+    pub fn new(string: &'a mut String) -> Self {
+        Self {
+            print: Print {
+                data: string as *mut String as *mut c_void,
+                print_strn: string_print_print_strn,
+            },
+            _phantom: PhantomData,
+        }
+    }
+
+    pub fn print(&mut self) -> &mut Print {
+        &mut self.print
+    }
+
+    pub fn string(&mut self) -> &mut String {
+        unsafe { &mut *(self.print.data as *mut String) }
+    }
 }
