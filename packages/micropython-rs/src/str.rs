@@ -1,4 +1,9 @@
-use crate::obj::{Obj, ObjBase, ObjTrait, ObjType};
+use std::{
+    ffi::{CStr, FromBytesWithNulError},
+    hint::unreachable_unchecked,
+};
+
+use crate::obj::{MpCStrError, Obj, ObjBase, ObjTrait, ObjType};
 
 unsafe extern "C" {
     static mp_type_str: ObjType;
@@ -29,6 +34,17 @@ impl Str {
 
     pub fn data(&self) -> &str {
         unsafe { str::from_utf8_unchecked(core::slice::from_raw_parts(self.data, self.len)) }
+    }
+
+    pub fn as_cstr(&self) -> Result<&CStr, MpCStrError> {
+        let bytes = unsafe {
+            // data always contains a nul byte at len+1
+            std::slice::from_raw_parts(self.data, self.len + 1)
+        };
+        CStr::from_bytes_with_nul(bytes).map_err(|e| match e {
+            FromBytesWithNulError::InteriorNul { position } => MpCStrError { position },
+            FromBytesWithNulError::NotNulTerminated => unsafe { unreachable_unchecked() },
+        })
     }
 }
 

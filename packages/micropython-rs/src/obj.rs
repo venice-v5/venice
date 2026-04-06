@@ -1,5 +1,5 @@
 use std::{
-    ffi::{c_int, c_void},
+    ffi::{CStr, c_int, c_void},
     marker::PhantomData,
     ptr::NonNull,
 };
@@ -844,6 +844,18 @@ impl From<&'static ObjType> for ObjBase {
 #[error("gc allocation failed")]
 pub struct GcError;
 
+#[derive(Debug, Clone, Copy, Error)]
+#[error("nul byte found at byte {position}")]
+pub struct MpCStrError {
+    pub(crate) position: usize,
+}
+
+impl MpCStrError {
+    pub fn position(&self) -> usize {
+        self.position
+    }
+}
+
 impl Obj {
     /// The null constant. This is used internally by MicroPython to indicate sentinel values. In
     /// essence, it is an implementation detail, and does not exist within Python, nor should it be
@@ -1084,6 +1096,18 @@ impl Obj {
 
         if let Some(str) = Self::try_as_obj::<Str>(self) {
             return Some(str.data());
+        }
+
+        None
+    }
+
+    pub fn get_cstr(&self) -> Option<Result<&CStr, MpCStrError>> {
+        if let Some(qstr) = self.try_to_qstr() {
+            return Some(qstr.as_cstr());
+        }
+
+        if let Some(str) = Self::try_as_obj::<Str>(self) {
+            return Some(str.as_cstr());
         }
 
         None
