@@ -1,3 +1,5 @@
+use std::fmt::Write;
+
 use argparse::{Args, PositionalError, error_msg};
 use micropython_macros::{class, class_methods, fun};
 use micropython_rs::{
@@ -321,8 +323,7 @@ fn print(args: &[Obj], kw_map: &Map) -> Result<(), Exception> {
     }
 
     string.push_str(end);
-
-    // TODO: Draw the text onto the string with some mechanism to manage lines
+    lock_display().write_str(&string).unwrap(); // function is infallible
 
     Ok(())
 }
