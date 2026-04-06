@@ -6,6 +6,7 @@ mod competition;
 mod controller;
 mod display;
 mod distance_sensor;
+mod electromagnet;
 mod gps;
 mod imu;
 mod link;
@@ -62,6 +63,7 @@ use crate::modvenice::{
     },
     display::DISPLAY_DICT,
     distance_sensor::{DistanceSensorObj, distance_object::DistanceObjectObj},
+    electromagnet::ElectromagnetObj,
     gps::GpsSensorObj,
     imu::{InertialOrientationObj, InertialSensorObj},
     link::{LinkTypeObj, RadioLinkObj},
@@ -237,6 +239,7 @@ static mut venice_globals: Dict = Dict::new(const_map![
     // other devices
     qstr!(RotationSensor) => Obj::from_static(RotationSensorObj::OBJ_TYPE),
     qstr!(GpsSensor) => Obj::from_static(GpsSensorObj::OBJ_TYPE),
+    qstr!(Electromagnet) => Obj::from_static(ElectromagnetObj::OBJ_TYPE),
 
     // adi
     qstr!(AdiMotor) => Obj::from_static(AdiMotorObj::OBJ_TYPE),
