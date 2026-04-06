@@ -44,9 +44,9 @@ impl OpticalRgbObj {
     #[attr]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let component = match attr.as_str() {
-            "red" | "r" => self.red,
-            "green" | "g" => self.green,
-            "blue" | "b" => self.blue,
+            "r" => self.red,
+            "g" => self.green,
+            "b" => self.blue,
             "brightness" => self.brightness,
             _ => return,
         };
@@ -73,9 +73,9 @@ impl OpticalRawObj {
     #[attr]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let component = match attr.as_str() {
-            "red" | "r" => self.red,
-            "green" | "g" => self.green,
-            "blue" | "b" => self.blue,
+            "r" => self.red,
+            "g" => self.green,
+            "b" => self.blue,
             "clear" => self.clear,
             _ => return,
         };
