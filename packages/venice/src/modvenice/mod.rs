@@ -8,6 +8,7 @@ mod display;
 mod distance_sensor;
 mod gps;
 mod imu;
+mod link;
 mod math;
 mod motor;
 mod optical;
@@ -63,6 +64,7 @@ use crate::modvenice::{
     distance_sensor::{DistanceSensorObj, distance_object::DistanceObjectObj},
     gps::GpsSensorObj,
     imu::{InertialOrientationObj, InertialSensorObj},
+    link::{LinkTypeObj, RadioLinkObj},
     math::{EulerZYX, Point2, Quaternion, Vec3},
     motor::{
         MotorObj, brake::BrakeModeObj, direction::DirectionObj, gearset::GearsetObj,
@@ -229,6 +231,9 @@ static mut venice_globals: Dict = Dict::new(const_map![
     qstr!(VisionSignature) => Obj::from_static(VisionSignatureObj::OBJ_TYPE),
     qstr!(DetectionSource) => Obj::from_static(DetectionSourceObj::OBJ_TYPE),
     qstr!(WhiteBalance) => Obj::from_static(WhiteBalanceObj::OBJ_TYPE),
+    // radio link
+    qstr!(RadioLink) => Obj::from_static(RadioLinkObj::OBJ_TYPE),
+    qstr!(LinkType) => Obj::from_static(LinkTypeObj::OBJ_TYPE),
     // other devices
     qstr!(RotationSensor) => Obj::from_static(RotationSensorObj::OBJ_TYPE),
     qstr!(GpsSensor) => Obj::from_static(GpsSensorObj::OBJ_TYPE),

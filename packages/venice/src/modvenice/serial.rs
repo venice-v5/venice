@@ -188,7 +188,7 @@ impl SerialPortOpenFutureObj {
     }
 }
 
-fn err_to_code(_err: std::io::Error) -> c_int {
+pub fn err_to_code(_err: std::io::Error) -> c_int {
     // vexide always returns non-os io errors, so don't bother to check using `raw_os_error`
     MP_EIO
 }
