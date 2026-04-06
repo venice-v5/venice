@@ -157,10 +157,10 @@ impl InertialSensorObj {
         Ok(Vec3::new(self.guard.borrow().acceleration()?))
     }
 
-    // TODO: figure out how to return the bitflags struct InertialStatus
-    // fn get_status(&self) -> _ {
-    //     todo!()
-    // }
+    #[method]
+    fn get_status(&self) -> Result<i32, Exception> {
+        Ok(self.guard.borrow().status()?.bits() as i32)
+    }
 
     #[method]
     fn is_calibrating(&self) -> Result<bool, Exception> {
