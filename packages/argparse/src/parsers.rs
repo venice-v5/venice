@@ -1,9 +1,15 @@
-use std::{ffi::c_void, fmt::Debug, marker::PhantomData, ops::RangeInclusive, ptr::NonNull};
+use std::{
+    ffi::{CStr, c_void},
+    fmt::Debug,
+    marker::PhantomData,
+    ops::RangeInclusive,
+    ptr::NonNull,
+};
 
 use bytemuck::{AnyBitPattern, PodCastError};
 use micropython_rs::{
     buffer::{Buffer, BufferError},
-    obj::{Obj, ObjTrait},
+    obj::{Obj, ObjTrait, ObjType},
 };
 
 use crate::{ArgParser, DefaultParser, ParseError, error_msg};
@@ -44,6 +50,14 @@ pub struct CallableParser;
 
 #[derive(Clone, Copy)]
 pub struct Callable(NonNull<c_void>);
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct CStrParser;
+
+#[derive(Clone, Copy)]
+pub struct RawObjParser {
+    pub ty: &'static ObjType,
+}
 
 impl<'a> ArgParser<'a> for StrParser {
     type Output = &'a str;
@@ -256,5 +270,46 @@ impl Callable {
 
     pub fn call(&self, n_kw: usize, args: &[Obj]) -> Obj {
         unsafe { self.into_inner().call(n_kw, args).unwrap_unchecked() }
+    }
+}
+
+impl<'a> ArgParser<'a> for CStrParser {
+    type Output = &'a CStr;
+
+    fn parse(&self, obj: &'a Obj) -> Result<Self::Output, ParseError> {
+        obj.get_cstr()
+            .ok_or(ParseError::TypeError { expected: "string" })?
+            .map_err(|e| ParseError::ValueError {
+                mk_msg: Box::new(move |arg| {
+                    error_msg!(
+                        "{arg} must not contain a NUL byte, one was found at byte {}",
+                        e.position()
+                    )
+                }),
+            })
+    }
+}
+
+impl<'a> DefaultParser<'a> for &'a CStr {
+    type Parser = CStrParser;
+}
+
+impl<'a> ArgParser<'a> for RawObjParser {
+    type Output = Obj;
+
+    fn parse(&self, obj: &'a Obj) -> Result<Self::Output, ParseError> {
+        if obj.obj_type() != self.ty {
+            Err(ParseError::TypeError {
+                expected: self.ty.name().as_str(),
+            })
+        } else {
+            Ok(*obj)
+        }
+    }
+}
+
+impl RawObjParser {
+    pub fn new(ty: &'static ObjType) -> Self {
+        Self { ty }
     }
 }
