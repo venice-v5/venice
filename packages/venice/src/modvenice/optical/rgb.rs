@@ -1,7 +1,5 @@
 use micropython_macros::{class, class_methods};
 use micropython_rs::{
-    except::{ATTRIBUTE_ERROR_TYPE, raise_msg},
-    init::token,
     obj::{AttrOp, Obj, ObjBase, ObjTrait},
     qstr::Qstr,
 };
@@ -82,7 +80,7 @@ impl OpticalRawObj {
 
         match op {
             AttrOp::Load { result } => result.return_value(Obj::from_int(component as i32)),
-            _ => raise_msg(token(), ATTRIBUTE_ERROR_TYPE, c"cannot write to OpticalRaw"),
+            _ => read_only_attr::<Self>(),
         }
     }
 }
