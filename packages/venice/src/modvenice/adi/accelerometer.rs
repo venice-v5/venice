@@ -6,7 +6,7 @@ use micropython_rs::{
 };
 use vexide_devices::adi::accelerometer::{AdiAccelerometer, Sensitivity};
 
-use crate::modvenice::{Exception, adi::expander::AdiPortParser};
+use crate::modvenice::{Exception, adi::expander::AdiPortParser, read_only_attr::read_only_attr};
 
 #[class(qstr!(AdiAccelerometerSensitivity))]
 #[repr(C)]
@@ -59,7 +59,9 @@ impl AdiAccelerometerObj {
 
     #[attr]
     fn attr(&self, attr: Qstr, op: AttrOp) {
-        let AttrOp::Load { result } = op else { return };
+        let AttrOp::Load { result } = op else {
+            read_only_attr::<Self>()
+        };
         result.return_value(match attr.as_str() {
             "sensitivity" => Obj::from_static(match self.accelerometer.sensitivity() {
                 Sensitivity::Low => SensitivityObj::LOW,

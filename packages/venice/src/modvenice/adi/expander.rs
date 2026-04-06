@@ -10,7 +10,7 @@ use vexide_devices::{adi::AdiPort, smart::expander::AdiExpander};
 
 use crate::{
     devices::{self, AdiPortNumberParser},
-    modvenice::Exception,
+    modvenice::{Exception, read_only_attr::read_only_attr},
 };
 
 #[class(qstr!(AdiExpanderPort))]
@@ -77,7 +77,7 @@ impl AdiExpanderObj {
     #[attr]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let AttrOp::Load { result } = op else {
-            todo!("need standardize error messages for ro attr structs")
+            read_only_attr::<Self>()
         };
 
         result.return_value(match attr.as_str() {

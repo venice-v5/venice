@@ -8,7 +8,7 @@ use vexide_devices::{
     smart::vision::VisionObject,
 };
 
-use crate::modvenice::units::rotation::RotationUnitObj;
+use crate::modvenice::{read_only_attr::read_only_attr, units::rotation::RotationUnitObj};
 
 #[class(qstr!(VisionObject))]
 #[repr(C)]
@@ -38,7 +38,9 @@ impl VisionObjectObj {
 
     #[attr]
     fn attr(&self, attr: Qstr, op: AttrOp) {
-        let AttrOp::Load { result } = op else { return };
+        let AttrOp::Load { result } = op else {
+            read_only_attr::<Self>()
+        };
         result.return_value(match attr.as_str() {
             "source" => self.source,
             "width" => (self.width as i32).into(),

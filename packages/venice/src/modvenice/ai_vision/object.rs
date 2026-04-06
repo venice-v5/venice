@@ -9,7 +9,10 @@ use vexide_devices::{
     smart::ai_vision::AiVisionObject,
 };
 
-use crate::{modvenice::units::rotation::RotationUnitObj, obj::alloc_obj};
+use crate::{
+    modvenice::{read_only_attr::read_only_attr, units::rotation::RotationUnitObj},
+    obj::alloc_obj,
+};
 
 #[class(qstr!(AiVisionColorObject))]
 #[repr(C)]
@@ -25,7 +28,9 @@ pub struct Color {
 impl Color {
     #[attr]
     fn attr(&self, attr: Qstr, op: AttrOp) {
-        let AttrOp::Load { result } = op else { return };
+        let AttrOp::Load { result } = op else {
+            read_only_attr::<Self>()
+        };
         result.return_value(match attr.as_str() {
             "id" => self.id as i32,
             "x" => self.position.x as i32,
@@ -52,7 +57,9 @@ pub struct Code {
 impl Code {
     #[attr]
     fn attr(&self, attr: Qstr, op: AttrOp) {
-        let AttrOp::Load { result } = op else { return };
+        let AttrOp::Load { result } = op else {
+            read_only_attr::<Self>()
+        };
         result.return_value(match attr.as_str() {
             "id" => self.id as i32,
             "x" => self.position.x as i32,
@@ -85,7 +92,9 @@ pub struct AprilTag {
 impl AprilTag {
     #[attr]
     fn attr(&self, attr: Qstr, op: AttrOp) {
-        let AttrOp::Load { result } = op else { return };
+        let AttrOp::Load { result } = op else {
+            read_only_attr::<Self>()
+        };
         result.return_value(match attr.as_str() {
             "top_left_x" => self.top_left.x.into(),
             "top_left_y" => self.top_left.y.into(),
@@ -117,7 +126,9 @@ pub struct Model {
 impl Model {
     #[attr]
     fn attr(&self, attr: Qstr, op: AttrOp) {
-        let AttrOp::Load { result } = op else { return };
+        let AttrOp::Load { result } = op else {
+            read_only_attr::<Self>()
+        };
         result.return_value(match attr.as_str() {
             "id" => (self.id as i32).into(),
             "classification" => self.classification,

@@ -6,7 +6,7 @@ use micropython_rs::{
 };
 use vexide_devices::smart::vision::VisionSignature;
 
-use crate::modvenice::Exception;
+use crate::modvenice::{Exception, read_only_attr::read_only_attr};
 
 #[class(qstr!(VisionSignature))]
 #[repr(C)]
@@ -56,7 +56,9 @@ impl VisionSignatureObj {
 
     #[attr]
     fn attr(&self, attr: Qstr, op: AttrOp) {
-        let AttrOp::Load { result } = op else { return };
+        let AttrOp::Load { result } = op else {
+            read_only_attr::<Self>()
+        };
         result.return_value(match attr.as_str() {
             "u_min" => self.signature.u_threshold.0.into(),
             "u_max" => self.signature.u_threshold.1.into(),

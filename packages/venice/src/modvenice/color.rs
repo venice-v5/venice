@@ -7,7 +7,7 @@ use micropython_rs::{
 };
 use vexide_devices::color::Color;
 
-use crate::modvenice::Exception;
+use crate::modvenice::{Exception, read_only_attr::read_only_attr};
 
 #[class(qstr!(Color))]
 #[repr(C)]
@@ -80,7 +80,9 @@ impl ColorObj {
 
     #[attr]
     fn attr(&self, attr: Qstr, op: AttrOp) {
-        let AttrOp::Load { result } = op else { return };
+        let AttrOp::Load { result } = op else {
+            read_only_attr::<Self>()
+        };
         result.return_value(match attr.as_str() {
             "r" => self.color.r as i32,
             "g" => self.color.g as i32,

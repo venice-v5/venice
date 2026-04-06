@@ -6,7 +6,7 @@ use micropython_rs::{
 };
 use vexide_devices::smart::ai_vision::AiVisionColor;
 
-use crate::modvenice::{Exception, color::ColorObj};
+use crate::modvenice::{Exception, color::ColorObj, read_only_attr::read_only_attr};
 
 #[class(qstr!(AiVisionColor))]
 #[repr(C)]
@@ -32,7 +32,9 @@ impl AiVisionColorObj {
 impl AiVisionColorObj {
     #[attr]
     fn attr(&self, attr: Qstr, op: AttrOp) {
-        let AttrOp::Load { result } = op else { return };
+        let AttrOp::Load { result } = op else {
+            read_only_attr::<Self>()
+        };
         result.return_value(match attr.as_str() {
             "r" => Obj::from_int(self.color.rgb.r as _),
             "g" => Obj::from_int(self.color.rgb.g as _),

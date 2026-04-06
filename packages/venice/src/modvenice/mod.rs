@@ -13,6 +13,7 @@ mod link;
 mod math;
 mod motor;
 mod optical;
+mod read_only_attr;
 mod rotation_sensor;
 mod serial;
 mod units;

@@ -6,7 +6,7 @@ use micropython_rs::{
 };
 use vexide_devices::smart::vision::VisionCode;
 
-use crate::modvenice::{Exception, vision::SignatureId};
+use crate::modvenice::{Exception, read_only_attr::read_only_attr, vision::SignatureId};
 
 #[class(qstr!(VisionCode))]
 #[repr(C)]
@@ -67,7 +67,9 @@ impl VisionCodeObj {
 
     #[attr]
     fn attr(&self, attr: Qstr, op: AttrOp) {
-        let AttrOp::Load { result } = op else { return };
+        let AttrOp::Load { result } = op else {
+            read_only_attr::<Self>()
+        };
         result.return_value(match attr.as_str() {
             "sig1" => Obj::from(self.code.0 as i32),
             "sig2" => (self.code.1 as i32).into(),

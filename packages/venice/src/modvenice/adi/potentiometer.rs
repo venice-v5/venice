@@ -6,7 +6,10 @@ use micropython_rs::{
 };
 use vexide_devices::adi::potentiometer::{AdiPotentiometer, PotentiometerType};
 
-use crate::modvenice::{Exception, adi::expander::AdiPortParser, units::rotation::RotationUnitObj};
+use crate::modvenice::{
+    Exception, adi::expander::AdiPortParser, read_only_attr::read_only_attr,
+    units::rotation::RotationUnitObj,
+};
 
 #[class(qstr!(AdiPotentiometer))]
 #[repr(C)]
@@ -70,7 +73,9 @@ impl AdiPotentiometerObj {
 
     #[attr]
     fn attr(&self, attr: Qstr, op: AttrOp) {
-        let AttrOp::Load { result } = op else { return };
+        let AttrOp::Load { result } = op else {
+            read_only_attr::<Self>()
+        };
         result.return_value(match attr.as_str() {
             "type" => Obj::from_static(match self.potentiometer.potentiometer_type() {
                 PotentiometerType::Legacy => PotentiometerTypeObj::LEGACY,

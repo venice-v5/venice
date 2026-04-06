@@ -9,8 +9,7 @@ use direction::DirectionObj;
 use gearset::GearsetObj;
 use micropython_macros::{class, class_methods};
 use micropython_rs::{
-    except::{attribute_error, type_error},
-    init::token,
+    except::type_error,
     obj::{AttrOp, Obj, ObjBase, ObjTrait, ObjType},
     qstr::Qstr,
 };
@@ -22,7 +21,8 @@ use vexide_devices::{
 use crate::{
     devices::{self},
     modvenice::{
-        Exception, device_error, motor::motor_type::MotorTypeObj, units::rotation::RotationUnitObj,
+        Exception, device_error, motor::motor_type::MotorTypeObj, read_only_attr::read_only_attr,
+        units::rotation::RotationUnitObj,
     },
     registry::SmartGuard,
 };
@@ -117,7 +117,7 @@ impl MotorObj {
     #[attr]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let AttrOp::Load { result } = op else {
-            attribute_error(c"Motor attributes are read-only").raise(token());
+            read_only_attr::<Self>()
         };
         result.return_value(match attr.as_str() {
             "is_exp" => self.guard.borrow().is_exp().into(),

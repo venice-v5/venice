@@ -21,7 +21,8 @@ use crate::{
     alloc::Gc,
     devices,
     modvenice::{
-        Exception, controller::id::ControllerIdObj, device_error, vasyncio::event_loop::WAKE_SIGNAL,
+        Exception, controller::id::ControllerIdObj, device_error, read_only_attr::read_only_attr,
+        vasyncio::event_loop::WAKE_SIGNAL,
     },
     registry::ControllerGuard,
 };
@@ -228,7 +229,9 @@ impl ControllerObj {
 
     #[attr]
     fn attr(&self, attr: Qstr, op: AttrOp) {
-        let AttrOp::Load { result } = op else { return };
+        let AttrOp::Load { result } = op else {
+            read_only_attr::<Self>()
+        };
         result.return_value(match attr.as_str() {
             "id" => Obj::from_static(match self.guard.borrow().id() {
                 ControllerId::Primary => ControllerIdObj::PRIMARY,

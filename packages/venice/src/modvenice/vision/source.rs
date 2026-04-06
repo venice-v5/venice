@@ -10,6 +10,7 @@ use vexide_devices::smart::vision::DetectionSource;
 
 use crate::modvenice::{
     Exception,
+    read_only_attr::read_only_attr,
     vision::{SignatureId, code::VisionCodeObj},
 };
 
@@ -79,7 +80,9 @@ impl Signature {
 
     #[attr]
     fn attr(&self, attr: Qstr, op: AttrOp) {
-        let AttrOp::Load { result } = op else { return };
+        let AttrOp::Load { result } = op else {
+            read_only_attr::<Self>()
+        };
         result.return_value(match attr.as_str() {
             "id" => self.id as i32,
             _ => return,
@@ -120,7 +123,9 @@ impl Code {
 
     #[attr]
     fn attr(&self, attr: Qstr, op: AttrOp) {
-        let AttrOp::Load { result } = op else { return };
+        let AttrOp::Load { result } = op else {
+            read_only_attr::<Self>()
+        };
         result.return_value(match attr.as_str() {
             "code" => self.code,
             _ => return,

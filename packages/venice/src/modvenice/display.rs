@@ -21,7 +21,7 @@ use vexide_devices::{
 
 use crate::{
     devices::lock_display,
-    modvenice::{Exception, color::ColorObj},
+    modvenice::{Exception, color::ColorObj, read_only_attr::read_only_attr},
 };
 
 pub const DISPLAY_DICT: &Dict = const_dict![
@@ -387,7 +387,9 @@ struct TouchEventObj {
 impl TouchEventObj {
     #[attr]
     fn attr(&self, attr: Qstr, op: AttrOp) {
-        let AttrOp::Load { result } = op else { return };
+        let AttrOp::Load { result } = op else {
+            read_only_attr::<Self>()
+        };
         result.return_value(match attr.as_str() {
             "x" => Obj::from(self.event.point.x as i32),
             "y" => Obj::from(self.event.point.y as i32),

@@ -8,7 +8,7 @@ use micropython_rs::{
 };
 use vexide_devices::smart::vision::WhiteBalance;
 
-use crate::modvenice::Exception;
+use crate::modvenice::{Exception, read_only_attr::read_only_attr};
 
 #[class(qstr!(WhiteBalance))]
 #[repr(C)]
@@ -119,7 +119,9 @@ impl Manual {
 
     #[attr]
     fn attr(&self, attr: Qstr, op: AttrOp) {
-        let AttrOp::Load { result } = op else { return };
+        let AttrOp::Load { result } = op else {
+            read_only_attr::<Self>()
+        };
         result.return_value(match attr.as_str() {
             "r" => self.r,
             "g" => self.g,

@@ -5,6 +5,8 @@ use micropython_rs::{
 };
 use vexide_devices::smart::distance::DistanceObject;
 
+use crate::modvenice::read_only_attr::read_only_attr;
+
 #[class(qstr!(DistanceObject))]
 #[repr(C)]
 pub struct DistanceObjectObj {
@@ -25,7 +27,9 @@ impl DistanceObjectObj {
 impl DistanceObjectObj {
     #[attr]
     fn attr(&self, attr: Qstr, op: AttrOp) {
-        let AttrOp::Load { result } = op else { return };
+        let AttrOp::Load { result } = op else {
+            read_only_attr::<Self>()
+        };
         result.return_value(match attr.as_str() {
             "confidence" => Obj::from_float(self.object.confidence as _),
             "distance" => Obj::from_int(self.object.distance as _),

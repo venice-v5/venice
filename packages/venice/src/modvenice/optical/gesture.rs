@@ -1,11 +1,11 @@
 use micropython_macros::{class, class_methods};
 use micropython_rs::{
-    except::{ATTRIBUTE_ERROR_TYPE, raise_msg},
-    init::token,
     obj::{AttrOp, Obj, ObjBase, ObjTrait},
     qstr::Qstr,
 };
 use vexide_devices::smart::optical::{Gesture, GestureDirection};
+
+use crate::modvenice::read_only_attr::read_only_attr;
 
 #[class(qstr!(Gesture))]
 #[repr(C)]
@@ -71,7 +71,7 @@ impl GestureObj {
     #[attr]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let AttrOp::Load { result } = op else {
-            raise_msg(token(), ATTRIBUTE_ERROR_TYPE, c"cannot write to Gesture")
+            read_only_attr::<Self>()
         };
 
         result.return_value(match attr.as_str() {

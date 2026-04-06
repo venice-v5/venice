@@ -8,7 +8,10 @@ use micropython_rs::{
 };
 use vexide_devices::smart::vision::LedMode;
 
-use crate::{modvenice::Exception, obj::alloc_obj};
+use crate::{
+    modvenice::{Exception, read_only_attr::read_only_attr},
+    obj::alloc_obj,
+};
 
 #[class(qstr!(LedMode))]
 pub struct LedModeObj {
@@ -96,7 +99,9 @@ impl Manual {
 
     #[attr]
     fn attr(&self, attr: Qstr, op: AttrOp) {
-        let AttrOp::Load { result } = op else { return };
+        let AttrOp::Load { result } = op else {
+            read_only_attr::<Self>()
+        };
         result.return_value(match attr.as_str() {
             "brightness" => Obj::from(self.brightness),
             "r" => (self.r as i32).into(),

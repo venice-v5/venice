@@ -5,7 +5,7 @@ use micropython_rs::{
 };
 use vexide_devices::controller::{ButtonState, ControllerState, JoystickState};
 
-use crate::obj::alloc_obj;
+use crate::{modvenice::read_only_attr::read_only_attr, obj::alloc_obj};
 
 #[class(qstr!(ControllerState))]
 #[repr(C)]
@@ -41,7 +41,9 @@ impl ControllerStateObj {
 impl ControllerStateObj {
     #[attr]
     fn attr(&self, attr: Qstr, op: AttrOp) {
-        let AttrOp::Load { result } = op else { return };
+        let AttrOp::Load { result } = op else {
+            read_only_attr::<Self>()
+        };
         let state = self.state;
         let attr_bytes = attr.as_str();
         // Even though we can compare qstrs cheaply by their indices, that would mean losing the
@@ -88,7 +90,9 @@ impl ControllerStateObj {
 impl ButtonStateObj {
     #[attr]
     fn attr(&self, attr: Qstr, op: AttrOp) {
-        let AttrOp::Load { result } = op else { return };
+        let AttrOp::Load { result } = op else {
+            read_only_attr::<Self>()
+        };
         let state = &self.state;
         let ret = Obj::from_bool(match attr.as_str() {
             "is_pressed" => state.is_pressed(),
@@ -106,7 +110,9 @@ impl ButtonStateObj {
 impl JoystickStateObj {
     #[attr]
     fn attr(&self, attr: Qstr, op: AttrOp) {
-        let AttrOp::Load { result } = op else { return };
+        let AttrOp::Load { result } = op else {
+            read_only_attr::<Self>()
+        };
         result.return_value(match attr.as_str() {
             "x" => Obj::from_float(self.state.x() as f32),
             "y" => Obj::from_float(self.state.y() as f32),

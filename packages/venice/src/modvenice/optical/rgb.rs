@@ -7,6 +7,8 @@ use micropython_rs::{
 };
 use vexide_devices::smart::optical::{OpticalRaw, OpticalRgb};
 
+use crate::modvenice::read_only_attr::read_only_attr;
+
 #[class(qstr!(OpticalRgb))]
 #[repr(C)]
 pub struct OpticalRgbObj {
@@ -51,7 +53,7 @@ impl OpticalRgbObj {
 
         match op {
             AttrOp::Load { result } => result.return_value(Obj::from_float(component)),
-            _ => raise_msg(token(), ATTRIBUTE_ERROR_TYPE, c"cannot write to OpticalRgb"),
+            _ => read_only_attr::<Self>(),
         }
     }
 }
