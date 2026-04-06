@@ -3,17 +3,17 @@ use micropython_rs::{
     obj::{AttrOp, Obj, ObjBase, ObjTrait},
     qstr::Qstr,
 };
+use vexide_core::time::LowResolutionTime;
 use vexide_devices::smart::optical::{Gesture, GestureDirection};
 
-use crate::modvenice::read_only_attr::read_only_attr;
+use crate::modvenice::{read_only_attr::read_only_attr, units::time::TimeUnitObj};
 
 #[class(qstr!(Gesture))]
 #[repr(C)]
 pub struct GestureObj {
     base: ObjBase,
     direction: Obj,
-    // TODO: how do we make this value accessible?
-    // time: LowResolutionTime,
+    time: LowResolutionTime,
     count: u16,
     up: u8,
     down: u8,
@@ -56,6 +56,7 @@ impl GestureObj {
                 GestureDirection::Left => GestureDirectionObj::LEFT,
                 GestureDirection::Right => GestureDirectionObj::RIGHT,
             }),
+            time: gesture.time,
             count: gesture.count,
             up: gesture.up,
             down: gesture.down,
@@ -84,5 +85,11 @@ impl GestureObj {
             "gesture_type" => Obj::from_int(self.gesture_type as i32),
             _ => return,
         })
+    }
+
+    #[method]
+    fn get_time(&self, unit: &TimeUnitObj) -> f32 {
+        unit.unit()
+            .dur_to_float(self.time.duration_since(LowResolutionTime::EPOCH)) // hack to get a Duration out of a LowResolutionTime
     }
 }

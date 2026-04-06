@@ -16,13 +16,21 @@ cty = "0.2.2"
 bitflags = "2.9.2"
 paste = "1.0.15"
 vex-sdk = "0.27.1"
-vexide-devices = { git = "https://github.com/vexide/vexide", rev = "8b44672c33bcefbb1c4788f1c99fa55131a43815", features = ["std"]}
 talc = "4.4.3"
 thiserror = "2.0.17"
 vex-sdk-jumptable = "0.1.1"
 lock_api = "0.4.14"
 spin = "0.10.0"
 mint = "0.5.9"
+
+[dependencies.vexide-devices]
+git = "https://github.com/vexide/vexide"
+rev = "8b44672c33bcefbb1c4788f1c99fa55131a43815"
+features = ["std"]
+
+[dependencies.vexide-core]
+git = "https://github.com/vexide/vexide"
+rev = "8b44672c33bcefbb1c4788f1c99fa55131a43815"
 
 [build-dependencies]
 cc = "1.2.49"

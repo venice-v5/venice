@@ -229,11 +229,32 @@ dependencies = [
 
 [[package]]
 name = "snafu"
+version = "0.8.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6e84b3f4eacbf3a1ce05eac6763b4d629d60cbc94d632e4092c54ade71f1e1a2"
+dependencies = [
+ "snafu-derive 0.8.9",
+]
+
+[[package]]
+name = "snafu"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d1d4bced6a69f90b2056c03dcff2c4737f98d6fb9e0853493996e1d253ca29c6"
 dependencies = [
- "snafu-derive",
+ "snafu-derive 0.9.0",
+]
+
+[[package]]
+name = "snafu-derive"
+version = "0.8.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c1c97747dbf44bb1ca44a561ece23508e99cb592e862f22222dcf42f51d1e451"
+dependencies = [
+ "heck",
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -323,6 +344,7 @@ dependencies = [
  "venice-program-table",
  "vex-sdk 0.27.1",
  "vex-sdk-jumptable",
+ "vexide-core",
  "vexide-devices",
 ]
 
@@ -334,6 +356,22 @@ dependencies = [
  "bytemuck",
  "thiserror",
 ]
+
+[[package]]
+name = "vex-libunwind"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a14f4b4031c75a3b7d89d698a88472c6c2085df2f7fa4d766b8d12942ea25993"
+dependencies = [
+ "snafu 0.8.9",
+ "vex-libunwind-sys",
+]
+
+[[package]]
+name = "vex-libunwind-sys"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "87390bdd4ade659ce88cc090492fecc5dfb0e74b00572e81a438a85bde44d814"
 
 [[package]]
 name = "vex-sdk"
@@ -364,6 +402,7 @@ dependencies = [
  "bitflags",
  "futures-core",
  "pin-project",
+ "vex-libunwind",
  "vex-sdk 0.28.0",
 ]
 
@@ -378,7 +417,7 @@ dependencies = [
  "mint",
  "rgb",
  "smart-leds-trait",
- "snafu",
+ "snafu 0.9.0",
  "vex-sdk 0.28.0",
  "vexide-core",
 ]
