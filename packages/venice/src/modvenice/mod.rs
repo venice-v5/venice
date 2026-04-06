@@ -4,6 +4,7 @@ mod battery;
 mod color;
 mod competition;
 mod controller;
+mod display;
 mod distance_sensor;
 mod gps;
 mod imu;
@@ -58,6 +59,7 @@ use crate::modvenice::{
         id::ControllerIdObj,
         state::{ButtonStateObj, ControllerStateObj, JoystickStateObj},
     },
+    display::DISPLAY_DICT,
     distance_sensor::{DistanceSensorObj, distance_object::DistanceObjectObj},
     gps::GpsSensorObj,
     imu::{InertialOrientationObj, InertialSensorObj},
@@ -255,6 +257,7 @@ static mut venice_globals: Dict = Dict::new(const_map![
     // submodules
     qstr!(vasyncio) => Obj::from_static(&Module::new(VASYNCIO_DICT)),
     qstr!(battery) => Obj::from_static(&Module::new(BATTERY_DICT)),
+    qstr!(display) => Obj::from_static(&Module::new(DISPLAY_DICT)),
 
     // math
     qstr!(Vec3) => Obj::from_static(Vec3::OBJ_TYPE),
