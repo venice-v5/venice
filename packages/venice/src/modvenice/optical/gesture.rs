@@ -12,7 +12,7 @@ use crate::modvenice::read_only_attr::read_only_attr;
 pub struct GestureObj {
     base: ObjBase,
     direction: Obj,
-    // TODO: how do we make self value accessible?
+    // TODO: how do we make this value accessible?
     // time: LowResolutionTime,
     count: u16,
     up: u8,

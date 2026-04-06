@@ -259,7 +259,6 @@ fn open_inner(pos_args: &[Obj], kw_map: &Map) -> Result<FileObj, Exception> {
         .open(path)
         .unwrap_or_else(|e| raise_os_error(token(), io_to_errno(e)));
 
-    // TODO: find a way to push an nlr callback that closes the file
     Ok(FileObj {
         base: ObjBase::new(FileObj::OBJ_TYPE),
         file: RefCell::new(Some(file)),
