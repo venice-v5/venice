@@ -39,6 +39,7 @@ pub enum Mode {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Phase {
+    Initial,
     Connected,
     Disconnected,
     Mode(Mode),
@@ -117,9 +118,13 @@ impl CompetitionRuntime {
     pub fn tick(&self) -> Result<(), Exception> {
         let mut phase_updated = false;
 
-        if let Some(prev_status) = self.poll_update() {
+        if self.phase.get() == Phase::Initial {
+            // jump immediately into a mode phase
+            self.phase.set(Phase::Mode(self.status.get().mode()));
+            phase_updated = true;
+        } else if let Some(prev_status) = self.poll_update() {
             let new_status = self.status.get();
-            if !self.phase.get().interruptable() {
+            if self.phase.get().interruptable() {
                 self.phase
                     .set(if prev_status.connected() != new_status.connected() {
                         match new_status.connected() {
@@ -148,6 +153,7 @@ impl CompetitionRuntime {
                         phase_updated = true;
                     }
                     Phase::Mode(_) => {}
+                    Phase::Initial => unreachable!(),
                 }
             }
         }
@@ -161,6 +167,7 @@ impl CompetitionRuntime {
                     Phase::Mode(Mode::Driver) => self.driver,
                     Phase::Mode(Mode::Autonomous) => self.autonomous,
                     Phase::Mode(Mode::Disabled) => self.disabled,
+                    Phase::Initial => unreachable!(),
                 }
                 .map(|c| c.call(0, &[]))
                 .unwrap_or(Obj::NULL);
@@ -172,6 +179,7 @@ impl CompetitionRuntime {
                         Phase::Mode(Mode::Driver) => "driver",
                         Phase::Mode(Mode::Autonomous) => "autonomous",
                         Phase::Mode(Mode::Disabled) => "disabled",
+                        Phase::Initial => unreachable!(),
                     };
                     Err(type_error(error_msg!(
                         "expected coroutine return value from {phase_name} routine, got <{}>",
@@ -241,8 +249,7 @@ impl Competition {
             base: ObjBase::new(CompetitionRuntime::OBJ_TYPE),
 
             status: Cell::new(status()),
-            // TODO: maybe this should be made an option since we haven't computed the phase yet
-            phase: Cell::new(Phase::Disconnected),
+            phase: Cell::new(Phase::Initial),
 
             connected: self.connected.get(),
             disconnected: self.disconnected.get(),
