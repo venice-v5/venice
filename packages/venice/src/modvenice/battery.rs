@@ -22,6 +22,7 @@ fn get_voltage() -> Obj {
 }
 
 pub const BATTERY_DICT: &Dict = const_dict![
+    qstr!(__name__) => Obj::from_qstr(qstr!(battery)),
     qstr!(get_capacity) => get_capacity_obj,
     qstr!(get_current) => get_current_obj,
     qstr!(get_temperature) => get_temperature_obj,
