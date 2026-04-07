@@ -300,7 +300,7 @@ impl CalibrateFuture {
                     })
                 {
                     // Waiting took too long and exceeded a timeout.
-                    device_error(c"calibration timed out");
+                    device_error(c"calibration timed out").raise(token());
                 }
 
                 if status.contains(InertialStatus::CALIBRATING) && phase == CalibrationPhase::Start
