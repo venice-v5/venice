@@ -123,7 +123,7 @@ impl InertialSensorObj {
 
     #[method]
     fn get_rotation(&self, unit: &RotationUnitObj) -> Result<f32, Exception> {
-        Ok(unit.unit().angle_to_float(self.guard.borrow().heading()?))
+        Ok(unit.unit().angle_to_float(self.guard.borrow().rotation()?))
     }
 
     #[method]
