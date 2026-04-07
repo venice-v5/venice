@@ -320,6 +320,11 @@ fn print(args: &[Obj], kw_map: &Map) -> Result<(), Exception> {
             },
         };
 
+        if !first {
+            string_print.string().push_str(sep);
+        }
+        first = false;
+
         arg.print(string_print.print(), PrintKind::Str)
             .map_err(|_| {
                 type_error(error_msg!(
@@ -327,11 +332,6 @@ fn print(args: &[Obj], kw_map: &Map) -> Result<(), Exception> {
                     arg.obj_type().name().as_str()
                 ))
             })?;
-
-        if !first {
-            string_print.string().push_str(sep);
-        }
-        first = false;
     }
 
     string.push_str(end);
