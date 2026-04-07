@@ -18,7 +18,6 @@ use crate::modvenice::{
     adi::{adi_port_index, expander::AdiPortParser, validate_expander},
     device_error, device_handle,
     units::{rotation::RotationUnitObj, time::TimeUnitObj},
-    vasyncio::event_loop::WAKE_SIGNAL,
 };
 
 #[class(qstr!(AdiGyroscope))]
@@ -117,21 +116,21 @@ impl AdiGyroscopeFuture {
                         );
                     }
                     this.state.set(FutureState::WaitingStart);
-                    Obj::from_static(&WAKE_SIGNAL)
+                    Obj::NONE
                 }
                 Err(error) => Exception::from(error).raise(token()),
             },
             FutureState::WaitingStart => match gyro.is_calibrating() {
-                Ok(false) => Obj::from_static(&WAKE_SIGNAL),
+                Ok(false) => Obj::NONE,
                 Ok(true) => {
                     this.state.set(FutureState::WaitingEnd);
-                    Obj::from_static(&WAKE_SIGNAL)
+                    Obj::NONE
                 }
                 Err(error) => Exception::from(error).raise(token()),
             },
             FutureState::WaitingEnd => match gyro.is_calibrating() {
                 Ok(false) => raise_stop_iteration(token(), Obj::NONE),
-                Ok(true) => Obj::from_static(&WAKE_SIGNAL),
+                Ok(true) => Obj::NONE,
                 Err(error) => Exception::from(error).raise(token()),
             },
         }

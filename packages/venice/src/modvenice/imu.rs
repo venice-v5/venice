@@ -20,7 +20,7 @@ use crate::{
         math::{EulerZYX, Quaternion, Vec3},
         smart_port_index,
         units::{rotation::RotationUnitObj, time::TimeUnitObj},
-        vasyncio::{event_loop::WAKE_SIGNAL, time32},
+        vasyncio::time32,
     },
     registry::SmartGuard,
 };
@@ -278,7 +278,7 @@ impl CalibrateFuture {
                     });
                 }
 
-                Obj::from_static(&WAKE_SIGNAL)
+                Obj::NONE
             }
 
             // In self stage, we are either waiting for the calibration status flag to be set
@@ -325,7 +325,7 @@ impl CalibrateFuture {
                     raise_stop_iteration(token(), Obj::NONE);
                 }
 
-                Obj::from_static(&WAKE_SIGNAL)
+                Obj::NONE
             }
         }
     }

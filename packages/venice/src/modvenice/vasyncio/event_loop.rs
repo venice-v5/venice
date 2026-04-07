@@ -43,19 +43,6 @@ impl Ord for Sleeper {
     }
 }
 
-#[class(qstr!(WakeSignal))]
-#[repr(C)]
-pub struct WakeSignal {
-    base: ObjBase,
-}
-
-#[class_methods]
-impl WakeSignal {}
-
-pub static WAKE_SIGNAL: WakeSignal = WakeSignal {
-    base: ObjBase::new(WakeSignal::OBJ_TYPE),
-};
-
 #[class(qstr!(EventLoop))]
 #[repr(C)]
 pub struct EventLoop {
@@ -119,7 +106,7 @@ impl EventLoop {
                     });
                 } else if let Some(awaited_task) = result.obj.try_as_obj::<Task>() {
                     awaited_task.add_waiting_task(task_obj);
-                } else if result.obj.is(WakeSignal::OBJ_TYPE) {
+                } else {
                     self.ready.borrow_mut().push_back(task_obj);
                 }
 
@@ -139,8 +126,9 @@ impl EventLoop {
         let mut ready = self.ready.borrow_mut();
         let mut sleepers = self.sleepers.borrow_mut();
 
-        if let Some(sleeper) = sleepers.peek()
-            && sleeper.deadline <= super::time32::Instant::now()
+        let now = super::time32::Instant::now();
+        while let Some(sleeper) = sleepers.peek()
+            && sleeper.deadline <= now
         {
             let sleeper = sleepers.pop().unwrap();
             sleeper.sleep.try_as_obj::<Sleep>().unwrap().complete();

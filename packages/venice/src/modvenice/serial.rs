@@ -28,7 +28,6 @@ use vexide_devices::smart::{
 
 use crate::{
     devices::{PortNumber, lock_port},
-    modvenice::vasyncio::event_loop::WAKE_SIGNAL,
     obj::alloc_obj,
     registry::{RegistryGuard, SmartGuard, UpgradeGuard},
 };
@@ -182,7 +181,7 @@ impl SerialPortOpenFutureObj {
             }
             std::task::Poll::Pending => {
                 *refmut = Some(upgrade);
-                Obj::from_static(&WAKE_SIGNAL)
+                Obj::NONE
             }
         }
     }

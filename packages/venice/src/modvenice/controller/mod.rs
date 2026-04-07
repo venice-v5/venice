@@ -22,7 +22,6 @@ use crate::{
     devices,
     modvenice::{
         Exception, controller::id::ControllerIdObj, device_error, read_only_attr::read_only_attr,
-        vasyncio::event_loop::WAKE_SIGNAL,
     },
     registry::ControllerGuard,
 };
@@ -167,7 +166,7 @@ impl ControllerFutureObj {
             }
         }
 
-        Obj::from_static(&WAKE_SIGNAL)
+        Obj::NONE
     }
 }
 
