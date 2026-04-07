@@ -125,17 +125,20 @@ impl CompetitionRuntime {
         } else if let Some(prev_status) = self.poll_update() {
             let new_status = self.status.get();
             if self.phase.get().interruptable() {
-                self.phase
-                    .set(if prev_status.connected() != new_status.connected() {
-                        match new_status.connected() {
-                            true => Phase::Connected,
-                            false => Phase::Disconnected,
-                        }
-                    } else {
-                        Phase::Mode(new_status.mode())
-                    });
+                let old_phase = self.phase.get();
+                let new_phase = if prev_status.connected() != new_status.connected() {
+                    match new_status.connected() {
+                        true => Phase::Connected,
+                        false => Phase::Disconnected,
+                    }
+                } else {
+                    Phase::Mode(new_status.mode())
+                };
 
-                phase_updated = true;
+                if old_phase != new_phase {
+                    self.phase.set(new_phase);
+                    phase_updated = true;
+                }
             }
         }
 
