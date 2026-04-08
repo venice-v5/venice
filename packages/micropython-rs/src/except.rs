@@ -159,6 +159,7 @@ impl Debug for Message {
     }
 }
 
+#[must_use]
 #[derive(Clone, Copy)]
 pub struct Exception {
     pub ty: &'static ExceptionType,

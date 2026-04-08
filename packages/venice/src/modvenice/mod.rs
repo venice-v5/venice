@@ -91,6 +91,7 @@ use crate::modvenice::{
 
 static DEVICE_ERROR_TYPE: ExceptionType = ExceptionType::new(qstr!(DeviceError), EXCEPTION_TYPE);
 
+#[must_use]
 pub struct Exception(pub micropython_rs::except::Exception);
 
 impl Exception {
