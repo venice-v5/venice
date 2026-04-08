@@ -53,14 +53,14 @@ async def auton():
     print("Autonomous!")
     await vasyncio.Sleep(1000, MILLIS)
 
-# Define your `async` entrypoint. This is where you can put your initialization logic.
+# Define your `async` entrypoint. This is where you should put your initialization logic. (e.g. calibration)
 async def main():
     await imu.calibrate()
     
-    # Start the competition runtime. Now your routines will be run
+    # Start the competition runtime. Now your routines will be run until the end of the program.
     await comp.run()
 
-# Finally, spin up an `async` runtime and start your `main` function.
+# Finally, spin up an `async` runtime and start executing your `main` function.
 vasyncio.run(main())
 ```
 
