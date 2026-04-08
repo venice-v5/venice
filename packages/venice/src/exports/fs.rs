@@ -9,7 +9,7 @@ use argparse::{ArgParser, Args, DefaultParser, KeywordError, ParseError, StrPars
 use micropython_macros::{class, class_methods};
 use micropython_rs::{
     errno::{MP_EBADF, MP_EINVAL, MP_EIO},
-    except::{Message, raise_os_error},
+    except::{Message, raise_os_error, type_error},
     fun::{Fun1, Fun2, FunVarBetween, FunVarKw},
     init::token,
     ioctl_from_fn,
@@ -238,7 +238,18 @@ fn open_inner(pos_args: &[Obj], kw_map: &Map) -> Result<FileObj, Exception> {
 
     let path = reader.next_positional::<&str>()?;
 
-    let mode_obj = kw_map.get(Obj::from_qstr(qstr!(mode)));
+    let mode_kw_obj = kw_map.get(Obj::from_qstr(qstr!(mode)));
+    let mode_obj = if let Ok(m) = reader.next_positional::<Obj>() {
+        if mode_kw_obj.is_some() {
+            return Err(
+                type_error(c"argument 'mode' passed as both positional and keyword").into(),
+            );
+        }
+        Some(m)
+    } else {
+        mode_kw_obj
+    };
+
     let mode = mode_obj
         .as_ref()
         .map(|m| ModeParser.parse(m))
@@ -247,7 +258,7 @@ fn open_inner(pos_args: &[Obj], kw_map: &Map) -> Result<FileObj, Exception> {
             ParseError::TypeError { expected } => KeywordError::TypeError {
                 kw: "mode",
                 expected,
-                found: type_name(&mode_obj.unwrap()),
+                found: type_name(mode_obj.as_ref().unwrap()),
             },
             ParseError::ValueError { mk_msg } => KeywordError::ValueError {
                 msg: mk_msg("argument 'mode'"),
