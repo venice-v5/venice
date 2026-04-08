@@ -184,8 +184,8 @@ impl Builder {
         let c_qstr_src = self.c_srcs.iter().chain(config_headers.iter());
 
         for c_src in c_qstr_src {
-            // should be replaced by clang -E
-            let out = Command::new("arm-none-eabi-cpp")
+            let out = Command::new("clang")
+                .arg("-E")
                 .arg("-I")
                 .arg(&self.port_dir)
                 .arg("-I")
