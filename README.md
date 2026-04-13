@@ -12,11 +12,11 @@
 
 ## Features
 
-- **Multi-File Projects & External Libraries**: Venice lets you organize your code into multiple files and cleanly import them. Want to use an external library for odometry or PID? Just drop the files into your project and import them.
-- **Intuitive Robot Control**: `import venice` gives you a robust, Pythonic library for controlling your VEX V5 devices, and exposes functions and devices not present in VEXcode.
+- **Multi-File Projects & Libraries/Templates**: Venice lets you organize your code into multiple files and cleanly import them. Want to use a template for odometry or PID? Just drop its files into your project and import them inside your code.
+- **Intuitive Robot Control**: `import venice` gives you a robust Pythonic library for controlling your VEX V5 devices. It exposes certain functions and devices that are left out of VEXcode.
 - **Efficient Multitasking**: Venice uses modern `async`/`await` multitasking, with the efficient custom-made `vasyncio` event loop, letting you run dozens of tasks without freezing your robot.
-- **Predictable, Immediate-Mode Control**: Instead of registering callbacks for events like button presses that are called in the background unpredictably, Venice hands you the steering wheel. You read controller inputs exactly when you want to in your main loops.
-- **Optimized Math for Autonomous**: Venice internally optimizes the representation of numbers in memory, letting your math become even faster and your program consumes less RAM.
+- **Predictable, Immediate-Mode Control**: Instead of registering callbacks for events (e.g. button presses) to be called unpredictably in the background, Venice gives you control over event detection. Controller inputs can be read whenever you need in your main loops, encouraging readable and predictable code practices.
+- **Optimized Math for Autonomous**: Venice internally optimizes the representation of numbers in memory, saving memory and letting your math run faster.
 - **Industry-Standard Tooling**: Use [`venice-cli`](https://github.com/venice-v5/venice-cli/) for project scaffolding, building, and uploading. It integrates seamlessly with standard Python project structures and modern dev environments.
 - **Smart Auto-Complete & Type-Hinting**: The `venice` PyPI package provides complete, type-safe, and documented stubs for all Venice APIs.
 
