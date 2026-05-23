@@ -1,32 +1,24 @@
-use micropython_rs::{
-    const_dict,
-    obj::{Obj, ObjBase, ObjFullType, ObjTrait, ObjType, TypeFlags},
-};
+use micropython_macros::{class, class_methods};
+use micropython_rs::obj::{ObjBase, ObjTrait};
 use vexide_devices::smart::motor::MotorType;
 
+#[class(qstr!(MotorType))]
 #[repr(C)]
 pub struct MotorTypeObj {
     base: ObjBase,
     motor_type: MotorType,
 }
 
-static MOTOR_TYPE_OBJ_TYPE: ObjFullType = ObjFullType::new(TypeFlags::empty(), qstr!(Gearset))
-    .set_locals_dict(const_dict![
-        qstr!(EXP) => Obj::from_static(&MotorTypeObj::EXP),
-        qstr!(V5) => Obj::from_static(&MotorTypeObj::V5),
-    ]);
-
-unsafe impl ObjTrait for MotorTypeObj {
-    const OBJ_TYPE: &ObjType = MOTOR_TYPE_OBJ_TYPE.as_obj_type();
-}
-
+#[class_methods]
 impl MotorTypeObj {
-    pub const V5: Self = Self::new(MotorType::V5);
-    pub const EXP: Self = Self::new(MotorType::Exp);
+    #[constant]
+    pub const V5: &Self = &Self::new(MotorType::V5);
+    #[constant]
+    pub const EXP: &Self = &Self::new(MotorType::Exp);
 
     pub const fn new(motor_type: MotorType) -> Self {
         Self {
-            base: ObjBase::new(MOTOR_TYPE_OBJ_TYPE.as_obj_type()),
+            base: ObjBase::new(Self::OBJ_TYPE),
             motor_type,
         }
     }

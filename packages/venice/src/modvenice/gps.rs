@@ -23,6 +23,9 @@ pub struct GpsSensorObj {
 #[class_methods]
 impl GpsSensorObj {
     #[make_new]
+    #[stub(
+        sig = "(self, port: int, offset: Point2, initial_position: Point2, initial_heading: float, initial_heading_unit: RotationUnit) -> None"
+    )]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,

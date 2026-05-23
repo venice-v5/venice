@@ -54,6 +54,7 @@ impl From<YawError> for Exception {
 #[class_methods]
 impl AdiGyroscopeObj {
     #[make_new]
+    #[stub(sig = "(self, port: str | AdiExpanderPort) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,

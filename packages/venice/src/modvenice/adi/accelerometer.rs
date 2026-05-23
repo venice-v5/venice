@@ -40,6 +40,9 @@ pub struct AdiAccelerometerObj {
 #[class_methods]
 impl AdiAccelerometerObj {
     #[make_new]
+    #[stub(
+        sig = "(self, port: str | AdiExpanderPort, sensitivity: AdiAccelerometerSensitivity) -> None"
+    )]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -58,6 +61,7 @@ impl AdiAccelerometerObj {
     }
 
     #[attr]
+    #[stub(attrs = ["sensitivity: AdiAccelerometerSensitivity", "max_acceleration: float"])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let AttrOp::Load { result } = op else {
             read_only_attr::<Self>()

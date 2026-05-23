@@ -53,6 +53,9 @@ impl PotentiometerTypeObj {
 #[class_methods]
 impl AdiPotentiometerObj {
     #[make_new]
+    #[stub(
+        sig = "(self, port: str | AdiExpanderPort, potentiometer_type: PotentiometerType) -> None"
+    )]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -72,6 +75,7 @@ impl AdiPotentiometerObj {
     }
 
     #[attr]
+    #[stub(attrs = ["type: PotentiometerType"])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let AttrOp::Load { result } = op else {
             read_only_attr::<Self>()

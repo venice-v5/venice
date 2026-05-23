@@ -17,6 +17,7 @@ impl AdiAnalogInObj {
     const ADC_MAX_VALUE: i32 = vexide_devices::adi::analog::ADC_MAX_VALUE as i32;
 
     #[make_new]
+    #[stub(sig = "(self, port: str | AdiExpanderPort) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,

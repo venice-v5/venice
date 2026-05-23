@@ -37,6 +37,15 @@ impl VisionObjectObj {
     }
 
     #[attr]
+    #[stub(attrs = [
+        "source: DetectionSource",
+        "width: int",
+        "height: int",
+        "offset_x: int",
+        "offset_y: int",
+        "center_x: int",
+        "center_y: int",
+    ])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let AttrOp::Load { result } = op else {
             read_only_attr::<Self>()

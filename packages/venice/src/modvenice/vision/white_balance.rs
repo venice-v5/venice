@@ -40,6 +40,7 @@ pub struct Manual {
 #[class_methods]
 impl WhiteBalanceObj {
     #[make_new]
+    #[stub(sig = "(self) -> None")]
     fn make_new(_: &ObjType, _: usize, _: usize, _: &[Obj]) {
         type_error(
             c"WhiteBalance is an abstract base class; use a variant like WhiteBalance.Signature",
@@ -62,6 +63,7 @@ impl Auto {
     };
 
     #[make_new]
+    #[stub(sig = "(self) -> None")]
     fn make_new(_: &'static ObjType, _: usize, _: usize, args: &[Obj]) -> Result<Obj, Exception> {
         if args.len() != 0 {
             Err(
@@ -81,6 +83,7 @@ impl StartupAuto {
     };
 
     #[make_new]
+    #[stub(sig = "(self) -> None")]
     fn make_new(_: &'static ObjType, _: usize, _: usize, args: &[Obj]) -> Result<Obj, Exception> {
         if args.len() != 0 {
             Err(type_error(
@@ -96,6 +99,7 @@ impl StartupAuto {
 #[class_methods]
 impl Manual {
     #[make_new]
+    #[stub(sig = "(self, r: int, g: int, b: int) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -118,6 +122,7 @@ impl Manual {
     }
 
     #[attr]
+    #[stub(attrs = ["r: int", "g: int", "b: int"])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let AttrOp::Load { result } = op else {
             read_only_attr::<Self>()

@@ -31,6 +31,13 @@ impl AiVisionColorObj {
 #[class_methods]
 impl AiVisionColorObj {
     #[attr]
+    #[stub(attrs = [
+        "r: int",
+        "g: int",
+        "b: int",
+        "hue_range: float",
+        "saturation_range: float",
+    ])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let AttrOp::Load { result } = op else {
             read_only_attr::<Self>()
@@ -46,6 +53,7 @@ impl AiVisionColorObj {
     }
 
     #[make_new]
+    #[stub(sig = "(self, rgb: Color, hue_range: float, saturation_range: float) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,

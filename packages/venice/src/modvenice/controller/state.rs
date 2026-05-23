@@ -40,6 +40,22 @@ impl ControllerStateObj {
 #[class_methods]
 impl ControllerStateObj {
     #[attr]
+    #[stub(attrs = [
+        "button_a: ButtonState",
+        "button_b: ButtonState",
+        "button_x: ButtonState",
+        "button_y: ButtonState",
+        "button_up: ButtonState",
+        "button_down: ButtonState",
+        "button_right: ButtonState",
+        "button_left: ButtonState",
+        "button_l1: ButtonState",
+        "button_l2: ButtonState",
+        "button_r1: ButtonState",
+        "button_r2: ButtonState",
+        "left_stick: JoystickState",
+        "right_stick: JoystickState",
+    ])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let AttrOp::Load { result } = op else {
             read_only_attr::<Self>()
@@ -89,6 +105,12 @@ impl ControllerStateObj {
 #[class_methods]
 impl ButtonStateObj {
     #[attr]
+    #[stub(attrs = [
+        "is_pressed: bool",
+        "is_released: bool",
+        "is_now_pressed: bool",
+        "is_now_released: bool",
+    ])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let AttrOp::Load { result } = op else {
             read_only_attr::<Self>()
@@ -109,6 +131,7 @@ impl ButtonStateObj {
 #[class_methods]
 impl JoystickStateObj {
     #[attr]
+    #[stub(attrs = ["x: float", "y: float", "x_raw: int", "y_raw: int"])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let AttrOp::Load { result } = op else {
             read_only_attr::<Self>()

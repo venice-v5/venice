@@ -40,6 +40,7 @@ impl OpticalRgbObj {
     }
 
     #[attr]
+    #[stub(attrs = ["r: float", "g: float", "b: float", "brightness: float"])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let component = match attr.as_str() {
             "r" => self.red,
@@ -69,6 +70,7 @@ impl OpticalRawObj {
     }
 
     #[attr]
+    #[stub(attrs = ["r: int", "g: int", "b: int", "clear: int"])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let component = match attr.as_str() {
             "r" => self.red,

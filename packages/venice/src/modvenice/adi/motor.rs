@@ -17,6 +17,7 @@ pub struct AdiMotorObj {
 #[class_methods]
 impl AdiMotorObj {
     #[make_new]
+    #[stub(sig = "(self, port: str | AdiExpanderPort, slew: float) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,

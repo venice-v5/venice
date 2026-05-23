@@ -38,6 +38,7 @@ fn bool_to_level(b: bool) -> LogicLevel {
 #[class_methods]
 impl AdiDigitalInObj {
     #[make_new]
+    #[stub(sig = "(self, port: str | AdiExpanderPort) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -73,6 +74,7 @@ impl AdiDigitalInObj {
 #[class_methods]
 impl AdiDigitalOutObj {
     #[make_new]
+    #[stub(sig = "(self, port: str | AdiExpanderPort, initial_level: bool | None = None) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,

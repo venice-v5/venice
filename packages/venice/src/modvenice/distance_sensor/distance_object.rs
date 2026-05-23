@@ -26,6 +26,12 @@ impl DistanceObjectObj {
 #[class_methods]
 impl DistanceObjectObj {
     #[attr]
+    #[stub(attrs = [
+        "confidence: float",
+        "distance: int",
+        "relative_size: int | None",
+        "velocity: float",
+    ])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let AttrOp::Load { result } = op else {
             read_only_attr::<Self>()

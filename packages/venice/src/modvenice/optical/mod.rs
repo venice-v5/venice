@@ -29,6 +29,7 @@ pub struct OpticalSensorObj {
 #[class_methods]
 impl OpticalSensorObj {
     #[make_new]
+    #[stub(sig = "(self, port: int) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,

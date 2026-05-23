@@ -208,6 +208,7 @@ impl ControllerObj {
     const MAX_LINES: i32 = Controller::MAX_LINES as i32;
 
     #[make_new]
+    #[stub(sig = "(self, id: ControllerId = ControllerId.PRIMARY) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -227,6 +228,7 @@ impl ControllerObj {
     }
 
     #[attr]
+    #[stub(attrs = ["id: ControllerId"])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let AttrOp::Load { result } = op else {
             read_only_attr::<Self>()
@@ -247,6 +249,7 @@ impl ControllerObj {
     }
 
     #[method]
+    #[stub(sig = "(self) -> ControllerConnection")]
     fn get_connection(&self) -> Obj {
         match self.guard.borrow().connection() {
             ControllerConnection::Offline => Obj::from_static(ControllerConnectionObj::OFFLINE),
@@ -291,6 +294,7 @@ impl ControllerObj {
     }
 
     #[method]
+    #[stub(sig = "(self, line: int) -> ControllerFuture")]
     fn clear_line(&self, line: Line) -> ControllerFutureObj {
         ControllerFutureObj {
             future: RefCell::new(ControllerFuture::WaitingForIdle {
@@ -304,6 +308,7 @@ impl ControllerObj {
     }
 
     #[method]
+    #[stub(sig = "(self, line: int) -> None")]
     fn try_clear_line(&self, line: Line) -> Result<(), Exception> {
         Ok(self.guard.borrow_mut().try_clear_line(line.0 as u8)?)
     }
@@ -327,6 +332,7 @@ impl ControllerObj {
     }
 
     #[method(ty = var(min = 4))]
+    #[stub(sig = "(self, text: str, line: int, column: int) -> ControllerFuture")]
     fn set_text(args: &[Obj]) -> Result<ControllerFutureObj, Exception> {
         let (this, text, line, column) = set_text_prelude(args)?;
 
@@ -342,6 +348,7 @@ impl ControllerObj {
     }
 
     #[method(ty = var(min = 4))]
+    #[stub(sig = "(self, text: str, line: int, column: int) -> None")]
     fn try_set_text(args: &[Obj]) -> Result<(), Exception> {
         let (this, text, line, column) = set_text_prelude(args)?;
 

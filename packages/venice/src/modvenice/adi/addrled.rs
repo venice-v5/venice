@@ -76,6 +76,7 @@ pub struct AdiAddrLedObj {
 #[class_methods]
 impl AdiAddrLedObj {
     #[make_new]
+    #[stub(sig = "(self, port: str | AdiExpanderPort, count: int) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -95,6 +96,7 @@ impl AdiAddrLedObj {
     }
 
     #[method]
+    #[stub(sig = "(self, buffer: Any) -> int")]
     fn set_buffer(&self, buf: Buffer<'_, u32>) -> Result<i32, Exception> {
         Ok(self.led.borrow_mut().set_buffer(buf.buffer())? as i32)
     }

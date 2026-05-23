@@ -29,6 +29,9 @@ impl VisionSignatureObj {
     }
 
     #[make_new]
+    #[stub(
+        sig = "(self, u_min: int, u_max: int, u_mean: int, v_min: int, v_max: int, v_mean: int, range: float) -> None"
+    )]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -55,6 +58,16 @@ impl VisionSignatureObj {
     }
 
     #[attr]
+    #[stub(attrs = [
+        "u_min: int",
+        "u_max: int",
+        "u_mean: int",
+        "v_min: int",
+        "v_max: int",
+        "v_mean: int",
+        "range: float",
+        "flags: int",
+    ])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let AttrOp::Load { result } = op else {
             read_only_attr::<Self>()

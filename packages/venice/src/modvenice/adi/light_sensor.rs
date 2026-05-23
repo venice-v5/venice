@@ -14,6 +14,7 @@ pub struct AdiLightSensorObj {
 #[class_methods]
 impl AdiLightSensorObj {
     #[make_new]
+    #[stub(sig = "(self, port: str | AdiExpanderPort) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,

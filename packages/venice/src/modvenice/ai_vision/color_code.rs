@@ -36,6 +36,9 @@ impl AiVisionColorCodeObj {
 #[class_methods]
 impl AiVisionColorCodeObj {
     #[make_new]
+    #[stub(
+        sig = "(self, color1: int, color2: int | None = None, color3: int | None = None, color4: int | None = None, color5: int | None = None, color6: int | None = None, color7: int | None = None) -> None"
+    )]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,

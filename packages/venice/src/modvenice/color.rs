@@ -59,6 +59,7 @@ impl ColorObj {
     pub const PURPLE: &Self = &Self::new(Color::PURPLE);
 
     #[make_new]
+    #[stub(sig = "(self, r: int = 0, g: int = 0, b: int = 0) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -79,6 +80,7 @@ impl ColorObj {
     }
 
     #[attr]
+    #[stub(attrs = ["r: int", "g: int", "b: int"])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let AttrOp::Load { result } = op else {
             read_only_attr::<Self>()

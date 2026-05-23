@@ -21,6 +21,7 @@ impl AdiServoObj {
     const MAX_POSITION_DEG: f32 = AdiServo::MAX_POSITION.as_degrees() as f32;
 
     #[make_new]
+    #[stub(sig = "(self, port: str | AdiExpanderPort) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,

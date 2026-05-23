@@ -56,6 +56,9 @@ fn check_ports(top_port: &AdiPort, bottom_port: &AdiPort) -> Result<(), Exceptio
 #[class_methods]
 impl AdiEncoderObj {
     #[make_new]
+    #[stub(
+        sig = "(self, top_port: str | AdiExpanderPort, bottom_port: str | AdiExpanderPort, tpr: int = 360) -> None"
+    )]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,

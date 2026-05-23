@@ -35,6 +35,7 @@ pub struct Manual {
 #[class_methods]
 impl LedModeObj {
     #[make_new]
+    #[stub(sig = "(self) -> None")]
     fn make_new(_: &ObjType, _: usize, _: usize, _: &[Obj]) {
         type_error(c"LedMode is an abstract base class; use a variant like LedMode.Auto")
             .raise(token())
@@ -56,6 +57,7 @@ impl Auto {
     };
 
     #[make_new]
+    #[stub(sig = "(self) -> None")]
     fn make_new(_: &ObjType, _: usize, _: usize, args: &[Obj]) -> Result<Obj, Exception> {
         if args.len() != 0 {
             Err(
@@ -74,6 +76,7 @@ impl Manual {
     const PARENT: &ObjType = LedModeObj::OBJ_TYPE;
 
     #[make_new]
+    #[stub(sig = "(self, brightness: float, r: int, g: int, b: int) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -98,6 +101,7 @@ impl Manual {
     }
 
     #[attr]
+    #[stub(attrs = ["brightness: float", "r: int", "g: int", "b: int"])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let AttrOp::Load { result } = op else {
             read_only_attr::<Self>()

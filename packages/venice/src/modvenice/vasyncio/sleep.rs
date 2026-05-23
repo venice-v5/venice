@@ -40,6 +40,7 @@ impl Sleep {
 #[class_methods]
 impl Sleep {
     #[make_new]
+    #[stub(sig = "(self, interval: float, unit: TimeUnit) -> None")]
     fn make_new(_: &ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Result<Self, Exception> {
         let mut args = Args::new(n_pos, n_kw, args).reader();
         args.assert_npos(2, 2);

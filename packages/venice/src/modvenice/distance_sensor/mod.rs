@@ -27,6 +27,7 @@ impl From<DistanceObjectError> for Exception {
 #[class_methods]
 impl DistanceSensorObj {
     #[make_new]
+    #[stub(sig = "(self, port: int) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,

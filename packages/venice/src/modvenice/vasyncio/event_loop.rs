@@ -156,6 +156,7 @@ impl EventLoop {
 #[class_methods]
 impl EventLoop {
     #[make_new]
+    #[stub(sig = "(self) -> None")]
     fn make_new(
         _: &ObjType,
         _n_args: usize,
@@ -171,6 +172,8 @@ impl EventLoop {
         Ok(Self::new())
     }
 
+    // TODO: refactor these functions, they can probably be expressed by the new function generators
+
     // this function can't use a Fun generator because a Generator struct would be needed to write out
     // its type signature, and that struct does not exist
     extern "C" fn py_spawn(self_in: Obj, coro: Obj) -> Obj {
@@ -182,6 +185,7 @@ impl EventLoop {
     }
 
     #[constant(qstr!(spawn))]
+    #[stub(sig = "(self, coro: Any) -> Task")]
     const SPAWN: &Fun2 = &Fun2::new(Self::py_spawn);
 
     // this function can't use a Fun generator because it needs the EventLoop in Obj form, not as a
@@ -198,10 +202,12 @@ impl EventLoop {
     }
 
     #[constant(qstr!(run))]
+    #[stub(sig = "(self) -> None")]
     const RUN: &Fun1 = &Fun1::new(Self::py_run);
 }
 
 #[fun]
+#[stub(sig = "(coro: Any) -> None")]
 pub fn run(coro: Obj) -> Obj {
     if !coro.is(GEN_INSTANCE_TYPE) {
         type_error(c"expected coroutine").raise(token());
@@ -213,6 +219,7 @@ pub fn run(coro: Obj) -> Obj {
 }
 
 #[fun]
+#[stub(sig = "(coro: Any) -> Task")]
 pub fn spawn(coro: Obj) -> Obj {
     let eloop = RUNNING_LOOP.get();
     if eloop.is_none() {
@@ -223,6 +230,7 @@ pub fn spawn(coro: Obj) -> Obj {
 }
 
 #[fun]
+#[stub(sig = "() -> EventLoop")]
 pub fn get_running_loop() -> Obj {
     RUNNING_LOOP.get()
 }

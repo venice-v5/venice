@@ -4,7 +4,7 @@ mod methods;
 use proc_macro::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
 use syn::{
-    ExprMacro, ImplItem, ImplItemConst, ItemFn, ItemImpl, ItemStruct, Meta, Signature,
+    Attribute, ExprMacro, ImplItem, ImplItemConst, ItemFn, ItemImpl, ItemStruct, Meta, Signature,
     parse::{Parse, ParseStream},
     parse_macro_input,
     spanned::Spanned,
@@ -14,6 +14,14 @@ use crate::{
     constants::generate_constant,
     methods::{MethodArgs, generate_fun},
 };
+
+fn is_stub_attr(attr: &Attribute) -> bool {
+    attr.path().is_ident("stub")
+}
+
+fn strip_stub_attrs(attrs: &mut Vec<Attribute>) {
+    attrs.retain(|attr| !is_stub_attr(attr));
+}
 
 struct ClassArgs {
     pub qstr_macro: ExprMacro,
@@ -38,7 +46,8 @@ pub fn class(attr: TokenStream, item: TokenStream) -> TokenStream {
     let args = parse_macro_input!(attr as ClassArgs);
     let qstr_macro = &args.qstr_macro;
 
-    let input = parse_macro_input!(item as ItemStruct);
+    let mut input = parse_macro_input!(item as ItemStruct);
+    strip_stub_attrs(&mut input.attrs);
     let struct_name = &input.ident;
 
     // obj must have static lifetime, meaning no generic lifetimes
@@ -113,6 +122,7 @@ pub fn class(attr: TokenStream, item: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn class_methods(_: TokenStream, item: TokenStream) -> TokenStream {
     let mut input = parse_macro_input!(item as ItemImpl);
+    strip_stub_attrs(&mut input.attrs);
     let ty = &input.self_ty;
 
     let mut methods = Vec::new();
@@ -135,6 +145,7 @@ pub fn class_methods(_: TokenStream, item: TokenStream) -> TokenStream {
     for item in input.items.iter_mut() {
         match item {
             ImplItem::Const(c) => {
+                strip_stub_attrs(&mut c.attrs);
                 let mut attr_idx = None;
                 for (idx, a) in c.attrs.iter().enumerate() {
                     let Some(i) = a.path().get_ident() else {
@@ -167,6 +178,7 @@ pub fn class_methods(_: TokenStream, item: TokenStream) -> TokenStream {
                 }
             }
             ImplItem::Fn(f) => {
+                strip_stub_attrs(&mut f.attrs);
                 let mut attr_idx = None;
                 let mut opt = None;
                 let mut method_attr = None;
@@ -324,9 +336,8 @@ pub fn class_methods(_: TokenStream, item: TokenStream) -> TokenStream {
 
 #[proc_macro_attribute]
 pub fn fun(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let item2 = proc_macro2::TokenStream::from(item.clone());
-
-    let f = parse_macro_input!(item as ItemFn);
+    let mut f = parse_macro_input!(item as ItemFn);
+    strip_stub_attrs(&mut f.attrs);
 
     let args = if attr.is_empty() {
         MethodArgs::default()
@@ -343,7 +354,7 @@ pub fn fun(attr: TokenStream, item: TokenStream) -> TokenStream {
     let vis = &f.vis;
 
     quote! {
-        #item2
+        #f
 
         #[allow(non_upper_case_globals)]
         #vis const #obj_name: ::micropython_rs::obj::Obj = #generated_fun;

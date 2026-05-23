@@ -131,6 +131,7 @@ impl FontSizeObj {
     const FULL: &Self = &Self::new(FontSize::FULL);
 
     #[make_new]
+    #[stub(sig = "(self, numerator: int, denominator: int) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -153,6 +154,7 @@ impl FontSizeObj {
     }
 
     #[attr]
+    #[stub(attrs = ["numerator: int", "denominator: int"])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let AttrOp::Load { result } = op else { return };
         result.return_value(match attr.as_str() {
@@ -169,6 +171,7 @@ fn draw_pixel(x: i16, y: i16, color: &ColorObj) {
 }
 
 #[fun(ty = var_between(min = 5, max = 5))]
+#[stub(sig = "(start_x: int, start_y: int, end_x: int, end_y: int, color: Color) -> None")]
 fn draw_line(args: &[Obj]) -> Result<(), Exception> {
     let mut reader = Args::new(5, 0, args).reader();
     let start_x = reader.next_positional()?;
@@ -200,6 +203,7 @@ fn parse_circle_args(args: &[Obj]) -> Result<(i16, i16, u16, &ColorObj), Excepti
 }
 
 #[fun(ty = var_between(min = 4, max = 4))]
+#[stub(sig = "(x: int, y: int, radius: int, color: Color) -> None")]
 fn draw_circle(args: &[Obj]) -> Result<(), Exception> {
     let (x, y, radius, color) = parse_circle_args(args)?;
     lock_display().stroke(&Circle::new(Point2 { x, y }, radius), color.color());
@@ -207,6 +211,7 @@ fn draw_circle(args: &[Obj]) -> Result<(), Exception> {
 }
 
 #[fun(ty = var_between(min = 4, max = 4))]
+#[stub(sig = "(x: int, y: int, radius: int, color: Color) -> None")]
 fn fill_circle(args: &[Obj]) -> Result<(), Exception> {
     let (x, y, radius, color) = parse_circle_args(args)?;
     lock_display().fill(&Circle::new(Point2 { x, y }, radius), color.color());
@@ -224,6 +229,7 @@ fn parse_rect_args(args: &[Obj]) -> Result<(i16, i16, u16, u16, &ColorObj), Exce
 }
 
 #[fun(ty = var_between(min = 5, max = 5))]
+#[stub(sig = "(x: int, y: int, width: int, height: int, color: Color) -> None")]
 fn draw_rect(args: &[Obj]) -> Result<(), Exception> {
     let (x, y, width, height, color) = parse_rect_args(args)?;
     lock_display().stroke(
@@ -234,6 +240,7 @@ fn draw_rect(args: &[Obj]) -> Result<(), Exception> {
 }
 
 #[fun(ty = var_between(min = 5, max = 5))]
+#[stub(sig = "(x: int, y: int, width: int, height: int, color: Color) -> None")]
 fn fill_rect(args: &[Obj]) -> Result<(), Exception> {
     let (x, y, width, height, color) = parse_rect_args(args)?;
     lock_display().fill(
@@ -244,6 +251,7 @@ fn fill_rect(args: &[Obj]) -> Result<(), Exception> {
 }
 
 #[fun(ty = var_between(min = 5, max = 5))]
+#[stub(sig = "(x: int, y: int, width: int, height: int, buffer: Any) -> None")]
 fn draw_buffer(args: &[Obj]) -> Result<(), Exception> {
     let mut reader = Args::new(5, 0, args).reader();
     let x = reader.next_positional()?;
@@ -260,6 +268,9 @@ fn draw_buffer(args: &[Obj]) -> Result<(), Exception> {
 }
 
 #[fun(ty = kw(min = 3))]
+#[stub(
+    sig = "(text: str, x: int, y: int, *, font_size: FontSize = FontSize.MEDIUM, font_family: FontFamily = FontFamily.PROPORTIONAL, color: Color = Color.WHITE, bg_color: Color | None = None) -> None"
+)]
 fn draw_text(args: &[Obj], kw_map: &Map) -> Result<(), Exception> {
     let kwarg_count = kw_map.len();
     let mut reader = Args::new(args.len(), kwarg_count, args).reader();
@@ -292,6 +303,7 @@ fn draw_text(args: &[Obj], kw_map: &Map) -> Result<(), Exception> {
 }
 
 #[fun(ty = kw(min = 0))]
+#[stub(sig = "(*values: object, sep: str = ' ', end: str = '\\n') -> None")]
 fn print(args: &[Obj], kw_map: &Map) -> Result<(), Exception> {
     let kwarg_count = kw_map.len();
     let mut reader = Args::new(args.len(), kwarg_count, args).reader();
@@ -346,6 +358,7 @@ fn scroll(start: i16, offset: i16) {
 }
 
 #[fun(ty = var_between(min = 5, max = 5))]
+#[stub(sig = "(x: int, y: int, width: int, height: int, offset: int) -> None")]
 fn scroll_region(args: &[Obj]) -> Result<(), Exception> {
     let mut reader = Args::new(5, 0, args).reader();
     let x = reader.next_positional()?;
@@ -386,6 +399,16 @@ struct TouchEventObj {
 #[class_methods]
 impl TouchEventObj {
     #[attr]
+    #[stub(attrs = [
+        "x: int",
+        "y: int",
+        "press_count: int",
+        "release_count: int",
+        "is_now_pressed: bool",
+        "is_pressed: bool",
+        "is_released: bool",
+        "is_held: bool",
+    ])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let AttrOp::Load { result } = op else {
             read_only_attr::<Self>()

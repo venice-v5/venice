@@ -2,21 +2,25 @@ use micropython_macros::fun;
 use micropython_rs::{const_dict, map::Dict, obj::Obj};
 
 #[fun]
+#[stub(sig = "() -> float")]
 fn get_capacity() -> Obj {
     (vexide_devices::battery::capacity() as f32).into()
 }
 
 #[fun]
+#[stub(sig = "() -> float")]
 fn get_current() -> Obj {
     (vexide_devices::battery::current() as f32).into()
 }
 
 #[fun]
+#[stub(sig = "() -> int")]
 fn get_temperature() -> Obj {
     (vexide_devices::battery::temperature() as i32).into()
 }
 
 #[fun]
+#[stub(sig = "() -> float")]
 fn get_voltage() -> Obj {
     (vexide_devices::battery::voltage() as f32).into()
 }

@@ -9,7 +9,7 @@ use crate::{
     registry::SmartGuard,
 };
 
-#[class(qstr!(Motor))]
+#[class(qstr!(Electromagnet))]
 pub struct ElectromagnetObj {
     base: ObjBase,
     guard: SmartGuard<Electromagnet>,
@@ -18,6 +18,7 @@ pub struct ElectromagnetObj {
 #[class_methods]
 impl ElectromagnetObj {
     #[make_new]
+    #[stub(sig = "(self, port: int) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -35,6 +36,7 @@ impl ElectromagnetObj {
     }
 
     #[method(ty = var_between(min = 3, max = 3))]
+    #[stub(sig = "(self, power: float, duration: float, unit: TimeUnit) -> None")]
     fn set_power(args: &[Obj]) -> Result<(), Exception> {
         let mut reader = Args::new(3, 0, args).reader();
         let this = reader.next_positional::<&Self>()?;

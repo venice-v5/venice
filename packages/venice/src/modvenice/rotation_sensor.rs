@@ -29,6 +29,7 @@ impl RotationSensorObj {
     const TICKS_PER_REVOLUTION: i32 = RotationSensor::TICKS_PER_REVOLUTION as i32;
 
     #[make_new]
+    #[stub(sig = "(self, port: int, direction: Direction = Direction.FORWARD) -> None")]
     fn new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -100,6 +101,7 @@ impl RotationSensorObj {
     // despite not requiring an SDK call, loading direction is still a getter method instead of an
     // attribute.
     #[method]
+    #[stub(sig = "(self) -> Direction")]
     fn get_direction(&self) -> Obj {
         let dir = self.guard.borrow().direction();
         Obj::from_static(match dir {

@@ -70,6 +70,15 @@ impl GestureObj {
 #[class_methods]
 impl GestureObj {
     #[attr]
+    #[stub(attrs = [
+        "direction: GestureDirection",
+        "count: int",
+        "up: int",
+        "down: int",
+        "left: int",
+        "right: int",
+        "gesture_type: int",
+    ])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let AttrOp::Load { result } = op else {
             read_only_attr::<Self>()

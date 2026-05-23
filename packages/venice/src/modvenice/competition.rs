@@ -200,6 +200,7 @@ impl CompetitionRuntime {
 #[class_methods]
 impl Competition {
     #[make_new]
+    #[stub(sig = "(self) -> None")]
     fn make_new(ty: &'static ObjType, _n_pos: usize, _n_kw: usize, args: &[Obj]) -> Self {
         if !args.is_empty() {
             type_error(c"function does not accept arguments").raise(token());
@@ -217,30 +218,35 @@ impl Competition {
     }
 
     #[method]
+    #[stub(sig = "(self, routine: Callable[..., Any]) -> Callable[..., Any]")]
     fn connected(&self, routine: Callable) -> Obj {
         self.connected.set(Some(routine));
         routine.into_inner()
     }
 
     #[method]
+    #[stub(sig = "(self, routine: Callable[..., Any]) -> Callable[..., Any]")]
     fn disconnected(&self, routine: Callable) -> Obj {
         self.disconnected.set(Some(routine));
         routine.into_inner()
     }
 
     #[method]
+    #[stub(sig = "(self, routine: Callable[..., Any]) -> Callable[..., Any]")]
     fn driver(&self, routine: Callable) -> Obj {
         self.driver.set(Some(routine));
         routine.into_inner()
     }
 
     #[method]
+    #[stub(sig = "(self, routine: Callable[..., Any]) -> Callable[..., Any]")]
     fn autonomous(&self, routine: Callable) -> Obj {
         self.autonomous.set(Some(routine));
         routine.into_inner()
     }
 
     #[method]
+    #[stub(sig = "(self, routine: Callable[..., Any]) -> Callable[..., Any]")]
     fn disabled(&self, routine: Callable) -> Obj {
         self.disabled.set(Some(routine));
         routine.into_inner()

@@ -29,6 +29,9 @@ impl VisionCodeObj {
     }
 
     #[make_new]
+    #[stub(
+        sig = "(self, sig1: int, sig2: int, sig3: int | None = None, sig4: int | None = None, sig5: int | None = None) -> None"
+    )]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -66,6 +69,13 @@ impl VisionCodeObj {
     }
 
     #[attr]
+    #[stub(attrs = [
+        "sig1: int",
+        "sig2: int",
+        "sig3: int | None",
+        "sig4: int | None",
+        "sig5: int | None",
+    ])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let AttrOp::Load { result } = op else {
             read_only_attr::<Self>()

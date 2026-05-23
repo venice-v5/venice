@@ -27,6 +27,7 @@ pub struct Color {
 #[class_methods]
 impl Color {
     #[attr]
+    #[stub(attrs = ["id: int", "x: int", "y: int", "width: int", "height: int"])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let AttrOp::Load { result } = op else {
             read_only_attr::<Self>()
@@ -56,6 +57,7 @@ pub struct Code {
 #[class_methods]
 impl Code {
     #[attr]
+    #[stub(attrs = ["id: int", "x: int", "y: int", "width: int", "height: int"])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let AttrOp::Load { result } = op else {
             read_only_attr::<Self>()
@@ -91,6 +93,17 @@ pub struct AprilTag {
 #[class_methods]
 impl AprilTag {
     #[attr]
+    #[stub(attrs = [
+        "top_left_x: int",
+        "top_left_y: int",
+        "top_right_x: int",
+        "top_right_y: int",
+        "bottom_left_x: int",
+        "bottom_left_y: int",
+        "bottom_right_x: int",
+        "bottom_right_y: int",
+        "id: int",
+    ])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let AttrOp::Load { result } = op else {
             read_only_attr::<Self>()
@@ -125,6 +138,15 @@ pub struct Model {
 #[class_methods]
 impl Model {
     #[attr]
+    #[stub(attrs = [
+        "id: int",
+        "classification: str",
+        "x: int",
+        "y: int",
+        "width: int",
+        "height: int",
+        "confidence: int",
+    ])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let AttrOp::Load { result } = op else {
             read_only_attr::<Self>()

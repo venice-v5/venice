@@ -46,6 +46,7 @@ impl From<AiVisionObjectError> for Exception {
 #[class_methods]
 impl AiVisionSensorObj {
     #[make_new]
+    #[stub(sig = "(self, port: int) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -140,6 +141,9 @@ impl AiVisionSensorObj {
     }
 
     #[method]
+    #[stub(
+        sig = "(self) -> tuple[AiVisionColorObject | AiVisionCodeObject | AiVisionAprilTagObject | AiVisionModelObject, ...]"
+    )]
     fn get_objects(&self) -> Result<Obj, Exception> {
         let objects = self.guard.borrow().objects()?;
         let objects = objects
@@ -150,6 +154,7 @@ impl AiVisionSensorObj {
     }
 
     #[method]
+    #[stub(sig = "(self) -> tuple[AiVisionColorCode | None, ...]")]
     fn get_color_codes(&self) -> Result<Obj, Exception> {
         let guard = self.guard.borrow();
         let codes = (0..7)
@@ -160,6 +165,7 @@ impl AiVisionSensorObj {
     }
 
     #[method]
+    #[stub(sig = "(self) -> None")]
     fn free(&self) -> Obj {
         self.guard.free_or_raise();
         Obj::NONE

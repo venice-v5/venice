@@ -66,6 +66,7 @@ impl Vec3 {
     }
 
     #[make_new]
+    #[stub(sig = "(self, x: float = 0.0, y: float = 0.0, z: float = 0.0) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -88,6 +89,7 @@ impl Vec3 {
     }
 
     #[attr]
+    #[stub(attrs = ["x: float", "y: float", "z: float"])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let coord = match attr.as_str() {
             "x" => &self.x,
@@ -113,6 +115,7 @@ impl Quaternion {
     }
 
     #[make_new]
+    #[stub(sig = "(self, w: float = 1.0, x: float = 0.0, y: float = 0.0, z: float = 0.0) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -137,6 +140,7 @@ impl Quaternion {
     }
 
     #[attr]
+    #[stub(attrs = ["w: float", "x: float", "y: float", "z: float"])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let val = match attr.as_str() {
             "x" => &self.x,
@@ -162,6 +166,7 @@ impl EulerZYX {
     }
 
     #[make_new]
+    #[stub(sig = "(self, yaw: float = 0.0, pitch: float = 0.0, roll: float = 0.0) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -184,6 +189,7 @@ impl EulerZYX {
     }
 
     #[attr]
+    #[stub(attrs = ["yaw: float", "pitch: float", "roll: float"])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let val = match attr.as_str() {
             "yaw" => &self.yaw,
@@ -199,6 +205,7 @@ impl EulerZYX {
 #[class_methods]
 impl Point2 {
     #[make_new]
+    #[stub(sig = "(self, x: float = 0.0, y: float = 0.0) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -219,6 +226,7 @@ impl Point2 {
     }
 
     #[attr]
+    #[stub(attrs = ["x: float", "y: float"])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let coord = match attr.as_str() {
             "x" => &self.x,

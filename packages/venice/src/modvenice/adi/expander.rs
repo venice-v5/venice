@@ -47,6 +47,7 @@ impl AdiExpanderPortObj {}
 #[class_methods]
 impl AdiExpanderObj {
     #[make_new]
+    #[stub(sig = "(self, port: int) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -75,6 +76,16 @@ impl AdiExpanderObj {
     }
 
     #[attr]
+    #[stub(attrs = [
+        "a: AdiExpanderPort",
+        "b: AdiExpanderPort",
+        "c: AdiExpanderPort",
+        "d: AdiExpanderPort",
+        "e: AdiExpanderPort",
+        "f: AdiExpanderPort",
+        "g: AdiExpanderPort",
+        "h: AdiExpanderPort",
+    ])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let AttrOp::Load { result } = op else {
             read_only_attr::<Self>()

@@ -79,6 +79,7 @@ impl InertialOrientationObj {
 #[class_methods]
 impl InertialSensorObj {
     #[make_new]
+    #[stub(sig = "(self, port: int) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -97,6 +98,7 @@ impl InertialSensorObj {
     }
 
     #[method]
+    #[stub(sig = "(self) -> CalibrateFuture")]
     fn calibrate(self_in: Obj) -> CalibrateFuture {
         CalibrateFuture {
             base: ObjBase::new(CalibrateFuture::OBJ_TYPE),
@@ -173,6 +175,7 @@ impl InertialSensorObj {
     }
 
     #[method]
+    #[stub(sig = "(self) -> InertialOrientation")]
     fn get_physical_orientation(&self) -> Result<Obj, Exception> {
         Ok(match self.guard.borrow().physical_orientation()? {
             InertialOrientation::XDown => Obj::from_static(InertialOrientationObj::X_DOWN),

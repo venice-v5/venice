@@ -56,6 +56,9 @@ fn check_ports(output_port: &AdiPort, input_port: &AdiPort) -> Result<(), Except
 #[class_methods]
 impl AdiRangeFinderObj {
     #[make_new]
+    #[stub(
+        sig = "(self, input_port: str | AdiExpanderPort, output_port: str | AdiExpanderPort) -> None"
+    )]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,

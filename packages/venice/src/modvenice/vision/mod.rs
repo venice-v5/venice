@@ -88,6 +88,7 @@ impl VisionSensorObj {
     const UPDATE_INTERVAL_MS: i32 = VisionSensor::UPDATE_INTERVAL.as_millis() as i32;
 
     #[make_new]
+    #[stub(sig = "(self, port: int) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -107,6 +108,7 @@ impl VisionSensorObj {
     }
 
     #[method]
+    #[stub(sig = "(self, id: int, signature: VisionSignature) -> None")]
     fn set_signature(
         &self,
         id: SignatureId,
@@ -119,6 +121,7 @@ impl VisionSensorObj {
     }
 
     #[method]
+    #[stub(sig = "(self, id: int) -> VisionSignature | None")]
     fn get_signature(&self, id: SignatureId) -> Result<Option<VisionSignatureObj>, Exception> {
         Ok(self
             .guard
@@ -128,6 +131,7 @@ impl VisionSensorObj {
     }
 
     #[method]
+    #[stub(sig = "(self) -> tuple[VisionSignature | None, ...]")]
     fn get_signatures(&self) -> Result<Obj, Exception> {
         let vec = self
             .guard
@@ -147,11 +151,13 @@ impl VisionSensorObj {
     }
 
     #[method]
+    #[stub(sig = "(self) -> LedMode")]
     fn get_led_mode(&self) -> Result<Obj, Exception> {
         Ok(led_mode::new(self.guard.borrow().led_mode()?))
     }
 
     #[method]
+    #[stub(sig = "(self) -> tuple[VisionObject, ...]")]
     fn get_objects(&self) -> Result<Obj, Exception> {
         let objects = self.guard.borrow().objects()?;
         let obj_objects = objects
@@ -173,6 +179,7 @@ impl VisionSensorObj {
     }
 
     #[method]
+    #[stub(sig = "(self) -> WhiteBalance")]
     fn get_white_balance(&self) -> Result<Obj, Exception> {
         Ok(white_balance::new(self.guard.borrow().white_balance()?))
     }
@@ -184,12 +191,14 @@ impl VisionSensorObj {
     }
 
     #[method]
+    #[stub(sig = "(self, balance: WhiteBalance) -> None")]
     fn set_white_balance(&self, balance: WhiteBalanceArg) -> Result<(), Exception> {
         self.guard.borrow_mut().set_white_balance(balance.0)?;
         Ok(())
     }
 
     #[method]
+    #[stub(sig = "(self, mode: LedMode) -> None")]
     fn set_led_mode(&self, mode: LedModeArg) -> Result<(), Exception> {
         self.guard.borrow_mut().set_led_mode(mode.0)?;
         Ok(())
@@ -202,6 +211,7 @@ impl VisionSensorObj {
     }
 
     #[method]
+    #[stub(sig = "(self) -> VisionMode")]
     fn get_mode(&self) -> Result<Obj, Exception> {
         Ok(Obj::from_static(match self.guard.borrow().mode()? {
             VisionMode::ColorDetection => VisionModeObj::COLOR_DETECTION,

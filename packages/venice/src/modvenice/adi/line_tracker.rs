@@ -15,6 +15,7 @@ pub struct AdiLineTrackerObj {
 #[class_methods]
 impl AdiLineTrackerObj {
     #[make_new]
+    #[stub(sig = "(self, port: str | AdiExpanderPort) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,

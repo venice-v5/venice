@@ -43,6 +43,7 @@ pub struct Line {
 #[class_methods]
 impl DetectionSourceObj {
     #[make_new]
+    #[stub(sig = "(self) -> None")]
     fn make_new(_: &ObjType, _: usize, _: usize, _: &[Obj]) {
         type_error(c"DetectionSource is an abstract base class; use a variant like DetectionSource.Signature").raise(token());
     }
@@ -61,6 +62,7 @@ impl Signature {
     const PARENT: &ObjType = DetectionSourceObj::OBJ_TYPE;
 
     #[make_new]
+    #[stub(sig = "(self, id: int) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -79,6 +81,7 @@ impl Signature {
     }
 
     #[attr]
+    #[stub(attrs = ["id: int"])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let AttrOp::Load { result } = op else {
             read_only_attr::<Self>()
@@ -96,6 +99,7 @@ impl Code {
     const PARENT: &ObjType = DetectionSourceObj::OBJ_TYPE;
 
     #[make_new]
+    #[stub(sig = "(self, code: VisionCode) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -122,6 +126,7 @@ impl Code {
     }
 
     #[attr]
+    #[stub(attrs = ["code: VisionCode"])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let AttrOp::Load { result } = op else {
             read_only_attr::<Self>()
@@ -143,6 +148,7 @@ impl Line {
     };
 
     #[make_new]
+    #[stub(sig = "(self) -> None")]
     fn make_new(_: &ObjType, _: usize, _: usize, args: &[Obj]) -> Result<Obj, Exception> {
         if args.len() != 0 {
             Err(type_error(
