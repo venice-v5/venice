@@ -26,12 +26,39 @@ use crate::{
     registry::SmartGuard,
 };
 
+/// VEXlink WireLess Radio Link
+///
+/// This class provides support for VEXlink, a point-to-point wireless communications protocol
+/// between two VEXnet radios.
+///
+/// # Hardware Overview
+///
+/// There are two types of radios in a VEXlink connection: "manager" and "worker". A "manager" radio
+/// can transmit data at up to 1040 bytes/s while a "worker" radio can transmit data at up to 520
+/// bytes/s. A connection should only ever have both types of radios.
+///
+/// In order to connect to a radio, VEXos hashes a given link name and uses it as an ID to verify
+/// the connection. For this reason, you should try to create a unique name for each radio link to
+/// avoid accidentally interfering, or being interfered with by, an unrelated VEXlink connection.
+/// Ideally, you want a name that will never be used by another team.
+///
+/// The lights on the radio can be used as a status indicator:
+/// - Blinking red: The radio is waiting for a connection to be established.
+/// - Alternating red and green quickly: The radio is connected to another radio and is the
+///   "manager" radio.
+/// - Alternating red and green slowly: The radio is connected to another radio and is the "worker"
+///   radio.
+///
+/// For further information, see <https://www.vexforum.com/t/vexlink-documentaton/84538>
 #[class(qstr!(RadioLink))]
 pub struct RadioLinkObj {
     base: ObjBase,
     guard: SmartGuard<RadioLink>,
 }
 
+/// The type of radio link being established.
+///
+/// VEXLink is a point-to-point connection, with one "manager" robot and one "worker" robot.
 #[class(qstr!(LinkType))]
 pub struct LinkTypeObj {
     base: ObjBase,
@@ -47,17 +74,40 @@ impl LinkTypeObj {
         }
     }
 
+    /// Manager Radio
+    ///
+    /// This end of the link has a 1040-bytes/sec data rate when communicating with a worker radio.
     #[constant]
     const MANAGER: &Self = &Self::new(LinkType::Manager);
+
+    /// Worker Radio
+    ///
+    /// This end of the link has a 520-bytes/sec data rate when communicating with a manager radio.
     #[constant]
     const WORKER: &Self = &Self::new(LinkType::Worker);
 }
 
 #[class_methods]
 impl RadioLinkObj {
+    /// The length of the link's FIFO input and output buffers.
     #[constant]
     const INTERNAL_BUFFER_SIZE: i32 = RadioLink::INTERNAL_BUFFER_SIZE as i32;
 
+    /// Opens a radio link from a VEXNet radio plugged into a Smart Port. Once opened, other VEXNet
+    /// functionality such as controller tethering on this specific radio will be disabled. Other
+    /// radios connected to the Brain can take over this functionality.
+    ///
+    /// # Raises
+    ///
+    /// - `ValueError`: If a NUL (0x00) character was found anywhere in the specified `id`.
+    ///
+    /// # Examples
+    ///
+    /// ```python
+    /// from venice import *
+    ///
+    /// link = RadioLink(1, "643A", LinkType.MANAGER)
+    /// ```
     #[make_new]
     #[stub(sig = "(self, port: int, id: str, link_type: LinkType) -> None")]
     fn make_new(
@@ -82,11 +132,43 @@ impl RadioLinkObj {
         })
     }
 
+    /// Returns `True` if there is a link established with another radio.
+    ///
+    /// # Examples
+    ///
+    /// ```python
+    /// from venice import *
+    ///
+    /// link = RadioLink(1, "643A", LinkType.MANAGER)
+    /// if link.is_linked():
+    ///     link.write(b"Hello!")
+    /// ```
     #[method]
     fn is_linked(&self) -> bool {
         self.guard.borrow_mut().is_linked()
     }
 
+    /// Release this device and free its Smart Port lock. This binding will become unusable after
+    /// this call, but you can reuse the underlying Smart Port number in a new device.
+    ///
+    /// Any attempts to use this device after freeing will result in a `ValueError` being raised.
+    ///
+    /// # Raises
+    ///
+    /// `ValueError`: If the device has already been freed.
+    ///
+    /// # Examples
+    ///
+    /// Construct a `RadioLink`, free it, then construct a `Motor` with the same Smart Port:
+    ///
+    /// ```python
+    /// from venice import *
+    ///
+    /// link = RadioLink(1, "643A", LinkType.MANAGER)
+    /// link.free()
+    /// # `link` is now unusable, but port 1 can be used in another device, such as a `Motor`
+    /// motor = Motor(1)
+    /// ```
     #[method]
     fn free(&self) {
         self.guard.free_or_raise();
@@ -151,6 +233,8 @@ impl RadioLinkObj {
         ioctl: ioctl_from_fn!(RadioLinkObj::stream_ioctl),
         is_text: 0, // uhh maybe
     };
+
+    // TODO: find good docs for these stream methods
 
     #[constant(qstr!(read))]
     #[stub(sig = "(self, size: int = -1) -> bytes")]

@@ -1,5 +1,6 @@
 use std::{
     ffi::{c_char, c_void},
+    fmt::Write,
     marker::PhantomData,
 };
 
@@ -36,6 +37,19 @@ unsafe extern "C" {
 
     /// From: `py/obj.h`
     pub(crate) fn mp_obj_print_exception(print: *const Print, exc: Obj);
+}
+
+impl Print {
+    pub fn print(&mut self, s: &str) {
+        unsafe { (self.print_strn)(self.data, s.as_ptr(), s.len()) }
+    }
+}
+
+impl Write for Print {
+    fn write_str(&mut self, s: &str) -> std::fmt::Result {
+        self.print(s);
+        Ok(())
+    }
 }
 
 pub struct StringPrint<'a> {

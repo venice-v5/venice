@@ -1185,8 +1185,8 @@ impl MotorObj {
         Ok(faults.bits() as i32)
     }
 
-    /// Release this motor and free its Smart Port lock. This binding will become unusable after
-    /// this call, but you can reuse the underlying Smart Port to construct a new device.
+    /// Release this device and free its Smart Port lock. This binding will become unusable after
+    /// this call, but you can reuse the underlying Smart Port number in a new device.
     ///
     /// Any attempts to use this device after freeing will result in a `ValueError` being raised.
     ///

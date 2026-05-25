@@ -308,6 +308,13 @@ pub struct MakeNew {
     f: MakeNewFn,
 }
 
+/// A safe [`PrintFn`]. This type can be constructed using the unsafe function [`Printer::new`],
+/// whose safety bound is that the [`PrintFn`] passsed in is sound when called with valid
+/// arguments.
+pub struct Printer {
+    f: PrintFn,
+}
+
 /// A safe [`AttrFn`]. This type can be constructed using the unsafe function [`AttrFn::new`],
 /// whose safety bound is that the [`AttrFn`] passsed in is sound when called with valid
 /// arguments.
@@ -391,6 +398,15 @@ impl MakeNew {
     ///
     /// `f` must be sound when called with valid arguments.
     pub const unsafe fn new(f: MakeNewFn) -> Self {
+        Self { f }
+    }
+}
+
+impl Printer {
+    /// # Safety
+    ///
+    /// `f` must be sound when called with valid arguments.
+    pub const unsafe fn new(f: PrintFn) -> Self {
         Self { f }
     }
 }
@@ -526,6 +542,29 @@ macro_rules! attr_from_fn {
         }
 
         unsafe { $crate::obj::Attr::new(trampoline) }
+    }};
+}
+
+pub unsafe fn printer_trampoline<F, O>(f: F, print: *const Print, o: Obj, kind: PrintKind)
+where
+    F: FnOnce(&O, &mut Print, PrintKind),
+    Obj: AsRef<O>,
+{
+    f(
+        o.as_ref(),
+        unsafe { &mut *print.cast_mut() }, // probably not 100% sound, but considering the platform it doesn't matter
+        kind,
+    )
+}
+
+#[macro_export]
+macro_rules! printer_from_fn {
+    ($f:expr) => {{
+        unsafe extern "C" fn trampoline(print: *const Print, o: Obj, kind: PrintKind) {
+            unsafe { $crate::obj::printer_trampoline($f, print, o, kind) }
+        }
+
+        unsafe { $crate::obj::Printer::new(trampoline) }
     }};
 }
 
@@ -744,6 +783,10 @@ impl ObjFullType {
     /// [`Attr`]: [`Slot::Attr`]
     pub const fn set_attr(self, attr: Attr) -> Self {
         unsafe { self.set_attr_raw(attr.f) }
+    }
+
+    pub const fn set_printer(self, printer: Printer) -> Self {
+        unsafe { self.set_print_raw(printer.f) }
     }
 
     /// Sets the [`Subscr`] slot.

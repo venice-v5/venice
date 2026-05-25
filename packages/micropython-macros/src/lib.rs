@@ -108,6 +108,7 @@ pub fn class(attr: TokenStream, item: TokenStream) -> TokenStream {
                     let ty = set_slot!(ty, SUBSCR, set_subscr);
                     let ty = set_slot!(ty, UNARY_OP, set_unary_op_raw);
                     let ty = set_slot!(ty, BINARY_OP, set_binary_op_raw);
+                    let ty = set_slot!(ty, PRINTER, set_printer);
 
                     ty
                 };
@@ -135,6 +136,7 @@ pub fn class_methods(_: TokenStream, item: TokenStream) -> TokenStream {
     let mut stream = None;
     let mut unary_op = None;
     let mut binary_op = None;
+    let mut printer = None;
 
     let replace_err = |span, attr_name| {
         syn::Error::new(span, format!("multiple `{attr_name}` functions"))
@@ -208,6 +210,7 @@ pub fn class_methods(_: TokenStream, item: TokenStream) -> TokenStream {
                         "binary_op" => {
                             opt = Some(("binary_op", a.span(), &mut binary_op));
                         }
+                        "printer" => opt = Some(("printer", a.span(), &mut printer)),
                         _ => continue,
                     }
                     attr_idx = Some(idx);
@@ -279,6 +282,11 @@ pub fn class_methods(_: TokenStream, item: TokenStream) -> TokenStream {
     let binary_op_tokens = binary_op
         .map(map_fn_item)
         .map(|f| quote! { Some(#f) })
+        .unwrap_or_else(|| none_tokens.clone());
+
+    let printer_tokens = printer
+        .map(map_fn_item)
+        .map(|f| quote! { Some(::micropython_rs::printer_from_fn!(#f)) })
         .unwrap_or(none_tokens);
 
     let method_tokens = match methods
@@ -324,6 +332,7 @@ pub fn class_methods(_: TokenStream, item: TokenStream) -> TokenStream {
             const STREAM: Option<&::micropython_rs::stream::Stream> = #stream_tokens;
             const UNARY_OP: Option<::micropython_rs::obj::UnaryOpFn> = #unary_op_tokens;
             const BINARY_OP: Option<::micropython_rs::obj::BinaryOpFn> = #binary_op_tokens;
+            const PRINTER: Option<::micropython_rs::obj::Printer> = #printer_tokens;
 
             const LOCALS_DICT: Option<&::micropython_rs::map::Dict> = Some(::micropython_rs::const_dict![
                 #(#method_tokens)*
