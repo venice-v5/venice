@@ -1,6 +1,7 @@
 use micropython_macros::{class, class_methods};
 use micropython_rs::{
     obj::{AttrOp, Obj, ObjBase, ObjTrait},
+    print::{Print, PrintKind},
     qstr::Qstr,
 };
 use vexide_core::time::LowResolutionTime;
@@ -8,6 +9,7 @@ use vexide_devices::smart::optical::{Gesture, GestureDirection};
 
 use crate::modvenice::{read_only_attr::read_only_attr, units::time::TimeUnitObj};
 
+/// Gesture data from an `OpticalSensor`.
 #[class(qstr!(Gesture))]
 #[repr(C)]
 pub struct GestureObj {
@@ -22,28 +24,52 @@ pub struct GestureObj {
     gesture_type: u8,
 }
 
+/// Represents a gesture and its direction.
 #[class(qstr!(GestureDirection))]
 #[repr(C)]
 pub struct GestureDirectionObj {
     base: ObjBase,
+    direction: GestureDirection,
 }
 
 #[class_methods]
 impl GestureDirectionObj {
-    const fn new() -> Self {
+    const fn new(direction: GestureDirection) -> Self {
         Self {
             base: ObjBase::new(Self::OBJ_TYPE),
+            direction,
         }
     }
 
+    /// Up gesture.
     #[constant]
-    pub const UP: &Self = &Self::new();
+    pub const UP: &Self = &Self::new(GestureDirection::Up);
+
+    /// Down gesture.
     #[constant]
-    pub const DOWN: &Self = &Self::new();
+    pub const DOWN: &Self = &Self::new(GestureDirection::Down);
+
+    /// Left gesture.
     #[constant]
-    pub const LEFT: &Self = &Self::new();
+    pub const LEFT: &Self = &Self::new(GestureDirection::Left);
+
+    /// Right gesture.
     #[constant]
-    pub const RIGHT: &Self = &Self::new();
+    pub const RIGHT: &Self = &Self::new(GestureDirection::Right);
+
+    pub fn direction(&self) -> GestureDirection {
+        self.direction
+    }
+
+    #[printer]
+    fn printer(&self, printer: &mut Print, _kind: PrintKind) {
+        printer.print(match self.direction() {
+            GestureDirection::Up => "GestureDirection.UP",
+            GestureDirection::Down => "GestureDirection.DOWN",
+            GestureDirection::Left => "GestureDirection.LEFT",
+            GestureDirection::Right => "GestureDirection.RIGHT",
+        });
+    }
 }
 
 impl GestureObj {

@@ -7,6 +7,7 @@ use vexide_devices::smart::optical::{OpticalRaw, OpticalRgb};
 
 use crate::modvenice::read_only_attr::read_only_attr;
 
+/// RGB data from an `OpticalSensor`.
 #[class(qstr!(OpticalRgb))]
 #[repr(C)]
 pub struct OpticalRgbObj {
@@ -17,6 +18,7 @@ pub struct OpticalRgbObj {
     brightness: f32,
 }
 
+/// Represents the raw RGBC data an `OpticalSensor`.
 #[class(qstr!(OpticalRaw))]
 #[repr(C)]
 pub struct OpticalRawObj {
