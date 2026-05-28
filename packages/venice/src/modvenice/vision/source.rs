@@ -4,9 +4,10 @@ use micropython_rs::{
     except::type_error,
     init::token,
     obj::{AttrOp, Obj, ObjBase, ObjTrait, ObjType},
+    ops::BinaryOp,
     qstr::Qstr,
 };
-use vexide_devices::smart::vision::DetectionSource;
+use vexide_devices::smart::vision::{DetectionSource, VisionCode};
 
 use crate::modvenice::{
     Exception,
@@ -125,6 +126,10 @@ impl Code {
         }
     }
 
+    fn code(&self) -> VisionCode {
+        self.code.try_as_obj::<VisionCodeObj>().unwrap().code()
+    }
+
     #[attr]
     #[stub(attrs = ["code: VisionCode"])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
@@ -135,6 +140,18 @@ impl Code {
             "code" => self.code,
             _ => return,
         });
+    }
+
+    #[binary_op]
+    extern "C" fn binary_op(op: BinaryOp, rhs: Obj, lhs: Obj) -> Obj {
+        match op {
+            BinaryOp::Equal => Obj::from(
+                lhs.try_as_obj::<Self>()
+                    .map(|l| l.code() == rhs.try_as_obj::<Self>().unwrap().code())
+                    .unwrap_or(false),
+            ),
+            _ => Obj::NULL,
+        }
     }
 }
 
