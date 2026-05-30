@@ -216,11 +216,7 @@ impl VisionSensorObj {
     /// # Read signature 1 off the sensor.
     /// # This should be the same as the one we just set.
     /// signature = sensor.get_signature(1)
-    ///
-    /// print(f"u_min: {signature.u_min}")
-    /// print(f"u_max: {signature.u_max}")
-    /// print(f"u_mean: {signature.u_mean}")
-    /// # etc...
+    /// print(signature)
     /// ```
     #[method]
     #[stub(sig = "(self, id: int) -> VisionSignature | None")]
@@ -264,11 +260,7 @@ impl VisionSensorObj {
     /// signatures = sensor.get_signatures()
     /// for signature in signatures:
     ///     if signature:
-    ///         print("Found sig saved on sensor:")
-    ///         print(f"u_min: {signature.u_min}")
-    ///         print(f"u_max: {signature.u_max}")
-    ///         print(f"u_mean: {signature.u_mean}")
-    ///         # etc...
+    ///         print(f"Found sig saved on sensor: {signature}")
     /// ```
     #[method]
     #[stub(sig = "(self) -> tuple[VisionSignature | None, ...]")]
@@ -330,7 +322,7 @@ impl VisionSensorObj {
     /// for object in sensor.get_objects():
     ///     # Filter only objects matching the code we just set.
     ///     if obj.source == DetectionSource.Code(code):
-    ///         print("Detected object from code!")
+    ///         print(obj)
     /// ```
     #[method]
     fn add_code(&self, code: &VisionCodeObj) -> Result<(), Exception> {
@@ -362,10 +354,7 @@ impl VisionSensorObj {
     ///
     ///     # Check the sensor's reported LED mode. Should be the same as what we just set.
     ///     led_mode = sensor.get_led_mode()
-    ///     assert led_mode.r == 255
-    ///     assert led_mode.g == 0
-    ///     assert led_mode.b == 0
-    ///     assert led_mode.brightness == 1
+    ///     assert led_mode == LedMode.Manual(255, 0, 0, 1)
     ///
     /// vasyncio.run(main)
     /// ```
@@ -419,9 +408,9 @@ impl VisionSensorObj {
     /// for object in sensor.get_objects():
     ///     # Identify which signature the detected object matches.
     ///     if object.source == DetectionSource.Signature(1):
-    ///         print("Detected object matching sig_1")
+    ///         print(f"Detected object matching sig_1: {object}")
     ///     elif object.source == DetectionSource.Signature(2):
-    ///         print("Detected object matching sig_2")
+    ///         print(f"Detected object matching sig_2: {object}")
     /// ```
     #[method]
     #[stub(sig = "(self) -> tuple[VisionObject, ...]")]
@@ -517,12 +506,9 @@ impl VisionSensorObj {
     ///     # Give the sensor time to update.
     ///     await vasyncio.Sleep(VisionSensor.UPDATE_INTERVAL_MS, MILLIS)
     ///
-    ///     # Read brightness. Should be 50%, since we just set it.
-    ///     white_balance = sensor.get_balance()
-    ///     assert isinstance(white_balance, WhiteBalance.Manual)
-    ///     assert white_balance.r == 255
-    ///     assert white_balance.g == 255
-    ///     assert white_balance.b == 255
+    ///     # Read white balance. Should be the same as what we just set.
+    ///     white_balance = sensor.get_white_balance()
+    ///     assert white_balance == WhiteBalance.Manual(255, 255, 255)
     ///
     /// vasyncio.run(main)
     /// ```
