@@ -11,7 +11,7 @@ use crate::{
     gc::{self},
     init::{InitToken, token},
     map::Dict,
-    ops::{BinaryOp, UnaryOp},
+    ops::{BinaryOpCode, UnaryOpCode},
     print::{Print, PrintKind},
     qstr::Qstr,
     str::Str,
@@ -295,8 +295,8 @@ pub type MakeNewFn =
 pub type PrintFn = unsafe extern "C" fn(print: *const Print, o: Obj, kind: PrintKind);
 pub type CallFn =
     unsafe extern "C" fn(fun: Obj, n_args: usize, n_kw: usize, args: *const Obj) -> Obj;
-pub type UnaryOpFn = extern "C" fn(op: UnaryOp, obj: Obj) -> Obj;
-pub type BinaryOpFn = extern "C" fn(op: BinaryOp, obj_1: Obj, obj_2: Obj) -> Obj;
+pub type UnaryOpFn = extern "C" fn(op: UnaryOpCode, obj: Obj) -> Obj;
+pub type BinaryOpFn = extern "C" fn(op: BinaryOpCode, obj_1: Obj, obj_2: Obj) -> Obj;
 pub type AttrFn = unsafe extern "C" fn(self_in: Obj, attr: Qstr, dest: *mut Obj);
 pub type SubscrFn = extern "C" fn(self_in: Obj, index: Obj, value: Obj) -> Obj;
 
@@ -313,6 +313,14 @@ pub struct MakeNew {
 /// arguments.
 pub struct Printer {
     f: PrintFn,
+}
+
+pub struct UnaryOp {
+    f: UnaryOpFn,
+}
+
+pub struct BinaryOp {
+    f: BinaryOpFn,
 }
 
 /// A safe [`AttrFn`]. This type can be constructed using the unsafe function [`AttrFn::new`],
@@ -398,6 +406,18 @@ impl MakeNew {
     ///
     /// `f` must be sound when called with valid arguments.
     pub const unsafe fn new(f: MakeNewFn) -> Self {
+        Self { f }
+    }
+}
+
+impl UnaryOp {
+    pub const fn new(f: UnaryOpFn) -> Self {
+        Self { f }
+    }
+}
+
+impl BinaryOp {
+    pub const fn new(f: BinaryOpFn) -> Self {
         Self { f }
     }
 }
@@ -491,6 +511,51 @@ macro_rules! make_new_from_fn {
     }};
 }
 
+pub fn unary_op_trampoline<F, O>(f: F, op: UnaryOpCode, obj: Obj) -> Obj
+where
+    F: FnOnce(UnaryOpCode, &O) -> Obj,
+    Obj: AsRef<O>,
+{
+    f(op, obj.as_ref())
+}
+
+#[macro_export]
+macro_rules! unary_op_from_fn {
+    ($f:expr) => {{
+        extern "C" fn trampoline(
+            op: $crate::ops::UnaryOpCode,
+            obj: $crate::obj::Obj,
+        ) -> $crate::obj::Obj {
+            $crate::obj::unary_op_trampoline($f, op, obj)
+        }
+
+        $crate::obj::UnaryOp::new(trampoline)
+    }};
+}
+
+pub fn binary_op_trampoline<F, O>(f: F, op: BinaryOpCode, lhs: Obj, rhs: Obj) -> Obj
+where
+    F: FnOnce(BinaryOpCode, &O, Obj) -> Obj,
+    Obj: AsRef<O>,
+{
+    f(op, lhs.as_ref(), rhs)
+}
+
+#[macro_export]
+macro_rules! binary_op_from_fn {
+    ($f:expr) => {{
+        extern "C" fn trampoline(
+            op: $crate::ops::BinaryOpCode,
+            lhs: $crate::obj::Obj,
+            rhs: $crate::obj::Obj,
+        ) -> $crate::obj::Obj {
+            $crate::obj::binary_op_trampoline($f, op, lhs, rhs)
+        }
+
+        $crate::obj::BinaryOp::new(trampoline)
+    }};
+}
+
 pub unsafe fn attr_trampoline<F, O>(f: F, self_in: Obj, attr: Qstr, dest: *mut Obj)
 where
     F: FnOnce(&O, Qstr, AttrOp),
@@ -560,7 +625,11 @@ where
 #[macro_export]
 macro_rules! printer_from_fn {
     ($f:expr) => {{
-        unsafe extern "C" fn trampoline(print: *const Print, o: Obj, kind: PrintKind) {
+        unsafe extern "C" fn trampoline(
+            print: *const $crate::print::Print,
+            o: $crate::obj::Obj,
+            kind: $crate::print::PrintKind,
+        ) {
             unsafe { $crate::obj::printer_trampoline($f, print, o, kind) }
         }
 
@@ -776,6 +845,14 @@ impl ObjFullType {
     /// [`MakeNew`]: [`Slot::MakeNew`]
     pub const fn set_make_new(self, make_new: MakeNew) -> Self {
         unsafe { self.set_make_new_raw(make_new.f) }
+    }
+
+    pub const fn set_unary_op(self, unary_op: UnaryOp) -> Self {
+        self.set_unary_op_raw(unary_op.f)
+    }
+
+    pub const fn set_binary_op(self, binary_op: BinaryOp) -> Self {
+        self.set_binary_op_raw(binary_op.f)
     }
 
     /// Sets the [`Attr`] slot.
@@ -1099,7 +1176,7 @@ impl Obj {
         }
     }
 
-    /// Returns `Some(&T)` if the [`Obj`] is a pointer object.
+    /// Returns `Some(&T)` if the [`Obj`] is a pointer object to `T`.
     /// Returns `None` if it is not.
     pub fn try_as_obj<T: ObjTrait>(&self) -> Option<&T> {
         self.try_as_obj_raw().map(|ptr| unsafe { ptr.as_ref() })
@@ -1114,6 +1191,13 @@ impl Obj {
         } else {
             None
         }
+    }
+
+    /// Returns `&T` if the [`Obj`] is a pointer object to `T`.
+    /// Panics on failure.
+    pub fn as_obj<T: ObjTrait>(&self) -> &T {
+        self.try_as_obj()
+            .unwrap_or_else(|| panic!("Couldn't cast `Obj` to pointer object."))
     }
 
     /// Assumes the [`Obj`] is an integer object and extracts the integer value out of it.

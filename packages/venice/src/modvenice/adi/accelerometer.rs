@@ -2,12 +2,14 @@ use argparse::Args;
 use micropython_macros::{class, class_methods};
 use micropython_rs::{
     obj::{AttrOp, Obj, ObjBase, ObjTrait, ObjType},
+    print::{Print, PrintKind},
     qstr::Qstr,
 };
 use vexide_devices::adi::accelerometer::{AdiAccelerometer, Sensitivity};
 
 use crate::modvenice::{Exception, adi::expander::AdiPortParser, read_only_attr::read_only_attr};
 
+// TODO: remove the Adi prefix, PotentiometerType doesn't have it
 #[class(qstr!(AdiAccelerometerSensitivity))]
 #[repr(C)]
 pub struct SensitivityObj {
@@ -28,6 +30,14 @@ impl SensitivityObj {
     pub const LOW: &Self = &Self::new(Sensitivity::Low);
     #[constant]
     pub const HIGH: &Self = &Self::new(Sensitivity::High);
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        print.print(match self.sensitivity {
+            Sensitivity::High => "AdiAccelerometerSensitivity.HIGH",
+            Sensitivity::Low => "AdiAccelerometerSensitivity.LOW",
+        });
+    }
 }
 
 #[class(qstr!(AdiAccelerometer))]

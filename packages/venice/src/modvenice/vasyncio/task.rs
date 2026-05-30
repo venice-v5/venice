@@ -2,7 +2,7 @@ use std::cell::{Cell, Ref, RefCell};
 
 use micropython_macros::{class, class_methods};
 use micropython_rs::{
-    except::{raise_stop_iteration, type_error},
+    except::raise_stop_iteration,
     init::token,
     obj::{Obj, ObjBase, ObjTrait},
 };
@@ -54,9 +54,7 @@ impl Task {
 impl Task {
     #[iter]
     extern "C" fn task_iternext(self_in: Obj) -> Obj {
-        let task = self_in
-            .try_as_obj::<Task>()
-            .unwrap_or_else(|| type_error(c"expected Task").raise(token()));
+        let task = self_in.as_obj::<Task>();
         if !task.is_complete() {
             self_in
         } else {

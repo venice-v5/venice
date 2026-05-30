@@ -8,7 +8,8 @@ use micropython_rs::{
     except::type_error,
     map::{Dict, Map},
     obj::{AttrOp, Obj, ObjBase, ObjTrait, ObjType},
-    print::{PrintKind, StringPrint},
+    ops::BinaryOpCode,
+    print::{Print, PrintKind, StringPrint},
     qstr::Qstr,
 };
 use vexide_devices::{
@@ -79,6 +80,14 @@ impl RenderModeObj {
     const IMMEDIATE: &Self = &Self::new(RenderMode::Immediate);
     #[constant]
     const DOUBLE_BUFFERED: &Self = &Self::new(RenderMode::DoubleBuffered);
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        print.print(match self.mode {
+            RenderMode::Immediate => "RenderMode.IMMEDIATE",
+            RenderMode::DoubleBuffered => "RenderMode.DOUBLE_BUFFERED",
+        });
+    }
 }
 
 #[class(qstr!(FontFamily))]
@@ -162,6 +171,15 @@ impl FontSizeObj {
             "denominator" => self.size.denominator as i32,
             _ => return,
         })
+    }
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        let _ = write!(
+            print,
+            "FontSize(numerator={}, denominator={})",
+            self.size.numerator, self.size.denominator
+        );
     }
 }
 
@@ -430,6 +448,46 @@ impl TouchEventObj {
 
             _ => return,
         });
+    }
+
+    #[binary_op]
+    fn binary_op(op: BinaryOpCode, lhs: &Self, rhs: Obj) -> Obj {
+        match op {
+            BinaryOpCode::Equal => Obj::from_bool(lhs.event == rhs.as_obj::<Self>().event),
+            _ => Obj::NULL,
+        }
+    }
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        let _ = write!(
+            print,
+            "TouchEvent(x={}, y={}, press_count={}, release_count={}, is_now_pressed={}, is_pressed={}, is_released={}, is_held={})",
+            self.event.point.x,
+            self.event.point.y,
+            self.event.press_count,
+            self.event.release_count,
+            if self.event.state == TouchState::Pressed {
+                "True"
+            } else {
+                "False"
+            },
+            if matches!(self.event.state, TouchState::Pressed | TouchState::Held) {
+                "True"
+            } else {
+                "False"
+            },
+            if self.event.state == TouchState::Released {
+                "True"
+            } else {
+                "False"
+            },
+            if self.event.state == TouchState::Held {
+                "True"
+            } else {
+                "False"
+            }
+        );
     }
 }
 

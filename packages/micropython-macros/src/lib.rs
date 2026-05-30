@@ -106,8 +106,8 @@ pub fn class(attr: TokenStream, item: TokenStream) -> TokenStream {
                     let ty = set_slot!(ty, ITER, set_iter);
                     let ty = set_slot!(ty, STREAM, set_stream);
                     let ty = set_slot!(ty, SUBSCR, set_subscr);
-                    let ty = set_slot!(ty, UNARY_OP, set_unary_op_raw);
-                    let ty = set_slot!(ty, BINARY_OP, set_binary_op_raw);
+                    let ty = set_slot!(ty, UNARY_OP, set_unary_op);
+                    let ty = set_slot!(ty, BINARY_OP, set_binary_op);
                     let ty = set_slot!(ty, PRINTER, set_printer);
 
                     ty
@@ -276,12 +276,12 @@ pub fn class_methods(_: TokenStream, item: TokenStream) -> TokenStream {
 
     let unary_op_tokens = unary_op
         .map(map_fn_item)
-        .map(|f| quote! { Some(#f) })
+        .map(|f| quote! { Some(::micropython_rs::unary_op_from_fn!(#f)) })
         .unwrap_or_else(|| none_tokens.clone());
 
     let binary_op_tokens = binary_op
         .map(map_fn_item)
-        .map(|f| quote! { Some(#f) })
+        .map(|f| quote! { Some(::micropython_rs::binary_op_from_fn!(#f)) })
         .unwrap_or_else(|| none_tokens.clone());
 
     let printer_tokens = printer
@@ -330,8 +330,8 @@ pub fn class_methods(_: TokenStream, item: TokenStream) -> TokenStream {
             const ATTR: Option<::micropython_rs::obj::Attr> = #attr_tokens;
             const SUBSCR: Option<::micropython_rs::obj::Subscr> = #subscr_tokens;
             const STREAM: Option<&::micropython_rs::stream::Stream> = #stream_tokens;
-            const UNARY_OP: Option<::micropython_rs::obj::UnaryOpFn> = #unary_op_tokens;
-            const BINARY_OP: Option<::micropython_rs::obj::BinaryOpFn> = #binary_op_tokens;
+            const UNARY_OP: Option<::micropython_rs::obj::UnaryOp> = #unary_op_tokens;
+            const BINARY_OP: Option<::micropython_rs::obj::BinaryOp> = #binary_op_tokens;
             const PRINTER: Option<::micropython_rs::obj::Printer> = #printer_tokens;
 
             const LOCALS_DICT: Option<&::micropython_rs::map::Dict> = Some(::micropython_rs::const_dict![

@@ -1,8 +1,12 @@
+use std::fmt::Write;
+
 use argparse::Args;
 use micropython_macros::{class, class_methods};
 use micropython_rs::{
     self,
     obj::{AttrOp, Obj, ObjBase, ObjTrait, ObjType},
+    ops::BinaryOpCode,
+    print::{Print, PrintKind},
     qstr::Qstr,
 };
 use vexide_devices::color::Color;
@@ -100,5 +104,22 @@ impl ColorObj {
     #[method]
     fn as_int(&self) -> i32 {
         self.color.into_raw() as i32
+    }
+
+    #[binary_op]
+    fn binary_op(op: BinaryOpCode, lhs: &Self, rhs: Obj) -> Obj {
+        match op {
+            BinaryOpCode::Equal => Obj::from_bool(lhs.color == rhs.as_obj::<Self>().color),
+            _ => Obj::NULL,
+        }
+    }
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        let _ = write!(
+            print,
+            "Color(r={}, g={}, b={})",
+            self.color.r, self.color.g, self.color.b
+        );
     }
 }

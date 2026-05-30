@@ -1,5 +1,8 @@
 use micropython_macros::{class, class_methods};
-use micropython_rs::obj::{ObjBase, ObjTrait};
+use micropython_rs::{
+    obj::{ObjBase, ObjTrait},
+    print::{Print, PrintKind},
+};
 use vexide_devices::math::Angle;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -53,5 +56,14 @@ impl RotationUnitObj {
 
     pub const fn unit(&self) -> RotationUnit {
         self.unit
+    }
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        print.print(match self.unit {
+            RotationUnit::Radians => "RotationUnit.RADIANS",
+            RotationUnit::Degrees => "RotationUnit.DEGREES",
+            RotationUnit::Turns => "RotationUnit.TURNS",
+        })
     }
 }

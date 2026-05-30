@@ -1,5 +1,8 @@
 use micropython_macros::{class, class_methods};
-use micropython_rs::obj::{ObjBase, ObjTrait};
+use micropython_rs::{
+    obj::{ObjBase, ObjTrait},
+    print::{Print, PrintKind},
+};
 use vexide_devices::smart::motor::Gearset;
 
 #[class(qstr!(Gearset))]
@@ -27,5 +30,14 @@ impl GearsetObj {
 
     pub const fn gearset(&self) -> Gearset {
         self.gearset
+    }
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        print.print(match self.gearset {
+            Gearset::Red => "Gearset.RED",
+            Gearset::Green => "Gearset.GREEN",
+            Gearset::Blue => "Gearset.BLUE",
+        });
     }
 }

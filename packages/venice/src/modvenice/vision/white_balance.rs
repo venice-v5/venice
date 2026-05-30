@@ -1,9 +1,13 @@
+use std::fmt::Write;
+
 use argparse::{ArgParser, Args, DefaultParser, ParseError};
 use micropython_macros::{class, class_methods};
 use micropython_rs::{
     except::type_error,
     init::token,
     obj::{AttrOp, Obj, ObjBase, ObjTrait, ObjType},
+    ops::BinaryOpCode,
+    print::{Print, PrintKind},
     qstr::Qstr,
 };
 use vexide_devices::smart::vision::WhiteBalance;
@@ -74,6 +78,11 @@ impl Auto {
             Ok(Obj::from_static(Self::SELF))
         }
     }
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        print.print("WhiteBalance.Auto()");
+    }
 }
 
 #[class_methods]
@@ -93,6 +102,11 @@ impl StartupAuto {
         } else {
             Ok(Obj::from_static(Self::SELF))
         }
+    }
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        print.print("WhiteBalance.StartupAuto()")
     }
 }
 
@@ -133,6 +147,28 @@ impl Manual {
             "b" => self.b,
             _ => return,
         } as i32)
+    }
+
+    // more optimized than Eq according to Godbolt on armv7a-none-eabi
+    fn eq(lhs: &Self, rhs: &Self) -> bool {
+        lhs.r == rhs.r && lhs.g == rhs.g && lhs.b == rhs.b
+    }
+
+    #[binary_op]
+    fn binary_op(op: BinaryOpCode, lhs: &Self, rhs: Obj) -> Obj {
+        match op {
+            BinaryOpCode::Equal => Obj::from_bool(Self::eq(lhs, rhs.as_obj())),
+            _ => Obj::NULL,
+        }
+    }
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        let _ = write!(
+            print,
+            "WhiteBalance.Manual(r={}, g={}, b={})",
+            self.r, self.g, self.b
+        );
     }
 }
 

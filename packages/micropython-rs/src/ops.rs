@@ -1,5 +1,5 @@
 #[repr(C)]
-pub enum UnaryOp {
+pub enum UnaryOpCode {
     Positive,
     Negative,
     Invert,
@@ -16,7 +16,7 @@ pub enum UnaryOp {
 }
 
 #[repr(C)]
-pub enum BinaryOp {
+pub enum BinaryOpCode {
     Less,
     More,
     Equal,

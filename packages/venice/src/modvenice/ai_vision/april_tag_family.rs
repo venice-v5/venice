@@ -1,5 +1,8 @@
 use micropython_macros::{class, class_methods};
-use micropython_rs::obj::{ObjBase, ObjTrait};
+use micropython_rs::{
+    obj::{ObjBase, ObjTrait},
+    print::{Print, PrintKind},
+};
 use vexide_devices::smart::ai_vision::AprilTagFamily;
 
 #[class(qstr!(AprilTagFamily))]
@@ -29,5 +32,15 @@ impl AprilTagFamilyObj {
 
     pub fn family(&self) -> AprilTagFamily {
         self.family
+    }
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        print.print(match self.family {
+            AprilTagFamily::Circle21h7 => "AprilTagFamily.CIRCLE21H7",
+            AprilTagFamily::Tag16h5 => "AprilTagFamily.TAG16H5",
+            AprilTagFamily::Tag25h9 => "AprilTagFamily.TAG25H9",
+            AprilTagFamily::Tag36h11 => "AprilTagFamily.TAG36H11",
+        });
     }
 }

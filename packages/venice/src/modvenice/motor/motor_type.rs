@@ -1,5 +1,8 @@
 use micropython_macros::{class, class_methods};
-use micropython_rs::obj::{ObjBase, ObjTrait};
+use micropython_rs::{
+    obj::{ObjBase, ObjTrait},
+    print::{Print, PrintKind},
+};
 use vexide_devices::smart::motor::MotorType;
 
 #[class(qstr!(MotorType))]
@@ -28,5 +31,13 @@ impl MotorTypeObj {
             MotorType::V5 => &MotorTypeObj::V5,
             MotorType::Exp => &MotorTypeObj::EXP,
         }
+    }
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        print.print(match self.motor_type {
+            MotorType::V5 => "MotorType.V5",
+            MotorType::Exp => "MotorType.EXP",
+        })
     }
 }

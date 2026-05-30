@@ -1,9 +1,13 @@
+use std::fmt::Write;
+
 use argparse::{ArgParser, Args, DefaultParser, ParseError};
 use micropython_macros::{class, class_methods};
 use micropython_rs::{
     except::type_error,
     init::token,
     obj::{AttrOp, Obj, ObjBase, ObjTrait, ObjType},
+    ops::BinaryOpCode,
+    print::{Print, PrintKind},
     qstr::Qstr,
 };
 use vexide_devices::smart::vision::LedMode;
@@ -68,6 +72,11 @@ impl Auto {
             Ok(Obj::from_static(Self::SELF))
         }
     }
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        print.print("LedMode.Auto()");
+    }
 }
 
 #[class_methods]
@@ -76,7 +85,7 @@ impl Manual {
     const PARENT: &ObjType = LedModeObj::OBJ_TYPE;
 
     #[make_new]
-    #[stub(sig = "(self, brightness: float, r: int, g: int, b: int) -> None")]
+    #[stub(sig = "(self, r: int, g: int, b: int, brightness: float) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -86,17 +95,17 @@ impl Manual {
         let mut reader = Args::new(n_pos, n_kw, args).reader();
         reader.assert_npos(4, 4).assert_nkw(0, 0);
 
-        let brightness = reader.next_positional()?;
         let r = reader.next_positional()?;
         let g = reader.next_positional()?;
         let b = reader.next_positional()?;
+        let brightness = reader.next_positional()?;
 
         Ok(Self {
             base: ObjBase::new(ty),
-            brightness,
             r,
             g,
             b,
+            brightness,
         })
     }
 
@@ -117,6 +126,28 @@ impl Manual {
 
     pub fn as_led_mode(&self) -> LedMode {
         LedMode::Manual((self.r, self.g, self.b).into(), self.brightness as f64)
+    }
+
+    // more optimized than Eq according to Godbolt on armv7a-none-eabi
+    fn eq(lhs: &Self, rhs: &Self) -> bool {
+        lhs.brightness == rhs.brightness && lhs.r == rhs.r && lhs.g == rhs.g && lhs.b == rhs.b
+    }
+
+    #[binary_op]
+    fn binary_op(op: BinaryOpCode, lhs: &Self, rhs: Obj) -> Obj {
+        match op {
+            BinaryOpCode::Equal => Obj::from_bool(Self::eq(lhs, rhs.try_as_obj::<Self>().unwrap())),
+            _ => Obj::NULL,
+        }
+    }
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        let _ = write!(
+            print,
+            "LedMode.Manual(r={}, g={}, b={}, brightness={})",
+            self.r, self.g, self.b, self.brightness,
+        );
     }
 }
 

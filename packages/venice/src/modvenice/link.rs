@@ -11,6 +11,7 @@ use micropython_rs::{
     fun::{Fun1, Fun2, FunVarBetween},
     ioctl_from_fn,
     obj::{Obj, ObjBase, ObjTrait, ObjType},
+    print::{Print, PrintKind},
     read_from_fn,
     stream::{
         IoctlReq, Poll, Stream, mp_stream_flush_obj, mp_stream_ioctl_obj, mp_stream_read_obj,
@@ -85,6 +86,14 @@ impl LinkTypeObj {
     /// This end of the link has a 520-bytes/sec data rate when communicating with a manager radio.
     #[constant]
     const WORKER: &Self = &Self::new(LinkType::Worker);
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        print.print(match self.ty {
+            LinkType::Manager => "LinkType.MANAGER",
+            LinkType::Worker => "LinkType.WORKER",
+        });
+    }
 }
 
 #[class_methods]
@@ -176,8 +185,7 @@ impl RadioLinkObj {
 
     fn stream_read(self_in: Obj, buf: &mut [u8]) -> Result<usize, c_int> {
         self_in
-            .try_as_obj::<RadioLinkObj>()
-            .unwrap()
+            .as_obj::<RadioLinkObj>()
             .guard
             .borrow_mut()
             .read(buf)
@@ -186,8 +194,7 @@ impl RadioLinkObj {
 
     fn stream_write(self_in: Obj, buf: &[u8]) -> Result<usize, c_int> {
         self_in
-            .try_as_obj::<RadioLinkObj>()
-            .unwrap()
+            .as_obj::<RadioLinkObj>()
             .guard
             .borrow_mut()
             .write(buf)
@@ -195,7 +202,7 @@ impl RadioLinkObj {
     }
 
     fn stream_ioctl(self_in: Obj, req: IoctlReq) -> Result<usize, c_int> {
-        let this = self_in.try_as_obj::<RadioLinkObj>().unwrap();
+        let this = self_in.as_obj::<RadioLinkObj>();
         let mut link = this.guard.borrow_mut();
 
         match req {

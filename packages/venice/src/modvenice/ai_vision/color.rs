@@ -1,7 +1,11 @@
+use std::fmt::Write;
+
 use argparse::Args;
 use micropython_macros::{class, class_methods};
 use micropython_rs::{
     obj::{AttrOp, Obj, ObjBase, ObjTrait, ObjType},
+    ops::BinaryOpCode,
+    print::{Print, PrintKind},
     qstr::Qstr,
 };
 use vexide_devices::smart::ai_vision::AiVisionColor;
@@ -75,5 +79,26 @@ impl AiVisionColorObj {
                 saturation_range,
             },
         })
+    }
+
+    #[binary_op]
+    fn binary_op(op: BinaryOpCode, lhs: &Self, rhs: Obj) -> Obj {
+        match op {
+            BinaryOpCode::Equal => Obj::from_bool(lhs.color == rhs.as_obj::<Self>().color),
+            _ => Obj::NULL,
+        }
+    }
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        let _ = write!(
+            print,
+            "AiVisionColor(r={}, g={}, b={}, hue_range={}, saturation_range={})",
+            self.color.rgb.r,
+            self.color.rgb.g,
+            self.color.rgb.b,
+            self.color.hue_range,
+            self.color.saturation_range
+        );
     }
 }

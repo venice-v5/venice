@@ -145,8 +145,7 @@ impl CompetitionRuntime {
         if !self.coro.get().is_null() {
             // tick the coroutine on the current task
             let terminated = get_running_loop()
-                .try_as_obj::<EventLoop>()
-                .unwrap()
+                .as_obj::<EventLoop>()
                 .tick_coro(Obj::NULL, self.coro.get());
 
             if terminated {
@@ -275,6 +274,6 @@ impl Competition {
 impl CompetitionRuntime {
     #[iter]
     extern "C" fn iter(self_in: Obj) -> Obj {
-        self_in.try_as_obj::<Self>().unwrap().tick().into()
+        self_in.as_obj::<Self>().tick().into()
     }
 }

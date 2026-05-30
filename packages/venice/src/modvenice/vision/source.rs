@@ -1,10 +1,13 @@
+use std::fmt::Write;
+
 use argparse::{ArgType, Args, PositionalError};
 use micropython_macros::{class, class_methods};
 use micropython_rs::{
     except::type_error,
     init::token,
     obj::{AttrOp, Obj, ObjBase, ObjTrait, ObjType},
-    ops::BinaryOp,
+    ops::BinaryOpCode,
+    print::{Print, PrintKind},
     qstr::Qstr,
 };
 use vexide_devices::smart::vision::{DetectionSource, VisionCode};
@@ -92,6 +95,19 @@ impl Signature {
             _ => return,
         });
     }
+
+    #[binary_op]
+    fn binary_op(op: BinaryOpCode, lhs: &Self, rhs: Obj) -> Obj {
+        match op {
+            BinaryOpCode::Equal => Obj::from_bool(lhs.id == rhs.as_obj::<Self>().id),
+            _ => Obj::NULL,
+        }
+    }
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        let _ = write!(print, "DetectionSource.Signature(id={})", self.id);
+    }
 }
 
 #[class_methods]
@@ -127,7 +143,7 @@ impl Code {
     }
 
     fn code(&self) -> VisionCode {
-        self.code.try_as_obj::<VisionCodeObj>().unwrap().code()
+        self.code.as_obj::<VisionCodeObj>().code()
     }
 
     #[attr]
@@ -143,15 +159,18 @@ impl Code {
     }
 
     #[binary_op]
-    extern "C" fn binary_op(op: BinaryOp, rhs: Obj, lhs: Obj) -> Obj {
+    fn binary_op(op: BinaryOpCode, lhs: &Self, rhs: Obj) -> Obj {
         match op {
-            BinaryOp::Equal => Obj::from(
-                lhs.try_as_obj::<Self>()
-                    .map(|l| l.code() == rhs.try_as_obj::<Self>().unwrap().code())
-                    .unwrap_or(false),
-            ),
+            BinaryOpCode::Equal => Obj::from_bool(lhs.code() == rhs.as_obj::<Self>().code()),
             _ => Obj::NULL,
         }
+    }
+
+    #[printer]
+    fn printer(&self, print: &mut Print, kind: PrintKind) {
+        print.print("DetectionSource.Code(code=");
+        let _ = self.code.print(print, kind);
+        print.print(")");
     }
 }
 
@@ -175,6 +194,11 @@ impl Line {
         } else {
             Ok(Obj::from_static(Self::SELF))
         }
+    }
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        print.print("DetectionSource.Line()");
     }
 }
 

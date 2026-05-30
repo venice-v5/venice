@@ -1,7 +1,10 @@
 use std::time::Duration;
 
 use micropython_macros::{class, class_methods};
-use micropython_rs::obj::{ObjBase, ObjTrait};
+use micropython_rs::{
+    obj::{ObjBase, ObjTrait},
+    print::{Print, PrintKind},
+};
 
 use crate::modvenice::vasyncio::time32::{MILLIS_PER_SEC, NANOS_PER_MILLI};
 
@@ -54,5 +57,13 @@ impl TimeUnitObj {
 
     pub const fn unit(&self) -> &TimeUnit {
         &self.unit
+    }
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        print.print(match self.unit {
+            TimeUnit::Millis => "TimeUnit.MILLIS",
+            TimeUnit::Second => "TimeUnit.SECOND",
+        })
     }
 }

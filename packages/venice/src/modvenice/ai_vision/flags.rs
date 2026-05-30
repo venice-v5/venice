@@ -1,10 +1,7 @@
-use argparse::{ArgType, error_msg};
 use micropython_macros::{class, class_methods};
 use micropython_rs::{
-    except::type_error,
-    init::token,
     obj::{Obj, ObjBase, ObjTrait},
-    ops::BinaryOp,
+    ops::BinaryOpCode,
 };
 use vexide_devices::smart::ai_vision::AiVisionFlags;
 
@@ -44,32 +41,16 @@ impl AiVisionFlagsObj {
     }
 
     #[binary_op]
-    extern "C" fn binary_op(op: BinaryOp, obj_1: Obj, obj_2: Obj) -> Obj {
-        if let BinaryOp::Or = op {
-        } else if let BinaryOp::InplaceOr = op {
-        } else {
-            return Obj::NULL;
+    fn binary_op(op: BinaryOpCode, lhs: &Self, rhs: Obj) -> Obj {
+        match op {
+            BinaryOpCode::Or | BinaryOpCode::InplaceOr => {
+                let rhs = match rhs.try_as_obj::<Self>() {
+                    Some(r) => r,
+                    _ => return Obj::NULL,
+                };
+                alloc_obj(Self::new(lhs.flags.union(rhs.flags)))
+            }
+            _ => Obj::NULL,
         }
-        let lhs = obj_1
-            .try_as_obj::<AiVisionFlagsObj>()
-            .unwrap_or_else(|| {
-                type_error(error_msg!(
-                    "expected <AiVisionFlags> for argument #1, found <{}>",
-                    ArgType::of(&obj_1)
-                ))
-                .raise(token())
-            })
-            .flags;
-        let rhs = obj_2
-            .try_as_obj::<AiVisionFlagsObj>()
-            .unwrap_or_else(|| {
-                type_error(error_msg!(
-                    "expected <AiVisionFlags> for argument #2, found <{}>",
-                    ArgType::of(&obj_2)
-                ))
-                .raise(token())
-            })
-            .flags;
-        alloc_obj(AiVisionFlagsObj::new(lhs.union(rhs)))
     }
 }

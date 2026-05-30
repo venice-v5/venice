@@ -1,6 +1,9 @@
+use std::fmt::Write;
+
 use micropython_macros::{class, class_methods};
 use micropython_rs::{
     obj::{AttrOp, Obj, ObjBase, ObjTrait},
+    print::{Print, PrintKind},
     qstr::Qstr,
 };
 use vexide_devices::{
@@ -66,5 +69,16 @@ impl VisionObjectObj {
     fn get_angle(&self, unit: &RotationUnitObj) -> f32 {
         unit.unit()
             .angle_to_float(Angle::from_radians(self.angle_radians as f64))
+    }
+
+    #[printer]
+    fn printer(&self, print: &mut Print, kind: PrintKind) {
+        print.print("VisionObject(source=");
+        let _ = self.source.print(print, kind);
+        let _ = write!(
+            print,
+            ", width={}, height={}, offset_x={}, offset_y={}, center_x={}, center_y={})",
+            self.width, self.height, self.offset.x, self.offset.y, self.center.x, self.center.y
+        );
     }
 }

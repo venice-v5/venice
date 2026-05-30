@@ -1,5 +1,8 @@
 use micropython_macros::{class, class_methods};
-use micropython_rs::obj::{ObjBase, ObjTrait};
+use micropython_rs::{
+    obj::{ObjBase, ObjTrait},
+    print::{Print, PrintKind},
+};
 use vexide_devices::controller::ControllerId;
 
 #[class(qstr!(ControllerId))]
@@ -28,4 +31,12 @@ impl ControllerIdObj {
     pub const PRIMARY: &Self = &Self::new(ControllerId::Primary);
     #[constant]
     pub const PARTNER: &Self = &Self::new(ControllerId::Partner);
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        print.print(match self.id {
+            ControllerId::Primary => "ControllerId.PRIMARY",
+            ControllerId::Partner => "ControllerId.PARTNER",
+        })
+    }
 }

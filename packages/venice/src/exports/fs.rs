@@ -36,7 +36,7 @@ pub struct FileObj {
 #[class_methods]
 impl FileObj {
     fn stream_read(self_in: Obj, buf: &mut [u8]) -> Result<usize, c_int> {
-        let this = self_in.try_as_obj::<FileObj>().unwrap();
+        let this = self_in.as_obj::<FileObj>();
         this.file
             .borrow_mut()
             .as_mut()
@@ -46,7 +46,7 @@ impl FileObj {
     }
 
     fn stream_write(self_in: Obj, buf: &[u8]) -> Result<usize, c_int> {
-        let this = self_in.try_as_obj::<FileObj>().unwrap();
+        let this = self_in.as_obj::<FileObj>();
         this.file
             .borrow_mut()
             .as_mut()
@@ -56,7 +56,7 @@ impl FileObj {
     }
 
     fn stream_ioctl(self_in: Obj, req: IoctlReq) -> Result<usize, c_int> {
-        let this = self_in.try_as_obj::<FileObj>().unwrap();
+        let this = self_in.as_obj::<FileObj>();
         let mut file_opt = this.file.borrow_mut();
         let file = file_opt.as_mut().ok_or(MP_EBADF)?;
 

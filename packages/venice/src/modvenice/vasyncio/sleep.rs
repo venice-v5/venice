@@ -54,7 +54,7 @@ impl Sleep {
 
     #[iter]
     extern "C" fn sleep_iternext(self_in: Obj) -> Obj {
-        let sleep = self_in.try_as_obj::<Sleep>().unwrap();
+        let sleep = self_in.as_obj::<Sleep>();
         if sleep.complete.get() {
             raise_stop_iteration(token(), Obj::NONE);
         } else {

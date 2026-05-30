@@ -9,6 +9,7 @@ use micropython_rs::{
     except::{Message, raise_stop_iteration, value_error},
     init::token,
     obj::{AttrOp, Obj, ObjBase, ObjTrait, ObjType},
+    print::{Print, PrintKind},
     qstr::Qstr,
 };
 use vex_sdk_jumptable::{
@@ -43,12 +44,14 @@ impl From<ControllerError> for Exception {
 #[repr(C)]
 pub struct ControllerConnectionObj {
     base: ObjBase,
+    connection: ControllerConnection,
 }
 
 impl ControllerConnectionObj {
-    const fn new() -> Self {
+    const fn new(connection: ControllerConnection) -> Self {
         Self {
             base: ObjBase::new(Self::OBJ_TYPE),
+            connection,
         }
     }
 }
@@ -56,11 +59,20 @@ impl ControllerConnectionObj {
 #[class_methods]
 impl ControllerConnectionObj {
     #[constant]
-    pub const OFFLINE: &Self = &Self::new();
+    pub const OFFLINE: &Self = &Self::new(ControllerConnection::Offline);
     #[constant]
-    pub const TETHERED: &Self = &Self::new();
+    pub const TETHERED: &Self = &Self::new(ControllerConnection::Tethered);
     #[constant]
-    pub const VEX_NET: &Self = &Self::new();
+    pub const VEX_NET: &Self = &Self::new(ControllerConnection::VexNet);
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        print.print(match self.connection {
+            ControllerConnection::Offline => "ControllerConnection.OFFLINE",
+            ControllerConnection::Tethered => "ControllerConnection.TETHERED",
+            ControllerConnection::VexNet => "ControllerConnection.VEX_NET",
+        });
+    }
 }
 
 enum ControllerFuture {
@@ -131,7 +143,7 @@ impl DefaultParser<'_> for Column {
 impl ControllerFutureObj {
     #[iter]
     extern "C" fn iter(self_in: Obj) -> Obj {
-        let this = self_in.try_as_obj::<ControllerFutureObj>().unwrap();
+        let this = self_in.as_obj::<ControllerFutureObj>();
         let mut future = this.future.borrow_mut();
 
         if let ControllerFuture::WaitingForIdle {

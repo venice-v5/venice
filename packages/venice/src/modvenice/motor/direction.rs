@@ -1,7 +1,8 @@
 use micropython_macros::{class, class_methods};
 use micropython_rs::{
     obj::{Obj, ObjBase, ObjTrait},
-    ops::UnaryOp,
+    ops::UnaryOpCode,
+    print::{Print, PrintKind},
 };
 use vexide_devices::math::Direction;
 
@@ -31,13 +32,21 @@ impl DirectionObj {
     }
 
     #[unary_op]
-    extern "C" fn unary_op(op: UnaryOp, obj: Obj) -> Obj {
+    fn unary_op(op: UnaryOpCode, obj: &Self) -> Obj {
         match op {
-            UnaryOp::Invert => match obj.try_as_obj::<Self>().unwrap().direction() {
+            UnaryOpCode::Invert => match obj.direction() {
                 Direction::Forward => Obj::from_static(Self::REVERSE),
                 Direction::Reverse => Obj::from_static(Self::FORWARD),
             },
             _ => Obj::NULL,
         }
+    }
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        print.print(match self.direction {
+            Direction::Forward => "Direction.FORWARD",
+            Direction::Reverse => "Direction.REVERSE",
+        });
     }
 }

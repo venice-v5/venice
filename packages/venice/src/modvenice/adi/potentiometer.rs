@@ -2,6 +2,7 @@ use argparse::Args;
 use micropython_macros::{class, class_methods};
 use micropython_rs::{
     obj::{AttrOp, Obj, ObjBase, ObjTrait, ObjType},
+    print::{Print, PrintKind},
     qstr::Qstr,
 };
 use vexide_devices::adi::potentiometer::{AdiPotentiometer, PotentiometerType};
@@ -47,6 +48,14 @@ impl PotentiometerTypeObj {
     #[method]
     fn get_max_angle(&self, unit: &RotationUnitObj) -> f32 {
         unit.unit().angle_to_float(self.ty.max_angle())
+    }
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        print.print(match self.ty {
+            PotentiometerType::Legacy => "PotentiometerType.LEGACY",
+            PotentiometerType::V2 => "PotentiometerType.V2",
+        });
     }
 }
 

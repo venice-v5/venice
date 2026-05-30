@@ -1,5 +1,8 @@
 use micropython_macros::{class, class_methods};
-use micropython_rs::obj::{ObjBase, ObjTrait};
+use micropython_rs::{
+    obj::{ObjBase, ObjTrait},
+    print::{Print, PrintKind},
+};
 use vexide_devices::smart::vision::VisionMode;
 
 #[class(qstr!(VisionMode))]
@@ -31,5 +34,16 @@ impl VisionModeObj {
 
     pub fn mode(&self) -> VisionMode {
         self.mode
+    }
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        print.print(match self.mode {
+            VisionMode::ColorDetection => "VisionMode.COLOR_DETECTION",
+            VisionMode::LineDetection => "VisionMode.LINE_DETECTION",
+            VisionMode::MixedDetection => "VisionMode.MIXED_DETECTION",
+            VisionMode::Wifi => "VisionMode.WIFI",
+            VisionMode::Test => "VisionMode.TEST",
+        });
     }
 }

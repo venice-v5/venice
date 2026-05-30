@@ -1,6 +1,6 @@
 use crate::{
     map::Dict,
-    obj::{Attr, BinaryOpFn, Iter, MakeNew, ObjType, Printer, Subscr, UnaryOpFn},
+    obj::{Attr, BinaryOp, Iter, MakeNew, ObjType, Printer, Subscr, UnaryOp},
     stream::Stream,
 };
 
@@ -12,7 +12,7 @@ pub trait Class {
     const ATTR: Option<Attr> = None;
     const SUBSCR: Option<Subscr> = None;
     const STREAM: Option<&Stream> = None;
-    const UNARY_OP: Option<UnaryOpFn> = None;
-    const BINARY_OP: Option<BinaryOpFn> = None;
+    const UNARY_OP: Option<UnaryOp> = None;
+    const BINARY_OP: Option<BinaryOp> = None;
     const PRINTER: Option<Printer> = None;
 }

@@ -1,7 +1,11 @@
+use std::fmt::Write;
+
 use argparse::{Args, ArgsReader, PositionalError};
 use micropython_macros::{class, class_methods};
 use micropython_rs::{
     obj::{AttrOp, Obj, ObjBase, ObjTrait, ObjType},
+    ops::BinaryOpCode,
+    print::{Print, PrintKind},
     qstr::Qstr,
 };
 use vexide_devices::smart::vision::VisionCode;
@@ -88,5 +92,32 @@ impl VisionCodeObj {
             "sig5" => self.code.4.map(i32::from).into(),
             _ => return,
         })
+    }
+
+    #[binary_op]
+    fn binary_op(op: BinaryOpCode, lhs: &Self, rhs: Obj) -> Obj {
+        match op {
+            BinaryOpCode::Equal => Obj::from_bool(lhs.code == rhs.as_obj::<Self>().code),
+            _ => Obj::NULL,
+        }
+    }
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        let _ = write!(
+            print,
+            "VisionCode(sig1={}, sig2={}",
+            self.code.0, self.code.1
+        );
+        if let Some(s) = self.code.2 {
+            let _ = write!(print, ", sig3={s}");
+        }
+        if let Some(s) = self.code.3 {
+            let _ = write!(print, ", sig4={s}");
+        }
+        if let Some(s) = self.code.4 {
+            let _ = write!(print, ", sig5={s}");
+        }
+        print.print(")");
     }
 }

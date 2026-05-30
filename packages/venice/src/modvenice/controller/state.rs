@@ -1,6 +1,10 @@
+use std::fmt::Write;
+
 use micropython_macros::{class, class_methods};
 use micropython_rs::{
     obj::{AttrOp, Obj, ObjBase, ObjTrait},
+    ops::BinaryOpCode,
+    print::{Print, PrintKind},
     qstr::Qstr,
 };
 use vexide_devices::controller::{ButtonState, ControllerState, JoystickState};
@@ -100,6 +104,47 @@ impl ControllerStateObj {
             state: button_state,
         }));
     }
+
+    #[binary_op]
+    fn binary_op(op: BinaryOpCode, lhs: &Self, rhs: Obj) -> Obj {
+        match op {
+            BinaryOpCode::Equal => Obj::from_bool(lhs.state == rhs.as_obj::<Self>().state),
+            _ => Obj::NULL,
+        }
+    }
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        print.print("ControllerState(");
+
+        let mut print_button_state = |name, state| {
+            print.print(name); // punctuation should be included in the name to reduce `print` calls
+            ButtonStateObj::print_state(state, print);
+        };
+
+        print_button_state("button_a=", &self.state.button_a);
+        print_button_state(", button_b=", &self.state.button_b);
+        print_button_state(", button_x=", &self.state.button_x);
+        print_button_state(", button_y=", &self.state.button_y);
+
+        print_button_state(", button_up=", &self.state.button_up);
+        print_button_state(", button_down=", &self.state.button_down);
+        print_button_state(", button_left=", &self.state.button_left);
+        print_button_state(", button_right=", &self.state.button_right);
+
+        print_button_state(", button_l1=", &self.state.button_l1);
+        print_button_state(", button_l2=", &self.state.button_l2);
+        print_button_state(", button_r1=", &self.state.button_r1);
+        print_button_state(", button_r2=", &self.state.button_r2);
+
+        print.print(", left_stick=");
+        JoystickStateObj::print_state(&self.state.left_stick, print);
+
+        print.print(", right_stick=");
+        JoystickStateObj::print_state(&self.state.right_stick, print);
+
+        print.print(")");
+    }
 }
 
 #[class_methods]
@@ -126,6 +171,30 @@ impl ButtonStateObj {
 
         result.return_value(ret);
     }
+
+    #[binary_op]
+    fn binary_op(op: BinaryOpCode, lhs: &Self, rhs: Obj) -> Obj {
+        match op {
+            BinaryOpCode::Equal => Obj::from_bool(lhs.state == rhs.as_obj::<Self>().state),
+            _ => Obj::NULL,
+        }
+    }
+
+    fn print_state(state: &ButtonState, print: &mut Print) {
+        let _ = write!(
+            print,
+            "ButtonState(is_pressed={}, is_released={}, is_now_pressed={}, is_now_released={})",
+            state.is_pressed(),
+            state.is_released(),
+            state.is_now_pressed(),
+            state.is_now_released()
+        );
+    }
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        Self::print_state(&self.state, print);
+    }
 }
 
 #[class_methods]
@@ -143,5 +212,29 @@ impl JoystickStateObj {
             "y_raw" => Obj::from_int(self.state.y_raw() as i32),
             _ => return,
         });
+    }
+
+    #[binary_op]
+    fn binary_op(op: BinaryOpCode, lhs: &Self, rhs: Obj) -> Obj {
+        match op {
+            BinaryOpCode::Equal => Obj::from_bool(lhs.state == rhs.as_obj::<Self>().state),
+            _ => Obj::NULL,
+        }
+    }
+
+    fn print_state(state: &JoystickState, print: &mut Print) {
+        let _ = write!(
+            print,
+            "JoystickState(x={}, y={}, x_raw={}, y_raw={})",
+            state.x(),
+            state.y(),
+            state.x_raw(),
+            state.y_raw()
+        );
+    }
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        Self::print_state(&self.state, print);
     }
 }

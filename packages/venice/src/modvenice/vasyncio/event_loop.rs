@@ -79,7 +79,7 @@ impl EventLoop {
             task_obj = self.current_task.get()
         }
 
-        let task = task_obj.try_as_obj::<Task>().unwrap();
+        let task = task_obj.as_obj::<Task>();
         if coro.is_null() {
             coro = task.coro();
         }
@@ -131,7 +131,7 @@ impl EventLoop {
             && sleeper.deadline <= now
         {
             let sleeper = sleepers.pop().unwrap();
-            sleeper.sleep.try_as_obj::<Sleep>().unwrap().complete();
+            sleeper.sleep.as_obj::<Sleep>().complete();
             ready.push_back(sleeper.task);
         }
 
@@ -181,7 +181,7 @@ impl EventLoop {
             type_error(c"expected coroutine").raise(token());
         }
 
-        self_in.try_as_obj::<EventLoop>().unwrap().spawn(coro)
+        self_in.as_obj::<EventLoop>().spawn(coro)
     }
 
     #[constant(qstr!(spawn))]
@@ -194,7 +194,7 @@ impl EventLoop {
         let prev_loop = RUNNING_LOOP.replace(self_in);
         push_nlr_callback(
             token(),
-            || self_in.try_as_obj::<EventLoop>().unwrap().run(),
+            || self_in.as_obj::<EventLoop>().run(),
             || RUNNING_LOOP.set(prev_loop),
             true,
         );
