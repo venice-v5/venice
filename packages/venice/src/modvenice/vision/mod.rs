@@ -658,4 +658,30 @@ impl VisionSensorObj {
             VisionMode::Test => VisionModeObj::TEST,
         }))
     }
+
+    /// Release this device and free its Smart Port lock. This binding will become unusable after
+    /// this call, but you can reuse the underlying Smart Port number in a new device.
+    ///
+    /// Any attempts to use this device after freeing will result in a `ValueError` being raised.
+    ///
+    /// # Raises
+    ///
+    /// `ValueError`: If the device has already been freed.
+    ///
+    /// # Examples
+    ///
+    /// Construct a `Motor`, free it, then construct a `RotationSensor` with the same Smart Port:
+    ///
+    /// ```python
+    /// from venice import *
+    ///
+    /// motor = Motor(1)
+    /// motor.free()
+    /// # `motor` is now unusable, but port 1 can be used in another device, such as a `RotationSensor`
+    /// rotation_sensor = RotationSensor(1)
+    /// ```
+    #[method]
+    fn free(&self) {
+        self.guard.free_or_raise();
+    }
 }
