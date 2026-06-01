@@ -138,15 +138,10 @@ impl MotorObj {
             Motor::new(port, gearset.gearset(), direction.direction())
         });
 
-        if guard.borrow().is_exp() {
-            // no need to free guard manually
-            Err(device_error(c"invalid motor type, expected V5, found Exp"))
-        } else {
-            Ok(Self {
-                base: Self::OBJ_TYPE.into(),
-                guard,
-            })
-        }
+        Ok(Self {
+            base: Self::OBJ_TYPE.into(),
+            guard,
+        })
     }
 
     /// Creates a new 5.5W (EXP) Smart Motor.
@@ -172,15 +167,10 @@ impl MotorObj {
         let direction = reader.next_positional_or(DirectionObj::FORWARD)?;
 
         let guard = devices::lock_port(port, |port| Motor::new_exp(port, direction.direction()));
-        if guard.borrow().is_v5() {
-            // no need to free guard manually
-            Err(device_error(c"invalid motor type, expected Exp, found V5"))
-        } else {
-            Ok(MotorObj {
-                base: Self::OBJ_TYPE.into(),
-                guard,
-            })
-        }
+        Ok(MotorObj {
+            base: Self::OBJ_TYPE.into(),
+            guard,
+        })
     }
 
     /// Creates a new 11W (V5) Smart Motor.
