@@ -280,7 +280,7 @@ impl RotationSensorObj {
     ///
     /// sensor = RotationSensor(1)
     /// status = sensor.get_status()
-    /// print(f"Status: {status:b}")
+    /// print(f"Status: 0x{status:08x}")
     /// ```
     #[method]
     fn get_status(&self) -> Result<i32, Exception> {

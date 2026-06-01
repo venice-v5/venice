@@ -1170,7 +1170,7 @@ impl MotorObj {
     /// async def main():
     ///     while True:
     ///         faults = motor.get_faults()
-    ///         print("Faults: {faults:b}")
+    ///         print(f"Status: 0x{status:08x}")
     ///
     ///         # Test if `faults` contains `OVER_TEMPERATURE_FLAG`
     ///         if faults & OVER_TEMPERATURE_FLAG == OVER_TEMPERATURE_FLAG:
