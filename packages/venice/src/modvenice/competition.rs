@@ -1,11 +1,10 @@
 use std::cell::Cell;
 
-use argparse::{ArgType, error_msg};
+use argparse::{ArgType, Callable, error_msg};
 use bitflags::bitflags;
+use micropython_macros::{class, class_methods};
 use micropython_rs::{
-    class, class_methods,
     except::type_error,
-    fun::Fun2,
     generator::GEN_INSTANCE_TYPE,
     init::token,
     obj::{Obj, ObjBase, ObjTrait, ObjType},
@@ -13,7 +12,7 @@ use micropython_rs::{
 
 use crate::modvenice::{
     Exception,
-    vasyncio::event_loop::{EventLoop, vasyncio_get_running_loop},
+    vasyncio::event_loop::{EventLoop, get_running_loop},
 };
 
 bitflags! {
@@ -40,6 +39,7 @@ pub enum Mode {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Phase {
+    Initial,
     Connected,
     Disconnected,
     Mode(Mode),
@@ -76,11 +76,11 @@ impl Phase {
 pub struct Competition {
     base: ObjBase,
 
-    connected: Cell<Obj>,
-    disconnected: Cell<Obj>,
-    driver: Cell<Obj>,
-    autonomous: Cell<Obj>,
-    disabled: Cell<Obj>,
+    connected: Cell<Option<Callable>>,
+    disconnected: Cell<Option<Callable>>,
+    driver: Cell<Option<Callable>>,
+    autonomous: Cell<Option<Callable>>,
+    disabled: Cell<Option<Callable>>,
 }
 
 #[class(qstr!(CompetitionRuntime))]
@@ -93,11 +93,11 @@ pub struct CompetitionRuntime {
     status: Cell<Status>,
     phase: Cell<Phase>,
 
-    connected: Obj,
-    disconnected: Obj,
-    driver: Obj,
-    autonomous: Obj,
-    disabled: Obj,
+    connected: Option<Callable>,
+    disconnected: Option<Callable>,
+    driver: Option<Callable>,
+    autonomous: Option<Callable>,
+    disabled: Option<Callable>,
 
     // nullable
     coro: Cell<Obj>,
@@ -118,28 +118,34 @@ impl CompetitionRuntime {
     pub fn tick(&self) -> Result<(), Exception> {
         let mut phase_updated = false;
 
-        if let Some(prev_status) = self.poll_update() {
+        if self.phase.get() == Phase::Initial {
+            // jump immediately into a mode phase
+            self.phase.set(Phase::Mode(self.status.get().mode()));
+            phase_updated = true;
+        } else if let Some(prev_status) = self.poll_update() {
             let new_status = self.status.get();
-            if !self.phase.get().interruptable() {
-                self.phase
-                    .set(if prev_status.connected() != new_status.connected() {
-                        match new_status.connected() {
-                            true => Phase::Connected,
-                            false => Phase::Disconnected,
-                        }
-                    } else {
-                        Phase::Mode(new_status.mode())
-                    });
+            if self.phase.get().interruptable() {
+                let old_phase = self.phase.get();
+                let new_phase = if prev_status.connected() != new_status.connected() {
+                    match new_status.connected() {
+                        true => Phase::Connected,
+                        false => Phase::Disconnected,
+                    }
+                } else {
+                    Phase::Mode(new_status.mode())
+                };
 
-                phase_updated = true;
+                if old_phase != new_phase {
+                    self.phase.set(new_phase);
+                    phase_updated = true;
+                }
             }
         }
 
         if !self.coro.get().is_null() {
             // tick the coroutine on the current task
-            let terminated = vasyncio_get_running_loop()
-                .try_as_obj::<EventLoop>()
-                .unwrap()
+            let terminated = get_running_loop()
+                .as_obj::<EventLoop>()
                 .tick_coro(Obj::NULL, self.coro.get());
 
             if terminated {
@@ -149,6 +155,7 @@ impl CompetitionRuntime {
                         phase_updated = true;
                     }
                     Phase::Mode(_) => {}
+                    Phase::Initial => unreachable!(),
                 }
             }
         }
@@ -162,9 +169,10 @@ impl CompetitionRuntime {
                     Phase::Mode(Mode::Driver) => self.driver,
                     Phase::Mode(Mode::Autonomous) => self.autonomous,
                     Phase::Mode(Mode::Disabled) => self.disabled,
+                    Phase::Initial => unreachable!(),
                 }
-                .call(0, &[])
-                .unwrap(); // object is verified to be callable in make_new
+                .map(|c| c.call(0, &[]))
+                .unwrap_or(Obj::NULL);
 
                 if !coro.is(GEN_INSTANCE_TYPE) && !coro.is_null() {
                     let phase_name = match self.phase.get() {
@@ -173,6 +181,7 @@ impl CompetitionRuntime {
                         Phase::Mode(Mode::Driver) => "driver",
                         Phase::Mode(Mode::Autonomous) => "autonomous",
                         Phase::Mode(Mode::Disabled) => "disabled",
+                        Phase::Initial => unreachable!(),
                     };
                     Err(type_error(error_msg!(
                         "expected coroutine return value from {phase_name} routine, got <{}>",
@@ -187,32 +196,10 @@ impl CompetitionRuntime {
     }
 }
 
-fn assert_callable(routine: Obj) {
-    if !routine.is_callable() {
-        type_error(c"routine object is not callable").raise(token());
-    }
-}
-
-macro_rules! routine_decorator {
-    ($fn_name:ident, $routine_name:ident) => {
-        extern "C" fn $fn_name(self_in: Obj, routine: Obj) -> Obj {
-            let comp = self_in.try_as_obj::<Competition>().unwrap();
-            assert_callable(routine);
-            comp.$routine_name.set(routine);
-            routine
-        }
-    };
-}
-
-routine_decorator!(competition_connected, connected);
-routine_decorator!(competition_disconnected, disconnected);
-routine_decorator!(competition_driver, driver);
-routine_decorator!(competition_autonomous, autonomous);
-routine_decorator!(competition_disabled, disabled);
-
 #[class_methods]
 impl Competition {
     #[make_new]
+    #[stub(sig = "(self) -> None")]
     fn make_new(ty: &'static ObjType, _n_pos: usize, _n_kw: usize, args: &[Obj]) -> Self {
         if !args.is_empty() {
             type_error(c"function does not accept arguments").raise(token());
@@ -221,24 +208,48 @@ impl Competition {
         Self {
             base: ObjBase::new(ty),
 
-            connected: Cell::new(Obj::NULL),
-            disconnected: Cell::new(Obj::NULL),
-            driver: Cell::new(Obj::NULL),
-            autonomous: Cell::new(Obj::NULL),
-            disabled: Cell::new(Obj::NULL),
+            connected: Cell::new(None),
+            disconnected: Cell::new(None),
+            driver: Cell::new(None),
+            autonomous: Cell::new(None),
+            disabled: Cell::new(None),
         }
     }
 
-    #[constant(qstr!(connected))]
-    const CONNECTED: &Fun2 = &Fun2::new(competition_connected);
-    #[constant(qstr!(disconnected))]
-    const DISCONNECTED: &Fun2 = &Fun2::new(competition_disconnected);
-    #[constant(qstr!(driver))]
-    const DRIVER: &Fun2 = &Fun2::new(competition_driver);
-    #[constant(qstr!(autonomous))]
-    const AUTONOMOUS: &Fun2 = &Fun2::new(competition_autonomous);
-    #[constant(qstr!(disabled))]
-    const DISABLED: &Fun2 = &Fun2::new(competition_disabled);
+    #[method]
+    #[stub(sig = "(self, routine: Callable[..., Any]) -> Callable[..., Any]")]
+    fn connected(&self, routine: Callable) -> Obj {
+        self.connected.set(Some(routine));
+        routine.into_inner()
+    }
+
+    #[method]
+    #[stub(sig = "(self, routine: Callable[..., Any]) -> Callable[..., Any]")]
+    fn disconnected(&self, routine: Callable) -> Obj {
+        self.disconnected.set(Some(routine));
+        routine.into_inner()
+    }
+
+    #[method]
+    #[stub(sig = "(self, routine: Callable[..., Any]) -> Callable[..., Any]")]
+    fn driver(&self, routine: Callable) -> Obj {
+        self.driver.set(Some(routine));
+        routine.into_inner()
+    }
+
+    #[method]
+    #[stub(sig = "(self, routine: Callable[..., Any]) -> Callable[..., Any]")]
+    fn autonomous(&self, routine: Callable) -> Obj {
+        self.autonomous.set(Some(routine));
+        routine.into_inner()
+    }
+
+    #[method]
+    #[stub(sig = "(self, routine: Callable[..., Any]) -> Callable[..., Any]")]
+    fn disabled(&self, routine: Callable) -> Obj {
+        self.disabled.set(Some(routine));
+        routine.into_inner()
+    }
 
     #[method]
     fn run(&self) -> CompetitionRuntime {
@@ -246,8 +257,7 @@ impl Competition {
             base: ObjBase::new(CompetitionRuntime::OBJ_TYPE),
 
             status: Cell::new(status()),
-            // TODO: maybe this should be made an option since we haven't computed the phase yet
-            phase: Cell::new(Phase::Disconnected),
+            phase: Cell::new(Phase::Initial),
 
             connected: self.connected.get(),
             disconnected: self.disconnected.get(),
@@ -264,6 +274,6 @@ impl Competition {
 impl CompetitionRuntime {
     #[iter]
     extern "C" fn iter(self_in: Obj) -> Obj {
-        self_in.try_as_obj::<Self>().unwrap().tick().into()
+        self_in.as_obj::<Self>().tick().into()
     }
 }

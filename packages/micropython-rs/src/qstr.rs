@@ -1,3 +1,10 @@
+use std::{
+    ffi::{CStr, FromBytesWithNulError},
+    hint::unreachable_unchecked,
+};
+
+use crate::obj::MpCStrError;
+
 pub type QstrShort = u16;
 pub type QstrHash = u16;
 pub type QstrLen = u8;
@@ -47,5 +54,18 @@ impl Qstr {
             let ptr = qstr_data(self, &raw mut len);
             str::from_utf8_unchecked(core::slice::from_raw_parts(ptr, len))
         }
+    }
+
+    pub fn as_cstr(self) -> Result<&'static CStr, MpCStrError> {
+        let bytes = unsafe {
+            let mut len = 0;
+            let ptr = qstr_data(self, &raw mut len);
+            // ptr always contains a null byte at len+1
+            std::slice::from_raw_parts(ptr, len + 1)
+        };
+        CStr::from_bytes_with_nul(bytes).map_err(|e| match e {
+            FromBytesWithNulError::InteriorNul { position } => MpCStrError { position },
+            FromBytesWithNulError::NotNulTerminated => unsafe { unreachable_unchecked() },
+        })
     }
 }

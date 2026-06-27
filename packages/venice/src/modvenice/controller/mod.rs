@@ -4,14 +4,15 @@ pub mod state;
 use std::cell::RefCell;
 
 use argparse::{ArgParser, Args, DefaultParser, IntParser, error_msg};
+use micropython_macros::{class, class_methods};
 use micropython_rs::{
-    class, class_methods,
     except::{Message, raise_stop_iteration, value_error},
     init::token,
     obj::{AttrOp, Obj, ObjBase, ObjTrait, ObjType},
+    print::{Print, PrintKind},
     qstr::Qstr,
 };
-use vex_sdk::{
+use vex_sdk_jumptable::{
     V5_ControllerId, V5_ControllerStatus, vexControllerConnectionStatusGet, vexControllerTextSet,
 };
 use vexide_devices::controller::{Controller, ControllerConnection, ControllerError, ControllerId};
@@ -21,7 +22,7 @@ use crate::{
     alloc::Gc,
     devices,
     modvenice::{
-        Exception, controller::id::ControllerIdObj, device_error, vasyncio::event_loop::WAKE_SIGNAL,
+        Exception, controller::id::ControllerIdObj, device_error, read_only_attr::read_only_attr,
     },
     registry::ControllerGuard,
 };
@@ -43,12 +44,14 @@ impl From<ControllerError> for Exception {
 #[repr(C)]
 pub struct ControllerConnectionObj {
     base: ObjBase,
+    connection: ControllerConnection,
 }
 
 impl ControllerConnectionObj {
-    const fn new() -> Self {
+    const fn new(connection: ControllerConnection) -> Self {
         Self {
             base: ObjBase::new(Self::OBJ_TYPE),
+            connection,
         }
     }
 }
@@ -56,11 +59,20 @@ impl ControllerConnectionObj {
 #[class_methods]
 impl ControllerConnectionObj {
     #[constant]
-    pub const OFFLINE: &Self = &Self::new();
+    pub const OFFLINE: &Self = &Self::new(ControllerConnection::Offline);
     #[constant]
-    pub const TETHERED: &Self = &Self::new();
+    pub const TETHERED: &Self = &Self::new(ControllerConnection::Tethered);
     #[constant]
-    pub const VEX_NET: &Self = &Self::new();
+    pub const VEX_NET: &Self = &Self::new(ControllerConnection::VexNet);
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        print.print(match self.connection {
+            ControllerConnection::Offline => "ControllerConnection.OFFLINE",
+            ControllerConnection::Tethered => "ControllerConnection.TETHERED",
+            ControllerConnection::VexNet => "ControllerConnection.VEX_NET",
+        });
+    }
 }
 
 enum ControllerFuture {
@@ -131,7 +143,7 @@ impl DefaultParser<'_> for Column {
 impl ControllerFutureObj {
     #[iter]
     extern "C" fn iter(self_in: Obj) -> Obj {
-        let this = self_in.try_as_obj::<ControllerFutureObj>().unwrap();
+        let this = self_in.as_obj::<ControllerFutureObj>();
         let mut future = this.future.borrow_mut();
 
         if let ControllerFuture::WaitingForIdle {
@@ -166,7 +178,7 @@ impl ControllerFutureObj {
             }
         }
 
-        Obj::from_static(&WAKE_SIGNAL)
+        Obj::NONE
     }
 }
 
@@ -208,6 +220,7 @@ impl ControllerObj {
     const MAX_LINES: i32 = Controller::MAX_LINES as i32;
 
     #[make_new]
+    #[stub(sig = "(self, id: ControllerId = ControllerId.PRIMARY) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -227,8 +240,11 @@ impl ControllerObj {
     }
 
     #[attr]
+    #[stub(attrs = ["id: ControllerId"])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
-        let AttrOp::Load { result } = op else { return };
+        let AttrOp::Load { result } = op else {
+            read_only_attr::<Self>()
+        };
         result.return_value(match attr.as_str() {
             "id" => Obj::from_static(match self.guard.borrow().id() {
                 ControllerId::Primary => ControllerIdObj::PRIMARY,
@@ -245,6 +261,7 @@ impl ControllerObj {
     }
 
     #[method]
+    #[stub(sig = "(self) -> ControllerConnection")]
     fn get_connection(&self) -> Obj {
         match self.guard.borrow().connection() {
             ControllerConnection::Offline => Obj::from_static(ControllerConnectionObj::OFFLINE),
@@ -289,6 +306,7 @@ impl ControllerObj {
     }
 
     #[method]
+    #[stub(sig = "(self, line: int) -> ControllerFuture")]
     fn clear_line(&self, line: Line) -> ControllerFutureObj {
         ControllerFutureObj {
             future: RefCell::new(ControllerFuture::WaitingForIdle {
@@ -302,6 +320,7 @@ impl ControllerObj {
     }
 
     #[method]
+    #[stub(sig = "(self, line: int) -> None")]
     fn try_clear_line(&self, line: Line) -> Result<(), Exception> {
         Ok(self.guard.borrow_mut().try_clear_line(line.0 as u8)?)
     }
@@ -325,6 +344,7 @@ impl ControllerObj {
     }
 
     #[method(ty = var(min = 4))]
+    #[stub(sig = "(self, text: str, line: int, column: int) -> ControllerFuture")]
     fn set_text(args: &[Obj]) -> Result<ControllerFutureObj, Exception> {
         let (this, text, line, column) = set_text_prelude(args)?;
 
@@ -340,6 +360,7 @@ impl ControllerObj {
     }
 
     #[method(ty = var(min = 4))]
+    #[stub(sig = "(self, text: str, line: int, column: int) -> None")]
     fn try_set_text(args: &[Obj]) -> Result<(), Exception> {
         let (this, text, line, column) = set_text_prelude(args)?;
 

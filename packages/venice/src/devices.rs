@@ -1,13 +1,17 @@
-use std::sync::LazyLock;
+use std::{
+    fmt::Write,
+    sync::{LazyLock, Mutex, MutexGuard},
+};
 
 use argparse::{ArgParser, DefaultParser, IntParser, ParseError, StrParser, error_msg};
 use vexide_devices::{
-    adi::AdiPort, controller::ControllerId, peripherals::Peripherals, smart::SmartPort,
+    adi::AdiPort, controller::ControllerId, display::Display, peripherals::Peripherals,
+    smart::SmartPort,
 };
 
 use crate::registry::{
-    AdiRegistry, ControllerGuard, ControllerRegistry, PortDevice, Registry, RegistryGuard,
-    SmartRegistry,
+    AdiRegistry, ControllerGuard, ControllerRegistry, DeviceOccupiedError, PortDevice, Registry,
+    RegistryGuard, SmartRegistry,
 };
 
 pub struct Devices {
@@ -44,6 +48,8 @@ pub struct Devices {
     pub adi_f: AdiRegistry,
     pub adi_g: AdiRegistry,
     pub adi_h: AdiRegistry,
+
+    pub display: Mutex<Display>,
 }
 
 impl Devices {
@@ -82,6 +88,8 @@ impl Devices {
             adi_f: AdiRegistry::new(peris.adi_f),
             adi_g: AdiRegistry::new(peris.adi_g),
             adi_h: AdiRegistry::new(peris.adi_h),
+
+            display: Mutex::new(peris.display),
         })
     }
 
@@ -194,6 +202,21 @@ pub enum AdiPortNumber {
     H,
 }
 
+impl std::fmt::Display for AdiPortNumber {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::A => f.write_char('a'),
+            Self::B => f.write_char('b'),
+            Self::C => f.write_char('c'),
+            Self::D => f.write_char('d'),
+            Self::E => f.write_char('e'),
+            Self::F => f.write_char('f'),
+            Self::G => f.write_char('g'),
+            Self::H => f.write_char('h'),
+        }
+    }
+}
+
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct AdiPortNumberParser;
 
@@ -234,6 +257,10 @@ impl DefaultParser<'_> for AdiPortNumber {
     type Parser = AdiPortNumberParser;
 }
 
-pub fn lock_adi_port(port: AdiPortNumber) -> AdiPort {
-    REGISTRIES.adi_registry_by_port(port).lock()
+pub fn try_lock_adi_port(port: AdiPortNumber) -> Result<AdiPort, DeviceOccupiedError> {
+    REGISTRIES.adi_registry_by_port(port).try_lock()
+}
+
+pub fn lock_display() -> MutexGuard<'static, Display> {
+    REGISTRIES.display.lock().unwrap()
 }

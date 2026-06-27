@@ -1,6 +1,9 @@
+use std::fmt::Write;
+
+use micropython_macros::{class, class_methods};
 use micropython_rs::{
-    class, class_methods,
     obj::{AttrOp, Obj, ObjBase, ObjTrait},
+    print::{Print, PrintKind},
     qstr::Qstr,
 };
 use vexide_devices::{
@@ -8,7 +11,7 @@ use vexide_devices::{
     smart::vision::VisionObject,
 };
 
-use crate::modvenice::units::rotation::RotationUnitObj;
+use crate::modvenice::{read_only_attr::read_only_attr, units::rotation::RotationUnitObj};
 
 #[class(qstr!(VisionObject))]
 #[repr(C)]
@@ -37,8 +40,19 @@ impl VisionObjectObj {
     }
 
     #[attr]
+    #[stub(attrs = [
+        "source: DetectionSource",
+        "width: int",
+        "height: int",
+        "offset_x: int",
+        "offset_y: int",
+        "center_x: int",
+        "center_y: int",
+    ])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
-        let AttrOp::Load { result } = op else { return };
+        let AttrOp::Load { result } = op else {
+            read_only_attr::<Self>()
+        };
         result.return_value(match attr.as_str() {
             "source" => self.source,
             "width" => (self.width as i32).into(),
@@ -55,5 +69,16 @@ impl VisionObjectObj {
     fn get_angle(&self, unit: &RotationUnitObj) -> f32 {
         unit.unit()
             .angle_to_float(Angle::from_radians(self.angle_radians as f64))
+    }
+
+    #[printer]
+    fn printer(&self, print: &mut Print, kind: PrintKind) {
+        print.print("VisionObject(source=");
+        let _ = self.source.print(print, kind);
+        let _ = write!(
+            print,
+            ", width={}, height={}, offset_x={}, offset_y={}, center_x={}, center_y={})",
+            self.width, self.height, self.offset.x, self.offset.y, self.center.x, self.center.y
+        );
     }
 }

@@ -17,8 +17,6 @@ pub struct Gc {
     pub token: InitToken,
 }
 
-// this may actually be 32 instead of 4, because gc blocks are 32 bytes wide
-// TODO: check by allocating and checking the maximum pointer alignment
 pub const GC_MAX_ALIGN: usize = 4;
 
 impl Gc {

@@ -1,4 +1,8 @@
-use std::{ffi::c_void, marker::PhantomData, ptr::NonNull};
+use std::{
+    ffi::{CStr, c_int, c_void},
+    marker::PhantomData,
+    ptr::NonNull,
+};
 
 use bitflags::bitflags;
 use thiserror::Error;
@@ -7,7 +11,7 @@ use crate::{
     gc::{self},
     init::{InitToken, token},
     map::Dict,
-    ops::{BinaryOp, UnaryOp},
+    ops::{BinaryOpCode, UnaryOpCode},
     print::{Print, PrintKind},
     qstr::Qstr,
     str::Str,
@@ -277,13 +281,22 @@ bitflags! {
     }
 }
 
+#[repr(C)]
+pub struct BufferInfo {
+    pub buf: *mut c_void,
+    pub len: usize,
+    pub typecode: c_int,
+}
+
+pub type BufferFn = unsafe extern "C" fn(obj: Obj, bufinfo: *mut BufferInfo, flags: u32) -> i32;
+
 pub type MakeNewFn =
     unsafe extern "C" fn(ty: *const ObjType, n_args: usize, n_kw: usize, args: *const Obj) -> Obj;
 pub type PrintFn = unsafe extern "C" fn(print: *const Print, o: Obj, kind: PrintKind);
 pub type CallFn =
     unsafe extern "C" fn(fun: Obj, n_args: usize, n_kw: usize, args: *const Obj) -> Obj;
-pub type UnaryOpFn = extern "C" fn(op: UnaryOp, obj: Obj) -> Obj;
-pub type BinaryOpFn = extern "C" fn(op: BinaryOp, obj_1: Obj, obj_2: Obj) -> Obj;
+pub type UnaryOpFn = extern "C" fn(op: UnaryOpCode, obj: Obj) -> Obj;
+pub type BinaryOpFn = extern "C" fn(op: BinaryOpCode, obj_1: Obj, obj_2: Obj) -> Obj;
 pub type AttrFn = unsafe extern "C" fn(self_in: Obj, attr: Qstr, dest: *mut Obj);
 pub type SubscrFn = extern "C" fn(self_in: Obj, index: Obj, value: Obj) -> Obj;
 
@@ -293,6 +306,21 @@ pub type SubscrFn = extern "C" fn(self_in: Obj, index: Obj, value: Obj) -> Obj;
 #[derive(Debug, Clone, Copy)]
 pub struct MakeNew {
     f: MakeNewFn,
+}
+
+/// A safe [`PrintFn`]. This type can be constructed using the unsafe function [`Printer::new`],
+/// whose safety bound is that the [`PrintFn`] passsed in is sound when called with valid
+/// arguments.
+pub struct Printer {
+    f: PrintFn,
+}
+
+pub struct UnaryOp {
+    f: UnaryOpFn,
+}
+
+pub struct BinaryOp {
+    f: BinaryOpFn,
 }
 
 /// A safe [`AttrFn`]. This type can be constructed using the unsafe function [`AttrFn::new`],
@@ -382,6 +410,27 @@ impl MakeNew {
     }
 }
 
+impl UnaryOp {
+    pub const fn new(f: UnaryOpFn) -> Self {
+        Self { f }
+    }
+}
+
+impl BinaryOp {
+    pub const fn new(f: BinaryOpFn) -> Self {
+        Self { f }
+    }
+}
+
+impl Printer {
+    /// # Safety
+    ///
+    /// `f` must be sound when called with valid arguments.
+    pub const unsafe fn new(f: PrintFn) -> Self {
+        Self { f }
+    }
+}
+
 impl Attr {
     /// # Safety
     ///
@@ -462,6 +511,51 @@ macro_rules! make_new_from_fn {
     }};
 }
 
+pub fn unary_op_trampoline<F, O>(f: F, op: UnaryOpCode, obj: Obj) -> Obj
+where
+    F: FnOnce(UnaryOpCode, &O) -> Obj,
+    Obj: AsRef<O>,
+{
+    f(op, obj.as_ref())
+}
+
+#[macro_export]
+macro_rules! unary_op_from_fn {
+    ($f:expr) => {{
+        extern "C" fn trampoline(
+            op: $crate::ops::UnaryOpCode,
+            obj: $crate::obj::Obj,
+        ) -> $crate::obj::Obj {
+            $crate::obj::unary_op_trampoline($f, op, obj)
+        }
+
+        $crate::obj::UnaryOp::new(trampoline)
+    }};
+}
+
+pub fn binary_op_trampoline<F, O>(f: F, op: BinaryOpCode, lhs: Obj, rhs: Obj) -> Obj
+where
+    F: FnOnce(BinaryOpCode, &O, Obj) -> Obj,
+    Obj: AsRef<O>,
+{
+    f(op, lhs.as_ref(), rhs)
+}
+
+#[macro_export]
+macro_rules! binary_op_from_fn {
+    ($f:expr) => {{
+        extern "C" fn trampoline(
+            op: $crate::ops::BinaryOpCode,
+            lhs: $crate::obj::Obj,
+            rhs: $crate::obj::Obj,
+        ) -> $crate::obj::Obj {
+            $crate::obj::binary_op_trampoline($f, op, lhs, rhs)
+        }
+
+        $crate::obj::BinaryOp::new(trampoline)
+    }};
+}
+
 pub unsafe fn attr_trampoline<F, O>(f: F, self_in: Obj, attr: Qstr, dest: *mut Obj)
 where
     F: FnOnce(&O, Qstr, AttrOp),
@@ -513,6 +607,33 @@ macro_rules! attr_from_fn {
         }
 
         unsafe { $crate::obj::Attr::new(trampoline) }
+    }};
+}
+
+pub unsafe fn printer_trampoline<F, O>(f: F, print: *const Print, o: Obj, kind: PrintKind)
+where
+    F: FnOnce(&O, &mut Print, PrintKind),
+    Obj: AsRef<O>,
+{
+    f(
+        o.as_ref(),
+        unsafe { &mut *print.cast_mut() }, // probably not 100% sound, but considering the platform it doesn't matter
+        kind,
+    )
+}
+
+#[macro_export]
+macro_rules! printer_from_fn {
+    ($f:expr) => {{
+        unsafe extern "C" fn trampoline(
+            print: *const $crate::print::Print,
+            o: $crate::obj::Obj,
+            kind: $crate::print::PrintKind,
+        ) {
+            unsafe { $crate::obj::printer_trampoline($f, print, o, kind) }
+        }
+
+        unsafe { $crate::obj::Printer::new(trampoline) }
     }};
 }
 
@@ -614,6 +735,11 @@ impl ObjType {
     pub fn locals_dict(&self) -> Option<&Dict> {
         self.slot_value_raw(Slot::LocalsDict)
             .map(|ptr| unsafe { &*(ptr as *const Dict) })
+    }
+
+    pub fn print(&self) -> Option<PrintFn> {
+        self.slot_value_raw(Slot::Print)
+            .map(|ptr| unsafe { std::mem::transmute(ptr) })
     }
 }
 
@@ -721,11 +847,23 @@ impl ObjFullType {
         unsafe { self.set_make_new_raw(make_new.f) }
     }
 
+    pub const fn set_unary_op(self, unary_op: UnaryOp) -> Self {
+        self.set_unary_op_raw(unary_op.f)
+    }
+
+    pub const fn set_binary_op(self, binary_op: BinaryOp) -> Self {
+        self.set_binary_op_raw(binary_op.f)
+    }
+
     /// Sets the [`Attr`] slot.
     ///
     /// [`Attr`]: [`Slot::Attr`]
     pub const fn set_attr(self, attr: Attr) -> Self {
         unsafe { self.set_attr_raw(attr.f) }
+    }
+
+    pub const fn set_printer(self, printer: Printer) -> Self {
+        unsafe { self.set_print_raw(printer.f) }
     }
 
     /// Sets the [`Subscr`] slot.
@@ -830,6 +968,18 @@ impl From<&'static ObjType> for ObjBase {
 #[derive(Debug, Error)]
 #[error("gc allocation failed")]
 pub struct GcError;
+
+#[derive(Debug, Clone, Copy, Error)]
+#[error("nul byte found at byte {position}")]
+pub struct MpCStrError {
+    pub(crate) position: usize,
+}
+
+impl MpCStrError {
+    pub fn position(&self) -> usize {
+        self.position
+    }
+}
 
 impl Obj {
     /// The null constant. This is used internally by MicroPython to indicate sentinel values. In
@@ -959,7 +1109,7 @@ impl Obj {
     }
 
     pub fn is(self, ty: &ObjType) -> bool {
-        self.obj_type().map(|t| ty == t).unwrap_or(false)
+        self.obj_type() == ty
     }
 
     pub fn ty(self) -> Option<repr_c::Ty> {
@@ -1019,16 +1169,14 @@ impl Obj {
     /// Returns `Some(ptr)` if the [`Obj`] is a pointer object.
     /// Returns `None` if it is not.
     pub fn try_as_obj_raw<T: ObjTrait>(self) -> Option<NonNull<T>> {
-        if let Some(ty) = self.obj_type()
-            && ty == T::OBJ_TYPE
-        {
+        if self.obj_type() == T::OBJ_TYPE {
             Some(NonNull::new(self.0 as *mut T).unwrap())
         } else {
             None
         }
     }
 
-    /// Returns `Some(&T)` if the [`Obj`] is a pointer object.
+    /// Returns `Some(&T)` if the [`Obj`] is a pointer object to `T`.
     /// Returns `None` if it is not.
     pub fn try_as_obj<T: ObjTrait>(&self) -> Option<&T> {
         self.try_as_obj_raw().map(|ptr| unsafe { ptr.as_ref() })
@@ -1037,12 +1185,19 @@ impl Obj {
     /// Returns `Some(&T)` if the [`Obj`] is a pointer object to `T` or is coercable to `T`.
     /// Returns `None` if it is not.
     pub fn try_as_obj_or_coerce<T: ObjTrait>(&self) -> Option<&T> {
-        let ty = self.obj_type()?;
+        let ty = self.obj_type();
         if ty == T::OBJ_TYPE || T::coercable(ty) {
             Some(unsafe { &*(self.0 as *const T) })
         } else {
             None
         }
+    }
+
+    /// Returns `&T` if the [`Obj`] is a pointer object to `T`.
+    /// Panics on failure.
+    pub fn as_obj<T: ObjTrait>(&self) -> &T {
+        self.try_as_obj()
+            .unwrap_or_else(|| panic!("Couldn't cast `Obj` to pointer object."))
     }
 
     /// Assumes the [`Obj`] is an integer object and extracts the integer value out of it.
@@ -1078,38 +1233,58 @@ impl Obj {
         None
     }
 
-    // TODO: is this really static?
-    pub fn obj_type(&self) -> Option<&ObjType> {
-        if self.is_ptr() && !self.is_null() {
-            let ptr = self.0 as *const ObjBase;
-            Some(unsafe { &*(*ptr).r#type })
-        } else {
-            None
+    pub fn get_cstr(&self) -> Option<Result<&CStr, MpCStrError>> {
+        if let Some(qstr) = self.try_to_qstr() {
+            return Some(qstr.as_cstr());
         }
+
+        if let Some(str) = Self::try_as_obj::<Str>(self) {
+            return Some(str.as_cstr());
+        }
+
+        None
+    }
+
+    // TODO: is this really static?
+    pub fn obj_type(&self) -> &ObjType {
+        unsafe extern "C" {
+            fn mp_obj_get_type(o_in: Obj) -> *const ObjType;
+        }
+
+        unsafe { &*mp_obj_get_type(*self) }
     }
 }
 
 /// Object call operation error.
-#[derive(Debug)]
-pub enum CallError {
-    /// The object is a non-callable primitive.
-    PrimitiveObj,
-    /// The object's call slot is not defined.
-    NoCallSlot,
-}
+#[derive(Debug, Error)]
+#[error("object is not callable")]
+pub struct CallError;
+
+/// Object print operation error.
+#[derive(Debug, Error)]
+#[error("object is not callable")]
+pub struct PrintError;
 
 impl Obj {
     pub fn call(&self, n_kw: usize, args: &[Obj]) -> Result<Obj, CallError> {
-        let ty = self.obj_type().ok_or(CallError::PrimitiveObj)?;
-        let call_ptr = ty.slot_value_raw(Slot::Call).ok_or(CallError::NoCallSlot)? as *const CallFn;
-        let ret = unsafe { (*call_ptr)(*self, args.len() - n_kw, n_kw, args.as_ptr()) };
+        let ty = self.obj_type();
+        let call_fn = ty.slot_value_raw(Slot::Call).ok_or(CallError)?;
+        let call_fn: CallFn = unsafe { std::mem::transmute(call_fn) };
+        let ret = unsafe { call_fn(*self, args.len() - n_kw, n_kw, args.as_ptr()) };
         Ok(ret)
     }
 
     pub fn is_callable(&self) -> bool {
-        self.obj_type()
-            .and_then(|ty| ty.slot_value_raw(Slot::Call))
-            .is_some()
+        unsafe extern "C" {
+            fn mp_obj_is_callable(o_in: Obj) -> bool;
+        }
+        unsafe { mp_obj_is_callable(*self) }
+    }
+
+    pub fn print(&self, print: &mut Print, kind: PrintKind) -> Result<(), PrintError> {
+        let print_fn = self.obj_type().print().ok_or(PrintError)?;
+        unsafe { print_fn(print as *mut Print, *self, kind) }
+        Ok(())
     }
 }
 

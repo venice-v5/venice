@@ -1,6 +1,7 @@
+use micropython_macros::{class, class_methods};
 use micropython_rs::{
-    class, class_methods,
     obj::{ObjBase, ObjTrait},
+    print::{Print, PrintKind},
 };
 use vexide_devices::smart::motor::BrakeMode;
 
@@ -29,5 +30,14 @@ impl BrakeModeObj {
 
     pub const fn mode(&self) -> BrakeMode {
         self.mode
+    }
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        print.print(match self.mode {
+            BrakeMode::Brake => "BrakeMode.BRAKE",
+            BrakeMode::Coast => "BrakeMode.COAST",
+            BrakeMode::Hold => "BrakeMode.HOLD",
+        });
     }
 }

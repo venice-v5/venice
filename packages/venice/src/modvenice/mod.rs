@@ -1,13 +1,19 @@
 mod adi;
 mod ai_vision;
+mod battery;
+mod color;
 mod competition;
 mod controller;
+mod display;
 mod distance_sensor;
+mod electromagnet;
 mod gps;
 mod imu;
+mod link;
 mod math;
 mod motor;
 mod optical;
+mod read_only_attr;
 mod rotation_sensor;
 mod serial;
 mod units;
@@ -24,32 +30,46 @@ use micropython_rs::{
     module::Module,
     obj::{Obj, ObjTrait},
 };
-use vex_sdk::{
-    V5_DeviceT, V5_DeviceType, V5_MAX_DEVICE_PORTS, vexDeviceGetByIndex, vexDeviceGetStatus,
-};
+use vex_sdk::V5_MAX_DEVICE_PORTS;
+use vex_sdk_jumptable::{V5_DeviceT, V5_DeviceType, vexDeviceGetByIndex, vexDeviceGetStatus};
 use vexide_devices::smart::{PortError, SmartDeviceType};
 
 use crate::modvenice::{
     adi::{
+        accelerometer::{AdiAccelerometerObj, SensitivityObj},
+        addrled::AdiAddrLedObj,
+        analog::AdiAnalogInObj,
+        digital::{AdiDigitalInObj, AdiDigitalOutObj},
+        encoder::AdiEncoderObj,
+        expander::{AdiExpanderObj, AdiExpanderPortObj},
         gyroscope::{AdiGyroscopeFuture, AdiGyroscopeObj},
+        light_sensor::AdiLightSensorObj,
+        line_tracker::AdiLineTrackerObj,
         motor::AdiMotorObj,
+        potentiometer::{AdiPotentiometerObj, PotentiometerTypeObj},
+        pwm::AdiPwmOutObj,
+        range_finder::AdiRangeFinderObj,
+        servo::AdiServoObj,
     },
     ai_vision::{
-        AiVisionSensorObj, ai_vision_color::AiVisionColorObj,
-        ai_vision_color_code::AiVisionColorCodeObj,
-        ai_vision_detection_mode::AiVisionDetectionModeObj, ai_vision_flags::AiVisionFlagsObj,
-        ai_vision_object,
+        AiVisionSensorObj, color::AiVisionColorObj, color_code::AiVisionColorCodeObj,
+        detection_mode::AiVisionDetectionModeObj, flags::AiVisionFlagsObj,
     },
+    battery::BATTERY_DICT,
+    color::ColorObj,
     competition::{Competition, CompetitionRuntime},
     controller::{
         ControllerObj,
         id::ControllerIdObj,
         state::{ButtonStateObj, ControllerStateObj, JoystickStateObj},
     },
+    display::DISPLAY_DICT,
     distance_sensor::{DistanceSensorObj, distance_object::DistanceObjectObj},
+    electromagnet::ElectromagnetObj,
     gps::GpsSensorObj,
     imu::{InertialOrientationObj, InertialSensorObj},
-    math::{EulerAngles, Point2, Quaternion, Vec3},
+    link::{LinkTypeObj, RadioLinkObj},
+    math::{EulerZYX, Point2, Quaternion, Vec3},
     motor::{
         MotorObj, brake::BrakeModeObj, direction::DirectionObj, gearset::GearsetObj,
         motor_type::MotorTypeObj,
@@ -72,6 +92,7 @@ use crate::modvenice::{
 
 static DEVICE_ERROR_TYPE: ExceptionType = ExceptionType::new(qstr!(DeviceError), EXCEPTION_TYPE);
 
+#[must_use]
 pub struct Exception(pub micropython_rs::except::Exception);
 
 impl Exception {
@@ -202,10 +223,10 @@ static mut venice_globals: Dict = Dict::new(const_map![
     qstr!(AiVisionDetectionMode) => Obj::from_static(AiVisionDetectionModeObj::OBJ_TYPE),
     qstr!(AiVisionFlags) => Obj::from_static(AiVisionFlagsObj::OBJ_TYPE),
     qstr!(AiVisionSensor) => Obj::from_static(AiVisionSensorObj::OBJ_TYPE),
-    qstr!(AiVisionColorObject) => Obj::from_static(ai_vision_object::Color::OBJ_TYPE),
-    qstr!(AiVisionCodeObject) => Obj::from_static(ai_vision_object::Code::OBJ_TYPE),
-    qstr!(AiVisionAprilTagObject) => Obj::from_static(ai_vision_object::AprilTag::OBJ_TYPE),
-    qstr!(AiVisionModelObject) => Obj::from_static(ai_vision_object::Model::OBJ_TYPE),
+    qstr!(AiVisionColorObject) => Obj::from_static(ai_vision::object::Color::OBJ_TYPE),
+    qstr!(AiVisionCodeObject) => Obj::from_static(ai_vision::object::Code::OBJ_TYPE),
+    qstr!(AiVisionAprilTagObject) => Obj::from_static(ai_vision::object::AprilTag::OBJ_TYPE),
+    qstr!(AiVisionModelObject) => Obj::from_static(ai_vision::object::Model::OBJ_TYPE),
     // competition
     qstr!(Competition) => Obj::from_static(Competition::OBJ_TYPE),
     qstr!(CompetitionRuntime) => Obj::from_static(CompetitionRuntime::OBJ_TYPE),
@@ -230,17 +251,39 @@ static mut venice_globals: Dict = Dict::new(const_map![
     qstr!(VisionSignature) => Obj::from_static(VisionSignatureObj::OBJ_TYPE),
     qstr!(DetectionSource) => Obj::from_static(DetectionSourceObj::OBJ_TYPE),
     qstr!(WhiteBalance) => Obj::from_static(WhiteBalanceObj::OBJ_TYPE),
+    // radio link
+    qstr!(RadioLink) => Obj::from_static(RadioLinkObj::OBJ_TYPE),
+    qstr!(LinkType) => Obj::from_static(LinkTypeObj::OBJ_TYPE),
     // other devices
     qstr!(RotationSensor) => Obj::from_static(RotationSensorObj::OBJ_TYPE),
     qstr!(GpsSensor) => Obj::from_static(GpsSensorObj::OBJ_TYPE),
+    qstr!(Electromagnet) => Obj::from_static(ElectromagnetObj::OBJ_TYPE),
 
     // adi
     qstr!(AdiMotor) => Obj::from_static(AdiMotorObj::OBJ_TYPE),
     qstr!(AdiGyroscope) => Obj::from_static(AdiGyroscopeObj::OBJ_TYPE),
     qstr!(AdiGyroscopeFuture) => Obj::from_static(AdiGyroscopeFuture::OBJ_TYPE),
+    qstr!(AdiDigitalIn) => Obj::from_static(AdiDigitalInObj::OBJ_TYPE),
+    qstr!(AdiDigitalOut) => Obj::from_static(AdiDigitalOutObj::OBJ_TYPE),
+    qstr!(AdiExpander) => Obj::from_static(AdiExpanderObj::OBJ_TYPE),
+    qstr!(AdiExpanderPort) => Obj::from_static(AdiExpanderPortObj::OBJ_TYPE),
+    qstr!(AdiEncoder) => Obj::from_static(AdiEncoderObj::OBJ_TYPE),
+    qstr!(AdiPwmOut) => Obj::from_static(AdiPwmOutObj::OBJ_TYPE),
+    qstr!(AdiAnalogIn) => Obj::from_static(AdiAnalogInObj::OBJ_TYPE),
+    qstr!(AdiAccelerometer) => Obj::from_static(AdiAccelerometerObj::OBJ_TYPE),
+    qstr!(AdiAccelerometerSensitivity) => Obj::from_static(SensitivityObj::OBJ_TYPE),
+    qstr!(AdiLightSensor) => Obj::from_static(AdiLightSensorObj::OBJ_TYPE),
+    qstr!(AdiLineTracker) => Obj::from_static(AdiLineTrackerObj::OBJ_TYPE),
+    qstr!(AdiServo) => Obj::from_static(AdiServoObj::OBJ_TYPE),
+    qstr!(AdiAddrLed) => Obj::from_static(AdiAddrLedObj::OBJ_TYPE),
+    qstr!(AdiPotentiometer) => Obj::from_static(AdiPotentiometerObj::OBJ_TYPE),
+    qstr!(PotentiometerType) => Obj::from_static(PotentiometerTypeObj::OBJ_TYPE),
+    qstr!(AdiRangeFinder) => Obj::from_static(AdiRangeFinderObj::OBJ_TYPE),
 
-    // vasyncio
+    // submodules
     qstr!(vasyncio) => Obj::from_static(&Module::new(VASYNCIO_DICT)),
+    qstr!(battery) => Obj::from_static(&Module::new(BATTERY_DICT)),
+    qstr!(display) => Obj::from_static(&Module::new(DISPLAY_DICT)),
 
     // time
     qstr!(monotonic_time) => Obj::from_static(&FunVarBetween::new(monotonic_time, 0, 1)),
@@ -248,10 +291,17 @@ static mut venice_globals: Dict = Dict::new(const_map![
     // math
     qstr!(Vec3) => Obj::from_static(Vec3::OBJ_TYPE),
     qstr!(Quaternion) => Obj::from_static(Quaternion::OBJ_TYPE),
-    qstr!(EulerAngles) => Obj::from_static(EulerAngles::OBJ_TYPE),
+    qstr!(EulerZYX) => Obj::from_static(EulerZYX::OBJ_TYPE),
     qstr!(Point2) => Obj::from_static(Point2::OBJ_TYPE),
+    // color
+    qstr!(Color) => Obj::from_static(ColorObj::OBJ_TYPE),
 
     // units
     qstr!(RotationUnit) => Obj::from_static(RotationUnitObj::OBJ_TYPE),
-    qstr!(TimeUnit) => Obj::from_static(TimeUnitObj::OBJ_TYPE)
+    qstr!(RADIANS) => Obj::from_static(RotationUnitObj::RADIANS),
+    qstr!(DEGREES) => Obj::from_static(RotationUnitObj::DEGREES),
+    qstr!(TURNS) => Obj::from_static(RotationUnitObj::TURNS),
+    qstr!(TimeUnit) => Obj::from_static(TimeUnitObj::OBJ_TYPE),
+    qstr!(MILLIS) => Obj::from_static(TimeUnitObj::MILLIS),
+    qstr!(SECOND) => Obj::from_static(TimeUnitObj::SECOND),
 ]);

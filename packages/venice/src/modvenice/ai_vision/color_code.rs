@@ -1,9 +1,11 @@
-use std::cell::Cell;
+use std::{cell::Cell, fmt::Write};
 
 use argparse::{Args, PositionalError};
+use micropython_macros::{class, class_methods};
 use micropython_rs::{
-    class, class_methods,
     obj::{Obj, ObjBase, ObjTrait, ObjType, SubscrOp},
+    ops::BinaryOpCode,
+    print::{Print, PrintKind},
 };
 use vexide_devices::smart::ai_vision::AiVisionColorCode;
 
@@ -20,6 +22,7 @@ pub struct AiVisionColorCodeObj {
 
 impl AiVisionColorCodeObj {
     pub fn code(&self) -> AiVisionColorCode {
+        // WHAT DOES HE EVEN DO?
         AiVisionColorCode::new::<7>(self.code.get())
     }
 
@@ -35,9 +38,13 @@ impl AiVisionColorCodeObj {
     }
 }
 
+// TODO: refactor this API to be more practical for competition use
 #[class_methods]
 impl AiVisionColorCodeObj {
     #[make_new]
+    #[stub(
+        sig = "(self, color1: int, color2: int | None = None, color3: int | None = None, color4: int | None = None, color5: int | None = None, color6: int | None = None, color7: int | None = None) -> None"
+    )]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -90,5 +97,29 @@ impl AiVisionColorCodeObj {
                 }
             }
         }
+    }
+
+    #[binary_op]
+    fn binary_op(op: BinaryOpCode, lhs: &Self, rhs: Obj) -> Obj {
+        match op {
+            BinaryOpCode::Equal => {
+                Obj::from_bool(lhs.code.get() == rhs.as_obj::<Self>().code.get())
+            }
+            _ => Obj::NULL,
+        }
+    }
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        let code = self.code.get();
+        let _ = write!(print, "AiVisionColorCode(color1={}", code[0].unwrap());
+
+        for (i, value) in code.iter().enumerate().skip(1) {
+            if let Some(value) = value {
+                let _ = write!(print, ", color{}={value}", i + 1);
+            }
+        }
+
+        print.print(")");
     }
 }

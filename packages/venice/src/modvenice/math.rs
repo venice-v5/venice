@@ -1,16 +1,22 @@
-use std::cell::Cell;
+use std::{cell::Cell, fmt::Write};
 
 use argparse::{ArgType, Args, error_msg};
+use micropython_macros::{class, class_methods};
 use micropython_rs::{
-    class, class_methods,
-    except::type_error,
+    except::{ZERO_DIVISION_ERROR_TYPE, raise_msg, type_error},
     init::token,
     obj::{AttrOp, Obj, ObjBase, ObjTrait, ObjType},
+    ops::{BinaryOpCode, UnaryOpCode},
+    print::{Print, PrintKind},
     qstr::Qstr,
 };
+use mint::{EulerAngles, IntraZYX};
 use vexide_devices::math::Angle;
 
-use crate::modvenice::{Exception, units::rotation::RotationUnit};
+use crate::{
+    modvenice::{Exception, units::rotation::RotationUnit},
+    obj::alloc_obj,
+};
 
 #[class(qstr!(Vec3))]
 #[repr(C)]
@@ -35,15 +41,12 @@ pub struct Quaternion {
     w: Cell<f32>,
 }
 
-#[class(qstr!(EulerAngles))]
+#[class(qstr!(EulerZYX))]
 #[repr(C)]
-pub struct EulerAngles {
+pub struct EulerZYX {
     base: ObjBase,
-    // z
     yaw: Cell<f32>,
-    // y
     pitch: Cell<f32>,
-    // x
     roll: Cell<f32>,
 }
 
@@ -67,7 +70,31 @@ impl Vec3 {
         }
     }
 
+    #[make_new]
+    #[stub(sig = "(self, x: float = 0.0, y: float = 0.0, z: float = 0.0) -> None")]
+    fn make_new(
+        ty: &'static ObjType,
+        n_pos: usize,
+        n_kw: usize,
+        args: &[Obj],
+    ) -> Result<Self, Exception> {
+        let mut reader = Args::new(n_pos, n_kw, args).reader();
+        reader.assert_npos(0, 3).assert_nkw(0, 0);
+
+        let x = reader.next_positional_or(0.0)?;
+        let y = reader.next_positional_or(0.0)?;
+        let z = reader.next_positional_or(0.0)?;
+
+        Ok(Self {
+            base: ty.into(),
+            x: x.into(),
+            y: y.into(),
+            z: z.into(),
+        })
+    }
+
     #[attr]
+    #[stub(attrs = ["x: float", "y: float", "z: float"])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let coord = match attr.as_str() {
             "x" => &self.x,
@@ -78,21 +105,167 @@ impl Vec3 {
 
         handle_op(op, coord);
     }
+
+    #[unary_op]
+    fn unary_op(op: UnaryOpCode, obj: &Obj) -> Obj {
+        match op {
+            UnaryOpCode::Positive => *obj,
+            UnaryOpCode::Negative => {
+                let vec3 = obj.as_obj::<Self>();
+                alloc_obj(Self {
+                    base: Self::OBJ_TYPE.into(),
+                    x: Cell::new(-vec3.x.get()),
+                    y: Cell::new(-vec3.y.get()),
+                    z: Cell::new(-vec3.z.get()),
+                })
+            }
+            _ => Obj::NULL,
+        }
+    }
+
+    fn eq(lhs: &Self, rhs: &Self) -> bool {
+        lhs.x.get() == rhs.x.get() && lhs.y.get() == rhs.y.get() && lhs.z.get() == rhs.z.get()
+    }
+
+    #[binary_op]
+    fn binary_op(op: BinaryOpCode, lhs: &Self, rhs: Obj) -> Obj {
+        match op {
+            BinaryOpCode::Equal => Obj::from_bool(Self::eq(lhs, rhs.try_as_obj::<Self>().unwrap())),
+            BinaryOpCode::Add | BinaryOpCode::InplaceAdd => {
+                let rhs = match rhs.try_as_obj::<Self>() {
+                    Some(r) => r,
+                    _ => return Obj::NULL,
+                };
+
+                Obj::from(Self {
+                    base: Self::OBJ_TYPE.into(),
+                    x: Cell::new(lhs.x.get() + rhs.x.get()),
+                    y: Cell::new(lhs.y.get() + rhs.y.get()),
+                    z: Cell::new(lhs.z.get() + rhs.z.get()),
+                })
+            }
+            BinaryOpCode::Subtract | BinaryOpCode::InplaceSubtract => {
+                let rhs = match rhs.try_as_obj::<Self>() {
+                    Some(r) => r,
+                    _ => return Obj::NULL,
+                };
+
+                Obj::from(Self {
+                    base: Self::OBJ_TYPE.into(),
+                    x: Cell::new(lhs.x.get() - rhs.x.get()),
+                    y: Cell::new(lhs.y.get() - rhs.y.get()),
+                    z: Cell::new(lhs.z.get() - rhs.z.get()),
+                })
+            }
+            BinaryOpCode::Multiply
+            | BinaryOpCode::InplaceMultiply
+            | BinaryOpCode::ReverseMultiply => {
+                let rhs = match rhs
+                    .try_to_float()
+                    .or_else(|| rhs.try_to_int().map(|i| i as f32))
+                {
+                    Some(r) => r,
+                    None => return Obj::NULL,
+                };
+
+                Obj::from(Self {
+                    base: Self::OBJ_TYPE.into(),
+                    x: Cell::new(lhs.x.get() * rhs),
+                    y: Cell::new(lhs.y.get() * rhs),
+                    z: Cell::new(lhs.z.get() * rhs),
+                })
+            }
+            BinaryOpCode::TrueDivide | BinaryOpCode::InplaceTrueDivide => {
+                let rhs = match rhs
+                    .try_to_float()
+                    .or_else(|| rhs.try_to_int().map(|i| i as f32))
+                {
+                    Some(r) => r,
+                    None => return Obj::NULL,
+                };
+
+                if rhs == 0.0 {
+                    raise_msg(token(), ZERO_DIVISION_ERROR_TYPE, c"divison by zero")
+                }
+
+                Obj::from(Self {
+                    base: Self::OBJ_TYPE.into(),
+                    x: Cell::new(lhs.x.get() / rhs),
+                    y: Cell::new(lhs.y.get() / rhs),
+                    z: Cell::new(lhs.z.get() / rhs),
+                })
+            }
+            BinaryOpCode::Power | BinaryOpCode::InplacePower => {
+                let rhs = match rhs
+                    .try_to_float()
+                    .or_else(|| rhs.try_to_int().map(|i| i as f32))
+                {
+                    Some(r) => r,
+                    None => return Obj::NULL,
+                };
+
+                Obj::from(Self {
+                    base: Self::OBJ_TYPE.into(),
+                    x: Cell::new(lhs.x.get().powf(rhs)),
+                    y: Cell::new(lhs.y.get().powf(rhs)),
+                    z: Cell::new(lhs.z.get().powf(rhs)),
+                })
+            }
+            _ => Obj::NULL,
+        }
+    }
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        let _ = write!(
+            print,
+            "Vec3(x={}, y={}, z={})",
+            self.x.get(),
+            self.y.get(),
+            self.z.get()
+        );
+    }
 }
 
 #[class_methods]
 impl Quaternion {
-    pub fn new(q: vexide_devices::math::Quaternion<f64>) -> Self {
+    pub fn new(quat: vexide_devices::math::Quaternion<f64>) -> Self {
         Self {
             base: Self::OBJ_TYPE.into(),
-            x: Cell::new(q.v.x as f32),
-            y: Cell::new(q.v.y as f32),
-            z: Cell::new(q.v.z as f32),
-            w: Cell::new(q.s as f32),
+            x: Cell::new(quat.v.x as f32),
+            y: Cell::new(quat.v.y as f32),
+            z: Cell::new(quat.v.z as f32),
+            w: Cell::new(quat.s as f32),
         }
     }
 
+    #[make_new]
+    #[stub(sig = "(self, w: float = 1.0, x: float = 0.0, y: float = 0.0, z: float = 0.0) -> None")]
+    fn make_new(
+        ty: &'static ObjType,
+        n_pos: usize,
+        n_kw: usize,
+        args: &[Obj],
+    ) -> Result<Self, Exception> {
+        let mut reader = Args::new(n_pos, n_kw, args).reader();
+        reader.assert_npos(0, 4).assert_nkw(0, 0);
+
+        let w = reader.next_positional_or(1.0)?;
+        let x = reader.next_positional_or(0.0)?;
+        let y = reader.next_positional_or(0.0)?;
+        let z = reader.next_positional_or(0.0)?;
+
+        Ok(Self {
+            base: ty.into(),
+            w: w.into(),
+            x: x.into(),
+            y: y.into(),
+            z: z.into(),
+        })
+    }
+
     #[attr]
+    #[stub(attrs = ["w: float", "x: float", "y: float", "z: float"])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let val = match attr.as_str() {
             "x" => &self.x,
@@ -104,11 +277,38 @@ impl Quaternion {
 
         handle_op(op, val);
     }
+
+    fn eq(lhs: &Self, rhs: &Self) -> bool {
+        lhs.w.get() == rhs.w.get()
+            && lhs.x.get() == rhs.x.get()
+            && lhs.y.get() == rhs.y.get()
+            && lhs.z.get() == rhs.z.get()
+    }
+
+    #[binary_op]
+    fn binary_op(op: BinaryOpCode, lhs: &Self, rhs: Obj) -> Obj {
+        match op {
+            BinaryOpCode::Equal => Obj::from_bool(Self::eq(lhs, rhs.as_obj())),
+            _ => Obj::NULL,
+        }
+    }
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        let _ = write!(
+            print,
+            "Quaternion(w={}, x={}, y={}, z={})",
+            self.w.get(),
+            self.x.get(),
+            self.y.get(),
+            self.z.get()
+        );
+    }
 }
 
 #[class_methods]
-impl EulerAngles {
-    pub fn new<B>(e: vexide_devices::math::EulerAngles<Angle, B>, unit: RotationUnit) -> Self {
+impl EulerZYX {
+    pub fn new(e: EulerAngles<Angle, IntraZYX>, unit: RotationUnit) -> Self {
         Self {
             base: ObjBase::new(Self::OBJ_TYPE),
             yaw: Cell::new(unit.angle_to_float(e.b)),
@@ -117,22 +317,8 @@ impl EulerAngles {
         }
     }
 
-    #[attr]
-    fn attr(&self, attr: Qstr, op: AttrOp) {
-        let val = match attr.as_str() {
-            "yaw" | "z" => &self.yaw,
-            "pitch" | "y" => &self.pitch,
-            "roll" | "x" => &self.roll,
-            _ => return,
-        };
-
-        handle_op(op, val);
-    }
-}
-
-#[class_methods]
-impl Point2 {
     #[make_new]
+    #[stub(sig = "(self, yaw: float = 0.0, pitch: float = 0.0, roll: float = 0.0) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -140,19 +326,84 @@ impl Point2 {
         args: &[Obj],
     ) -> Result<Self, Exception> {
         let mut reader = Args::new(n_pos, n_kw, args).reader();
-        reader.assert_npos(2, 2).assert_nkw(0, 0);
+        reader.assert_npos(0, 3).assert_nkw(0, 0);
 
-        let x = reader.next_positional()?;
-        let y = reader.next_positional()?;
+        let yaw = reader.next_positional_or(0.0)?;
+        let pitch = reader.next_positional_or(0.0)?;
+        let roll = reader.next_positional_or(0.0)?;
 
         Ok(Self {
-            base: ObjBase::new(ty),
-            x: Cell::new(x),
-            y: Cell::new(y),
+            base: ty.into(),
+            yaw: yaw.into(),
+            pitch: pitch.into(),
+            roll: roll.into(),
         })
     }
 
     #[attr]
+    #[stub(attrs = ["yaw: float", "pitch: float", "roll: float"])]
+    fn attr(&self, attr: Qstr, op: AttrOp) {
+        let val = match attr.as_str() {
+            "yaw" => &self.yaw,
+            "pitch" => &self.pitch,
+            "roll" => &self.roll,
+            _ => return,
+        };
+
+        handle_op(op, val);
+    }
+
+    fn eq(lhs: &Self, rhs: &Self) -> bool {
+        lhs.yaw.get() == rhs.yaw.get()
+            && lhs.pitch.get() == rhs.pitch.get()
+            && lhs.roll.get() == rhs.roll.get()
+    }
+
+    #[binary_op]
+    fn binary_op(op: BinaryOpCode, lhs: &Self, rhs: Obj) -> Obj {
+        match op {
+            BinaryOpCode::Equal => Obj::from_bool(Self::eq(lhs, rhs.as_obj())),
+            _ => Obj::NULL,
+        }
+    }
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        let _ = write!(
+            print,
+            "EulerZYX(yaw={}, pitch={}, roll={})",
+            self.yaw.get(),
+            self.pitch.get(),
+            self.roll.get(),
+        );
+    }
+}
+
+#[class_methods]
+impl Point2 {
+    #[make_new]
+    #[stub(sig = "(self, x: float = 0.0, y: float = 0.0) -> None")]
+    fn make_new(
+        ty: &'static ObjType,
+        n_pos: usize,
+        n_kw: usize,
+        args: &[Obj],
+    ) -> Result<Self, Exception> {
+        let mut reader = Args::new(n_pos, n_kw, args).reader();
+        reader.assert_npos(0, 2).assert_nkw(0, 0);
+
+        let x = reader.next_positional_or(0.0)?;
+        let y = reader.next_positional_or(0.0)?;
+
+        Ok(Self {
+            base: ty.into(),
+            x: x.into(),
+            y: y.into(),
+        })
+    }
+
+    #[attr]
+    #[stub(attrs = ["x: float", "y: float"])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let coord = match attr.as_str() {
             "x" => &self.x,
@@ -177,6 +428,23 @@ impl Point2 {
             y: self.y.get() as f64,
         }
     }
+
+    fn eq(lhs: &Self, rhs: &Self) -> bool {
+        lhs.x.get() == rhs.x.get() && lhs.y.get() == rhs.y.get()
+    }
+
+    #[binary_op]
+    fn binary_op(op: BinaryOpCode, lhs: &Self, rhs: Obj) -> Obj {
+        match op {
+            BinaryOpCode::Equal => Obj::from_bool(Self::eq(lhs, rhs.as_obj())),
+            _ => Obj::NULL,
+        }
+    }
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        let _ = write!(print, "Point2(x={}, y={})", self.x.get(), self.y.get());
+    }
 }
 
 impl From<vexide_devices::math::Point2<f64>> for Point2 {
@@ -185,7 +453,7 @@ impl From<vexide_devices::math::Point2<f64>> for Point2 {
     }
 }
 
-fn handle_op(op: AttrOp, val: &Cell<f32>) {
+pub fn handle_op(op: AttrOp, val: &Cell<f32>) {
     match op {
         AttrOp::Load { result } => result.return_value(Obj::from_float(val.get())),
         AttrOp::Store { src, result } => {

@@ -1,15 +1,20 @@
+use std::fmt::Write;
+
 use argparse::{ArgType, Args, PositionalError};
+use micropython_macros::{class, class_methods};
 use micropython_rs::{
-    class, class_methods,
     except::type_error,
     init::token,
     obj::{AttrOp, Obj, ObjBase, ObjTrait, ObjType},
+    ops::BinaryOpCode,
+    print::{Print, PrintKind},
     qstr::Qstr,
 };
-use vexide_devices::smart::vision::DetectionSource;
+use vexide_devices::smart::vision::{DetectionSource, VisionCode};
 
 use crate::modvenice::{
     Exception,
+    read_only_attr::read_only_attr,
     vision::{SignatureId, code::VisionCodeObj},
 };
 
@@ -42,6 +47,7 @@ pub struct Line {
 #[class_methods]
 impl DetectionSourceObj {
     #[make_new]
+    #[stub(sig = "(self) -> None")]
     fn make_new(_: &ObjType, _: usize, _: usize, _: &[Obj]) {
         type_error(c"DetectionSource is an abstract base class; use a variant like DetectionSource.Signature").raise(token());
     }
@@ -60,6 +66,7 @@ impl Signature {
     const PARENT: &ObjType = DetectionSourceObj::OBJ_TYPE;
 
     #[make_new]
+    #[stub(sig = "(self, id: int) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -78,12 +85,28 @@ impl Signature {
     }
 
     #[attr]
+    #[stub(attrs = ["id: int"])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
-        let AttrOp::Load { result } = op else { return };
+        let AttrOp::Load { result } = op else {
+            read_only_attr::<Self>()
+        };
         result.return_value(match attr.as_str() {
             "id" => self.id as i32,
             _ => return,
         });
+    }
+
+    #[binary_op]
+    fn binary_op(op: BinaryOpCode, lhs: &Self, rhs: Obj) -> Obj {
+        match op {
+            BinaryOpCode::Equal => Obj::from_bool(lhs.id == rhs.as_obj::<Self>().id),
+            _ => Obj::NULL,
+        }
+    }
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        let _ = write!(print, "DetectionSource.Signature(id={})", self.id);
     }
 }
 
@@ -93,6 +116,7 @@ impl Code {
     const PARENT: &ObjType = DetectionSourceObj::OBJ_TYPE;
 
     #[make_new]
+    #[stub(sig = "(self, code: VisionCode) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -118,13 +142,35 @@ impl Code {
         }
     }
 
+    fn code(&self) -> VisionCode {
+        self.code.as_obj::<VisionCodeObj>().code()
+    }
+
     #[attr]
+    #[stub(attrs = ["code: VisionCode"])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
-        let AttrOp::Load { result } = op else { return };
+        let AttrOp::Load { result } = op else {
+            read_only_attr::<Self>()
+        };
         result.return_value(match attr.as_str() {
             "code" => self.code,
             _ => return,
         });
+    }
+
+    #[binary_op]
+    fn binary_op(op: BinaryOpCode, lhs: &Self, rhs: Obj) -> Obj {
+        match op {
+            BinaryOpCode::Equal => Obj::from_bool(lhs.code() == rhs.as_obj::<Self>().code()),
+            _ => Obj::NULL,
+        }
+    }
+
+    #[printer]
+    fn printer(&self, print: &mut Print, kind: PrintKind) {
+        print.print("DetectionSource.Code(code=");
+        let _ = self.code.print(print, kind);
+        print.print(")");
     }
 }
 
@@ -138,6 +184,7 @@ impl Line {
     };
 
     #[make_new]
+    #[stub(sig = "(self) -> None")]
     fn make_new(_: &ObjType, _: usize, _: usize, args: &[Obj]) -> Result<Obj, Exception> {
         if args.len() != 0 {
             Err(type_error(
@@ -147,6 +194,11 @@ impl Line {
         } else {
             Ok(Obj::from_static(Self::SELF))
         }
+    }
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        print.print("DetectionSource.Line()");
     }
 }
 

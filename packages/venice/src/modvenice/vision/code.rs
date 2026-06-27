@@ -1,12 +1,16 @@
+use std::fmt::Write;
+
 use argparse::{Args, ArgsReader, PositionalError};
+use micropython_macros::{class, class_methods};
 use micropython_rs::{
-    class, class_methods,
     obj::{AttrOp, Obj, ObjBase, ObjTrait, ObjType},
+    ops::BinaryOpCode,
+    print::{Print, PrintKind},
     qstr::Qstr,
 };
 use vexide_devices::smart::vision::VisionCode;
 
-use crate::modvenice::{Exception, vision::SignatureId};
+use crate::modvenice::{Exception, read_only_attr::read_only_attr, vision::SignatureId};
 
 #[class(qstr!(VisionCode))]
 #[repr(C)]
@@ -29,6 +33,9 @@ impl VisionCodeObj {
     }
 
     #[make_new]
+    #[stub(
+        sig = "(self, sig1: int, sig2: int, sig3: int | None = None, sig4: int | None = None, sig5: int | None = None) -> None"
+    )]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -66,8 +73,17 @@ impl VisionCodeObj {
     }
 
     #[attr]
+    #[stub(attrs = [
+        "sig1: int",
+        "sig2: int",
+        "sig3: int | None",
+        "sig4: int | None",
+        "sig5: int | None",
+    ])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
-        let AttrOp::Load { result } = op else { return };
+        let AttrOp::Load { result } = op else {
+            read_only_attr::<Self>()
+        };
         result.return_value(match attr.as_str() {
             "sig1" => Obj::from(self.code.0 as i32),
             "sig2" => (self.code.1 as i32).into(),
@@ -76,5 +92,32 @@ impl VisionCodeObj {
             "sig5" => self.code.4.map(i32::from).into(),
             _ => return,
         })
+    }
+
+    #[binary_op]
+    fn binary_op(op: BinaryOpCode, lhs: &Self, rhs: Obj) -> Obj {
+        match op {
+            BinaryOpCode::Equal => Obj::from_bool(lhs.code == rhs.as_obj::<Self>().code),
+            _ => Obj::NULL,
+        }
+    }
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        let _ = write!(
+            print,
+            "VisionCode(sig1={}, sig2={}",
+            self.code.0, self.code.1
+        );
+        if let Some(s) = self.code.2 {
+            let _ = write!(print, ", sig3={s}");
+        }
+        if let Some(s) = self.code.3 {
+            let _ = write!(print, ", sig4={s}");
+        }
+        if let Some(s) = self.code.4 {
+            let _ = write!(print, ", sig5={s}");
+        }
+        print.print(")");
     }
 }

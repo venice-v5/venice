@@ -6,8 +6,8 @@ use std::{
     task::{Context, Waker},
 };
 
+use micropython_macros::{class, class_methods};
 use micropython_rs::{
-    class, class_methods,
     errno::{MP_EINVAL, MP_EIO},
     except::raise_stop_iteration,
     fun::{Fun1, Fun2, FunVarBetween},
@@ -28,7 +28,6 @@ use vexide_devices::smart::{
 
 use crate::{
     devices::{PortNumber, lock_port},
-    modvenice::vasyncio::event_loop::WAKE_SIGNAL,
     obj::alloc_obj,
     registry::{RegistryGuard, SmartGuard, UpgradeGuard},
 };
@@ -55,6 +54,7 @@ impl SerialPortObj {
     const MAX_BAUD_RATE: i32 = SerialPort::MAX_BAUD_RATE as i32;
 
     #[method(binding = "static")]
+    #[stub(sig = "(port_number: int, baud_rate: int) -> SerialPortOpenFuture")]
     fn open(port_number: PortNumber, baud_rate: i32) -> SerialPortOpenFutureObj {
         let upgrade = lock_port(port_number, |p| p)
             .start_upgrade()
@@ -143,16 +143,22 @@ impl SerialPortObj {
     };
 
     #[constant(qstr!(read))]
+    #[stub(sig = "(self, size: int = -1) -> bytes")]
     const READ: &FunVarBetween = &mp_stream_read_obj;
     #[constant(qstr!(read1))]
+    #[stub(sig = "(self, size: int = -1) -> bytes")]
     const READ1: &FunVarBetween = &mp_stream_read1_obj;
     #[constant(qstr!(write))]
+    #[stub(sig = "(self, buffer: bytes | bytearray | memoryview) -> int")]
     const WRITE: &FunVarBetween = &mp_stream_write_obj;
     #[constant(qstr!(write1))]
+    #[stub(sig = "(self, buffer: bytes | bytearray | memoryview) -> int")]
     const WRITE1: &Fun2 = &mp_stream_write1_obj;
     #[constant(qstr!(flush))]
+    #[stub(sig = "(self) -> None")]
     const FLUSH: &Fun1 = &mp_stream_flush_obj;
     #[constant(qstr!(ioctl))]
+    #[stub(sig = "(self, request: int, arg: int = 0) -> int")]
     const IOCTL: &FunVarBetween = &mp_stream_ioctl_obj;
 }
 
@@ -182,13 +188,13 @@ impl SerialPortOpenFutureObj {
             }
             std::task::Poll::Pending => {
                 *refmut = Some(upgrade);
-                Obj::from_static(&WAKE_SIGNAL)
+                Obj::NONE
             }
         }
     }
 }
 
-fn err_to_code(_err: std::io::Error) -> c_int {
+pub fn err_to_code(_err: std::io::Error) -> c_int {
     // vexide always returns non-os io errors, so don't bother to check using `raw_os_error`
     MP_EIO
 }

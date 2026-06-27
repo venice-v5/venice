@@ -1,8 +1,8 @@
 use std::cell::Cell;
 
 use argparse::Args;
+use micropython_macros::{class, class_methods};
 use micropython_rs::{
-    class, class_methods,
     except::raise_stop_iteration,
     init::token,
     obj::{Obj, ObjBase, ObjTrait, ObjType},
@@ -40,6 +40,7 @@ impl Sleep {
 #[class_methods]
 impl Sleep {
     #[make_new]
+    #[stub(sig = "(self, interval: float, unit: TimeUnit) -> None")]
     fn make_new(_: &ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Result<Self, Exception> {
         let mut args = Args::new(n_pos, n_kw, args).reader();
         args.assert_npos(2, 2);
@@ -53,7 +54,7 @@ impl Sleep {
 
     #[iter]
     extern "C" fn sleep_iternext(self_in: Obj) -> Obj {
-        let sleep = self_in.try_as_obj::<Sleep>().unwrap();
+        let sleep = self_in.as_obj::<Sleep>();
         if sleep.complete.get() {
             raise_stop_iteration(token(), Obj::NONE);
         } else {

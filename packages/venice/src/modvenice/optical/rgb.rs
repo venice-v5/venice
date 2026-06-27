@@ -1,12 +1,13 @@
+use micropython_macros::{class, class_methods};
 use micropython_rs::{
-    class, class_methods,
-    except::{ATTRIBUTE_ERROR_TYPE, raise_msg},
-    init::token,
     obj::{AttrOp, Obj, ObjBase, ObjTrait},
     qstr::Qstr,
 };
 use vexide_devices::smart::optical::{OpticalRaw, OpticalRgb};
 
+use crate::modvenice::read_only_attr::read_only_attr;
+
+/// RGB data from an `OpticalSensor`.
 #[class(qstr!(OpticalRgb))]
 #[repr(C)]
 pub struct OpticalRgbObj {
@@ -17,6 +18,7 @@ pub struct OpticalRgbObj {
     brightness: f32,
 }
 
+/// Represents the raw RGBC data an `OpticalSensor`.
 #[class(qstr!(OpticalRaw))]
 #[repr(C)]
 pub struct OpticalRawObj {
@@ -40,18 +42,19 @@ impl OpticalRgbObj {
     }
 
     #[attr]
+    #[stub(attrs = ["r: float", "g: float", "b: float", "brightness: float"])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let component = match attr.as_str() {
-            "red" | "r" => self.red,
-            "green" | "g" => self.green,
-            "blue" | "b" => self.blue,
+            "r" => self.red,
+            "g" => self.green,
+            "b" => self.blue,
             "brightness" => self.brightness,
             _ => return,
         };
 
         match op {
             AttrOp::Load { result } => result.return_value(Obj::from_float(component)),
-            _ => raise_msg(token(), ATTRIBUTE_ERROR_TYPE, c"cannot write to OpticalRgb"),
+            _ => read_only_attr::<Self>(),
         }
     }
 }
@@ -69,18 +72,19 @@ impl OpticalRawObj {
     }
 
     #[attr]
+    #[stub(attrs = ["r: int", "g: int", "b: int", "clear: int"])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let component = match attr.as_str() {
-            "red" | "r" => self.red,
-            "green" | "g" => self.green,
-            "blue" | "b" => self.blue,
+            "r" => self.red,
+            "g" => self.green,
+            "b" => self.blue,
             "clear" => self.clear,
             _ => return,
         };
 
         match op {
             AttrOp::Load { result } => result.return_value(Obj::from_int(component as i32)),
-            _ => raise_msg(token(), ATTRIBUTE_ERROR_TYPE, c"cannot write to OpticalRaw"),
+            _ => read_only_attr::<Self>(),
         }
     }
 }

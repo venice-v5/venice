@@ -3,8 +3,8 @@ use std::{
     collections::{binary_heap::BinaryHeap, vec_deque::VecDeque},
 };
 
+use micropython_macros::{class, class_methods, fun};
 use micropython_rs::{
-    class, class_methods,
     except::{RUNTIME_ERROR_TYPE, raise_msg, type_error},
     fun::{Fun1, Fun2},
     generator::{GEN_INSTANCE_TYPE, VmReturnKind, resume_gen},
@@ -43,19 +43,6 @@ impl Ord for Sleeper {
     }
 }
 
-#[class(qstr!(WakeSignal))]
-#[repr(C)]
-pub struct WakeSignal {
-    base: ObjBase,
-}
-
-#[class_methods]
-impl WakeSignal {}
-
-pub static WAKE_SIGNAL: WakeSignal = WakeSignal {
-    base: ObjBase::new(WakeSignal::OBJ_TYPE),
-};
-
 #[class(qstr!(EventLoop))]
 #[repr(C)]
 pub struct EventLoop {
@@ -92,7 +79,7 @@ impl EventLoop {
             task_obj = self.current_task.get()
         }
 
-        let task = task_obj.try_as_obj::<Task>().unwrap();
+        let task = task_obj.as_obj::<Task>();
         if coro.is_null() {
             coro = task.coro();
         }
@@ -119,7 +106,7 @@ impl EventLoop {
                     });
                 } else if let Some(awaited_task) = result.obj.try_as_obj::<Task>() {
                     awaited_task.add_waiting_task(task_obj);
-                } else if result.obj.is(WakeSignal::OBJ_TYPE) {
+                } else {
                     self.ready.borrow_mut().push_back(task_obj);
                 }
 
@@ -139,11 +126,12 @@ impl EventLoop {
         let mut ready = self.ready.borrow_mut();
         let mut sleepers = self.sleepers.borrow_mut();
 
-        if let Some(sleeper) = sleepers.peek()
-            && sleeper.deadline <= super::time32::Instant::now()
+        let now = super::time32::Instant::now();
+        while let Some(sleeper) = sleepers.peek()
+            && sleeper.deadline <= now
         {
             let sleeper = sleepers.pop().unwrap();
-            sleeper.sleep.try_as_obj::<Sleep>().unwrap().complete();
+            sleeper.sleep.as_obj::<Sleep>().complete();
             ready.push_back(sleeper.task);
         }
 
@@ -168,6 +156,7 @@ impl EventLoop {
 #[class_methods]
 impl EventLoop {
     #[make_new]
+    #[stub(sig = "(self) -> None")]
     fn make_new(
         _: &ObjType,
         _n_args: usize,
@@ -183,6 +172,8 @@ impl EventLoop {
         Ok(Self::new())
     }
 
+    // TODO: refactor these functions, they can probably be expressed by the new function generators
+
     // this function can't use a Fun generator because a Generator struct would be needed to write out
     // its type signature, and that struct does not exist
     extern "C" fn py_spawn(self_in: Obj, coro: Obj) -> Obj {
@@ -190,10 +181,11 @@ impl EventLoop {
             type_error(c"expected coroutine").raise(token());
         }
 
-        self_in.try_as_obj::<EventLoop>().unwrap().spawn(coro)
+        self_in.as_obj::<EventLoop>().spawn(coro)
     }
 
     #[constant(qstr!(spawn))]
+    #[stub(sig = "(self, coro: Any) -> Task")]
     const SPAWN: &Fun2 = &Fun2::new(Self::py_spawn);
 
     // this function can't use a Fun generator because it needs the EventLoop in Obj form, not as a
@@ -202,7 +194,7 @@ impl EventLoop {
         let prev_loop = RUNNING_LOOP.replace(self_in);
         push_nlr_callback(
             token(),
-            || self_in.try_as_obj::<EventLoop>().unwrap().run(),
+            || self_in.as_obj::<EventLoop>().run(),
             || RUNNING_LOOP.set(prev_loop),
             true,
         );
@@ -210,10 +202,13 @@ impl EventLoop {
     }
 
     #[constant(qstr!(run))]
+    #[stub(sig = "(self) -> None")]
     const RUN: &Fun1 = &Fun1::new(Self::py_run);
 }
 
-pub extern "C" fn vasyncio_run(coro: Obj) -> Obj {
+#[fun]
+#[stub(sig = "(coro: Any) -> None")]
+pub fn run(coro: Obj) -> Obj {
     if !coro.is(GEN_INSTANCE_TYPE) {
         type_error(c"expected coroutine").raise(token());
     }
@@ -223,9 +218,9 @@ pub extern "C" fn vasyncio_run(coro: Obj) -> Obj {
     EventLoop::py_run(alloc_obj(eloop))
 }
 
-// this function can't use a Fun generator because a Generator struct would be needed to write out
-// its type signature, and that struct does not exist
-pub extern "C" fn vasyncio_spawn(coro: Obj) -> Obj {
+#[fun]
+#[stub(sig = "(coro: Any) -> Task")]
+pub fn spawn(coro: Obj) -> Obj {
     let eloop = RUNNING_LOOP.get();
     if eloop.is_none() {
         raise_msg(token(), RUNTIME_ERROR_TYPE, c"no running event loop");
@@ -234,6 +229,8 @@ pub extern "C" fn vasyncio_spawn(coro: Obj) -> Obj {
     EventLoop::py_spawn(eloop, coro)
 }
 
-pub extern "C" fn vasyncio_get_running_loop() -> Obj {
+#[fun]
+#[stub(sig = "() -> EventLoop")]
+pub fn get_running_loop() -> Obj {
     RUNNING_LOOP.get()
 }

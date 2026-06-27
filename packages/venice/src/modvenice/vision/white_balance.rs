@@ -1,14 +1,18 @@
+use std::fmt::Write;
+
 use argparse::{ArgParser, Args, DefaultParser, ParseError};
+use micropython_macros::{class, class_methods};
 use micropython_rs::{
-    class, class_methods,
     except::type_error,
     init::token,
     obj::{AttrOp, Obj, ObjBase, ObjTrait, ObjType},
+    ops::BinaryOpCode,
+    print::{Print, PrintKind},
     qstr::Qstr,
 };
 use vexide_devices::smart::vision::WhiteBalance;
 
-use crate::modvenice::Exception;
+use crate::modvenice::{Exception, read_only_attr::read_only_attr};
 
 #[class(qstr!(WhiteBalance))]
 #[repr(C)]
@@ -40,6 +44,7 @@ pub struct Manual {
 #[class_methods]
 impl WhiteBalanceObj {
     #[make_new]
+    #[stub(sig = "(self) -> None")]
     fn make_new(_: &ObjType, _: usize, _: usize, _: &[Obj]) {
         type_error(
             c"WhiteBalance is an abstract base class; use a variant like WhiteBalance.Signature",
@@ -62,6 +67,7 @@ impl Auto {
     };
 
     #[make_new]
+    #[stub(sig = "(self) -> None")]
     fn make_new(_: &'static ObjType, _: usize, _: usize, args: &[Obj]) -> Result<Obj, Exception> {
         if args.len() != 0 {
             Err(
@@ -72,6 +78,11 @@ impl Auto {
             Ok(Obj::from_static(Self::SELF))
         }
     }
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        print.print("WhiteBalance.Auto()");
+    }
 }
 
 #[class_methods]
@@ -81,6 +92,7 @@ impl StartupAuto {
     };
 
     #[make_new]
+    #[stub(sig = "(self) -> None")]
     fn make_new(_: &'static ObjType, _: usize, _: usize, args: &[Obj]) -> Result<Obj, Exception> {
         if args.len() != 0 {
             Err(type_error(
@@ -91,11 +103,17 @@ impl StartupAuto {
             Ok(Obj::from_static(Self::SELF))
         }
     }
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        print.print("WhiteBalance.StartupAuto()")
+    }
 }
 
 #[class_methods]
 impl Manual {
     #[make_new]
+    #[stub(sig = "(self, r: int, g: int, b: int) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -118,14 +136,39 @@ impl Manual {
     }
 
     #[attr]
+    #[stub(attrs = ["r: int", "g: int", "b: int"])]
     fn attr(&self, attr: Qstr, op: AttrOp) {
-        let AttrOp::Load { result } = op else { return };
+        let AttrOp::Load { result } = op else {
+            read_only_attr::<Self>()
+        };
         result.return_value(match attr.as_str() {
             "r" => self.r,
             "g" => self.g,
             "b" => self.b,
             _ => return,
         } as i32)
+    }
+
+    // more optimized than Eq according to Godbolt on armv7a-none-eabi
+    fn eq(lhs: &Self, rhs: &Self) -> bool {
+        lhs.r == rhs.r && lhs.g == rhs.g && lhs.b == rhs.b
+    }
+
+    #[binary_op]
+    fn binary_op(op: BinaryOpCode, lhs: &Self, rhs: Obj) -> Obj {
+        match op {
+            BinaryOpCode::Equal => Obj::from_bool(Self::eq(lhs, rhs.as_obj())),
+            _ => Obj::NULL,
+        }
+    }
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        let _ = write!(
+            print,
+            "WhiteBalance.Manual(r={}, g={}, b={})",
+            self.r, self.g, self.b
+        );
     }
 }
 

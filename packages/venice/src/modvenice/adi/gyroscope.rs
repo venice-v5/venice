@@ -1,8 +1,8 @@
 use std::cell::{Cell, RefCell};
 
 use argparse::{Args, error_msg};
+use micropython_macros::{class, class_methods};
 use micropython_rs::{
-    class, class_methods,
     except::raise_stop_iteration,
     init::token,
     obj::{Obj, ObjBase, ObjTrait, ObjType},
@@ -13,15 +13,11 @@ use vexide_devices::adi::{
     gyroscope::{AdiGyroscope, YawError},
 };
 
-use crate::{
-    devices,
-    modvenice::{
-        Exception,
-        adi::{adi_port_index, validate_expander},
-        device_error, device_handle,
-        units::{rotation::RotationUnitObj, time::TimeUnitObj},
-        vasyncio::event_loop::WAKE_SIGNAL,
-    },
+use crate::modvenice::{
+    Exception,
+    adi::{adi_port_index, expander::AdiPortParser, validate_expander},
+    device_error, device_handle,
+    units::{rotation::RotationUnitObj, time::TimeUnitObj},
 };
 
 #[class(qstr!(AdiGyroscope))]
@@ -58,6 +54,7 @@ impl From<YawError> for Exception {
 #[class_methods]
 impl AdiGyroscopeObj {
     #[make_new]
+    #[stub(sig = "(self, port: str | AdiExpanderPort) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -67,11 +64,11 @@ impl AdiGyroscopeObj {
         let mut reader = Args::new(n_pos, n_kw, args).reader();
         reader.assert_npos(1, 1).assert_nkw(0, 0);
 
-        let port = reader.next_positional()?;
+        let port = reader.next_positional_with(AdiPortParser)?;
 
         Ok(Self {
             base: ty.into(),
-            gyro: RefCell::new(AdiGyroscope::new(devices::lock_adi_port(port))),
+            gyro: RefCell::new(AdiGyroscope::new(port)),
         })
     }
 
@@ -120,21 +117,21 @@ impl AdiGyroscopeFuture {
                         );
                     }
                     this.state.set(FutureState::WaitingStart);
-                    Obj::from_static(&WAKE_SIGNAL)
+                    Obj::NONE
                 }
                 Err(error) => Exception::from(error).raise(token()),
             },
             FutureState::WaitingStart => match gyro.is_calibrating() {
-                Ok(false) => Obj::from_static(&WAKE_SIGNAL),
+                Ok(false) => Obj::NONE,
                 Ok(true) => {
                     this.state.set(FutureState::WaitingEnd);
-                    Obj::from_static(&WAKE_SIGNAL)
+                    Obj::NONE
                 }
                 Err(error) => Exception::from(error).raise(token()),
             },
             FutureState::WaitingEnd => match gyro.is_calibrating() {
                 Ok(false) => raise_stop_iteration(token(), Obj::NONE),
-                Ok(true) => Obj::from_static(&WAKE_SIGNAL),
+                Ok(true) => Obj::NONE,
                 Err(error) => Exception::from(error).raise(token()),
             },
         }

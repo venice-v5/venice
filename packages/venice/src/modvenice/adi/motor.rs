@@ -1,13 +1,11 @@
 use std::cell::RefCell;
 
 use argparse::Args;
-use micropython_rs::{
-    class, class_methods,
-    obj::{Obj, ObjBase, ObjType},
-};
+use micropython_macros::{class, class_methods};
+use micropython_rs::obj::{Obj, ObjBase, ObjType};
 use vexide_devices::adi::motor::AdiMotor;
 
-use crate::{devices, modvenice::Exception};
+use crate::modvenice::{Exception, adi::expander::AdiPortParser};
 
 #[class(qstr!(AdiMotor))]
 #[repr(C)]
@@ -19,6 +17,7 @@ pub struct AdiMotorObj {
 #[class_methods]
 impl AdiMotorObj {
     #[make_new]
+    #[stub(sig = "(self, port: str | AdiExpanderPort, slew: float) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -26,13 +25,14 @@ impl AdiMotorObj {
         args: &[Obj],
     ) -> Result<Self, Exception> {
         let mut reader = Args::new(n_pos, n_kw, args).reader();
-        let port = reader.next_positional()?;
+        reader.assert_npos(2, 2).assert_nkw(0, 0);
+        let port = reader.next_positional_with(AdiPortParser)?;
         // TODO: should this be made optional? If so, what should be its default value?
         let slew = reader.next_positional()?;
 
         Ok(Self {
             base: ty.into(),
-            motor: RefCell::new(AdiMotor::new(devices::lock_adi_port(port), slew)),
+            motor: RefCell::new(AdiMotor::new(port, slew)),
         })
     }
 

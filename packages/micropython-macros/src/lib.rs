@@ -2,15 +2,26 @@ mod constants;
 mod methods;
 
 use proc_macro::TokenStream;
-use quote::{quote, quote_spanned};
+use quote::{format_ident, quote, quote_spanned};
 use syn::{
-    ExprMacro, ImplItem, ImplItemConst, ItemImpl, ItemStruct, Signature,
+    Attribute, ExprMacro, ImplItem, ImplItemConst, ItemFn, ItemImpl, ItemStruct, Meta, Signature,
     parse::{Parse, ParseStream},
     parse_macro_input,
     spanned::Spanned,
 };
 
-use crate::{constants::generate_constant, methods::generate_fun};
+use crate::{
+    constants::generate_constant,
+    methods::{MethodArgs, generate_fun},
+};
+
+fn is_stub_attr(attr: &Attribute) -> bool {
+    attr.path().is_ident("stub")
+}
+
+fn strip_stub_attrs(attrs: &mut Vec<Attribute>) {
+    attrs.retain(|attr| !is_stub_attr(attr));
+}
 
 struct ClassArgs {
     pub qstr_macro: ExprMacro,
@@ -35,7 +46,8 @@ pub fn class(attr: TokenStream, item: TokenStream) -> TokenStream {
     let args = parse_macro_input!(attr as ClassArgs);
     let qstr_macro = &args.qstr_macro;
 
-    let input = parse_macro_input!(item as ItemStruct);
+    let mut input = parse_macro_input!(item as ItemStruct);
+    strip_stub_attrs(&mut input.attrs);
     let struct_name = &input.ident;
 
     // obj must have static lifetime, meaning no generic lifetimes
@@ -94,8 +106,9 @@ pub fn class(attr: TokenStream, item: TokenStream) -> TokenStream {
                     let ty = set_slot!(ty, ITER, set_iter);
                     let ty = set_slot!(ty, STREAM, set_stream);
                     let ty = set_slot!(ty, SUBSCR, set_subscr);
-                    let ty = set_slot!(ty, UNARY_OP, set_unary_op_raw);
-                    let ty = set_slot!(ty, BINARY_OP, set_binary_op_raw);
+                    let ty = set_slot!(ty, UNARY_OP, set_unary_op);
+                    let ty = set_slot!(ty, BINARY_OP, set_binary_op);
+                    let ty = set_slot!(ty, PRINTER, set_printer);
 
                     ty
                 };
@@ -110,6 +123,7 @@ pub fn class(attr: TokenStream, item: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn class_methods(_: TokenStream, item: TokenStream) -> TokenStream {
     let mut input = parse_macro_input!(item as ItemImpl);
+    strip_stub_attrs(&mut input.attrs);
     let ty = &input.self_ty;
 
     let mut methods = Vec::new();
@@ -122,6 +136,7 @@ pub fn class_methods(_: TokenStream, item: TokenStream) -> TokenStream {
     let mut stream = None;
     let mut unary_op = None;
     let mut binary_op = None;
+    let mut printer = None;
 
     let replace_err = |span, attr_name| {
         syn::Error::new(span, format!("multiple `{attr_name}` functions"))
@@ -132,6 +147,7 @@ pub fn class_methods(_: TokenStream, item: TokenStream) -> TokenStream {
     for item in input.items.iter_mut() {
         match item {
             ImplItem::Const(c) => {
+                strip_stub_attrs(&mut c.attrs);
                 let mut attr_idx = None;
                 for (idx, a) in c.attrs.iter().enumerate() {
                     let Some(i) = a.path().get_ident() else {
@@ -164,6 +180,7 @@ pub fn class_methods(_: TokenStream, item: TokenStream) -> TokenStream {
                 }
             }
             ImplItem::Fn(f) => {
+                strip_stub_attrs(&mut f.attrs);
                 let mut attr_idx = None;
                 let mut opt = None;
                 let mut method_attr = None;
@@ -193,6 +210,7 @@ pub fn class_methods(_: TokenStream, item: TokenStream) -> TokenStream {
                         "binary_op" => {
                             opt = Some(("binary_op", a.span(), &mut binary_op));
                         }
+                        "printer" => opt = Some(("printer", a.span(), &mut printer)),
                         _ => continue,
                     }
                     attr_idx = Some(idx);
@@ -258,17 +276,35 @@ pub fn class_methods(_: TokenStream, item: TokenStream) -> TokenStream {
 
     let unary_op_tokens = unary_op
         .map(map_fn_item)
-        .map(|f| quote! { Some(#f) })
+        .map(|f| quote! { Some(::micropython_rs::unary_op_from_fn!(#f)) })
         .unwrap_or_else(|| none_tokens.clone());
 
     let binary_op_tokens = binary_op
         .map(map_fn_item)
-        .map(|f| quote! { Some(#f) })
+        .map(|f| quote! { Some(::micropython_rs::binary_op_from_fn!(#f)) })
+        .unwrap_or_else(|| none_tokens.clone());
+
+    let printer_tokens = printer
+        .map(map_fn_item)
+        .map(|f| quote! { Some(::micropython_rs::printer_from_fn!(#f)) })
         .unwrap_or(none_tokens);
 
     let method_tokens = match methods
         .into_iter()
-        .map(|(sig, attr)| generate_fun(&ty, &sig, &attr))
+        .map(|(sig, attr)| {
+            generate_fun(
+                Some(&ty),
+                &sig,
+                match &attr.meta {
+                    Meta::Path(_) => MethodArgs::default(),
+                    Meta::List(list) => syn::parse2(list.tokens.clone())?,
+                    Meta::NameValue(nv) => {
+                        return Err(syn::Error::new(nv.span(), "unsupported `=` format"));
+                    }
+                },
+                true,
+            )
+        })
         .collect::<syn::Result<Vec<_>>>()
     {
         Ok(tokens) => tokens,
@@ -294,8 +330,9 @@ pub fn class_methods(_: TokenStream, item: TokenStream) -> TokenStream {
             const ATTR: Option<::micropython_rs::obj::Attr> = #attr_tokens;
             const SUBSCR: Option<::micropython_rs::obj::Subscr> = #subscr_tokens;
             const STREAM: Option<&::micropython_rs::stream::Stream> = #stream_tokens;
-            const UNARY_OP: Option<::micropython_rs::obj::UnaryOpFn> = #unary_op_tokens;
-            const BINARY_OP: Option<::micropython_rs::obj::BinaryOpFn> = #binary_op_tokens;
+            const UNARY_OP: Option<::micropython_rs::obj::UnaryOp> = #unary_op_tokens;
+            const BINARY_OP: Option<::micropython_rs::obj::BinaryOp> = #binary_op_tokens;
+            const PRINTER: Option<::micropython_rs::obj::Printer> = #printer_tokens;
 
             const LOCALS_DICT: Option<&::micropython_rs::map::Dict> = Some(::micropython_rs::const_dict![
                 #(#method_tokens)*
@@ -306,22 +343,30 @@ pub fn class_methods(_: TokenStream, item: TokenStream) -> TokenStream {
     .into()
 }
 
-// macro_rules! dummy_macro {
-//     ($name:ident) => {
-//         #[proc_macro_attribute]
-//         pub fn $name(_: TokenStream, item: TokenStream) -> TokenStream {
-//             item
-//         }
-//     };
-// }
+#[proc_macro_attribute]
+pub fn fun(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let mut f = parse_macro_input!(item as ItemFn);
+    strip_stub_attrs(&mut f.attrs);
 
-// dummy_macro!(method);
-// dummy_macro!(constant);
-// dummy_macro!(make_new);
-// dummy_macro!(parent);
-// dummy_macro!(iter);
-// dummy_macro!(attr);
-// dummy_macro!(subscr);
-// dummy_macro!(stream);
-// dummy_macro!(unary_op);
-// dummy_macro!(binary_op);
+    let args = if attr.is_empty() {
+        MethodArgs::default()
+    } else {
+        parse_macro_input!(attr as MethodArgs)
+    };
+
+    let generated_fun = match generate_fun(None, &f.sig, args, false) {
+        Ok(v) => v,
+        Err(e) => return e.into_compile_error().into(),
+    };
+
+    let obj_name = format_ident!("{}_obj", &f.sig.ident);
+    let vis = &f.vis;
+
+    quote! {
+        #f
+
+        #[allow(non_upper_case_globals)]
+        #vis const #obj_name: ::micropython_rs::obj::Obj = #generated_fun;
+    }
+    .into()
+}

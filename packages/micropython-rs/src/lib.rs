@@ -5,8 +5,7 @@ compile_error!(
 
 mod raw;
 
-pub(crate) mod print;
-
+pub mod buffer;
 pub mod class;
 pub mod errno;
 pub mod except;
@@ -20,11 +19,10 @@ pub mod module;
 pub mod nlr;
 pub mod obj;
 pub mod ops;
+pub mod print;
 pub mod qstr;
 pub mod state;
 pub mod str;
 pub mod stream;
 pub mod tuple;
 pub mod vstr;
-
-pub use micropython_macros::*;

@@ -43,6 +43,7 @@ unsafe extern "C" {
     safe static mp_type_ImportError: ObjType;
     safe static mp_type_RuntimeError: ObjType;
     safe static mp_type_AttributeError: ObjType;
+    safe static mp_type_ZeroDivisionError: ObjType;
 }
 
 impl<'a> RomErrorText<'a> {
@@ -98,6 +99,8 @@ pub const RUNTIME_ERROR_TYPE: &ExceptionType =
     ExceptionType::from_obj_type_ref(&mp_type_RuntimeError);
 pub const ATTRIBUTE_ERROR_TYPE: &ExceptionType =
     ExceptionType::from_obj_type_ref(&mp_type_AttributeError);
+pub const ZERO_DIVISION_ERROR_TYPE: &ExceptionType =
+    ExceptionType::from_obj_type_ref(&mp_type_ZeroDivisionError);
 
 pub fn raise_msg(_: InitToken, exc_type: &ExceptionType, msg: impl AsRef<CStr>) -> ! {
     unsafe { mp_raise_msg(&exc_type.0, RomErrorText::new(msg.as_ref())) };
@@ -159,6 +162,7 @@ impl Debug for Message {
     }
 }
 
+#[must_use]
 #[derive(Clone, Copy)]
 pub struct Exception {
     pub ty: &'static ExceptionType,

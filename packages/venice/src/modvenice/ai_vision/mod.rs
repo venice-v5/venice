@@ -1,15 +1,15 @@
-pub mod ai_vision_color;
-pub mod ai_vision_color_code;
-pub mod ai_vision_detection_mode;
-pub mod ai_vision_flags;
-pub mod ai_vision_object;
 pub mod april_tag_family;
+pub mod color;
+pub mod color_code;
+pub mod detection_mode;
+pub mod flags;
+pub mod object;
 
 use argparse::{Args, error_msg};
+use micropython_macros::{class, class_methods};
 use micropython_rs::{
-    class, class_methods,
-    list::new_list,
     obj::{Obj, ObjBase, ObjType},
+    tuple::new_tuple,
 };
 use vexide_devices::smart::{
     PortError,
@@ -21,9 +21,9 @@ use crate::{
     modvenice::{
         Exception,
         ai_vision::{
-            ai_vision_color::AiVisionColorObj, ai_vision_color_code::AiVisionColorCodeObj,
-            ai_vision_detection_mode::AiVisionDetectionModeObj, ai_vision_flags::AiVisionFlagsObj,
-            april_tag_family::AprilTagFamilyObj,
+            april_tag_family::AprilTagFamilyObj, color::AiVisionColorObj,
+            color_code::AiVisionColorCodeObj, detection_mode::AiVisionDetectionModeObj,
+            flags::AiVisionFlagsObj,
         },
         device_error,
     },
@@ -46,6 +46,7 @@ impl From<AiVisionObjectError> for Exception {
 #[class_methods]
 impl AiVisionSensorObj {
     #[make_new]
+    #[stub(sig = "(self, port: int) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -140,26 +141,31 @@ impl AiVisionSensorObj {
     }
 
     #[method]
+    #[stub(
+        sig = "(self) -> tuple[AiVisionColorObject | AiVisionCodeObject | AiVisionAprilTagObject | AiVisionModelObject, ...]"
+    )]
     fn get_objects(&self) -> Result<Obj, Exception> {
         let objects = self.guard.borrow().objects()?;
         let objects = objects
             .into_iter()
-            .map(ai_vision_object::create_obj)
+            .map(object::create_obj)
             .collect::<Vec<_>>();
-        Ok(new_list(&objects[..]))
+        Ok(new_tuple(&objects[..]))
     }
 
     #[method]
+    #[stub(sig = "(self) -> tuple[AiVisionColorCode | None, ...]")]
     fn get_color_codes(&self) -> Result<Obj, Exception> {
         let guard = self.guard.borrow();
         let codes = (0..7)
             .map(|n| guard.color_code(n))
             .map(|code| code.map(|code| Obj::from(code.map(AiVisionColorCodeObj::new))))
             .collect::<Result<Vec<_>, PortError>>()?;
-        Ok(new_list(&codes[..]))
+        Ok(new_tuple(&codes[..]))
     }
 
     #[method]
+    #[stub(sig = "(self) -> None")]
     fn free(&self) -> Obj {
         self.guard.free_or_raise();
         Obj::NONE

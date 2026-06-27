@@ -6,10 +6,10 @@ use std::{
 };
 
 use argparse::{ArgParser, Args, DefaultParser, KeywordError, ParseError, StrParser, type_name};
+use micropython_macros::{class, class_methods};
 use micropython_rs::{
-    class, class_methods,
     errno::{MP_EBADF, MP_EINVAL, MP_EIO},
-    except::{Message, raise_os_error},
+    except::{Message, raise_os_error, type_error},
     fun::{Fun1, Fun2, FunVarBetween, FunVarKw},
     init::token,
     ioctl_from_fn,
@@ -36,7 +36,7 @@ pub struct FileObj {
 #[class_methods]
 impl FileObj {
     fn stream_read(self_in: Obj, buf: &mut [u8]) -> Result<usize, c_int> {
-        let this = self_in.try_as_obj::<FileObj>().unwrap();
+        let this = self_in.as_obj::<FileObj>();
         this.file
             .borrow_mut()
             .as_mut()
@@ -46,7 +46,7 @@ impl FileObj {
     }
 
     fn stream_write(self_in: Obj, buf: &[u8]) -> Result<usize, c_int> {
-        let this = self_in.try_as_obj::<FileObj>().unwrap();
+        let this = self_in.as_obj::<FileObj>();
         this.file
             .borrow_mut()
             .as_mut()
@@ -56,7 +56,7 @@ impl FileObj {
     }
 
     fn stream_ioctl(self_in: Obj, req: IoctlReq) -> Result<usize, c_int> {
-        let this = self_in.try_as_obj::<FileObj>().unwrap();
+        let this = self_in.as_obj::<FileObj>();
         let mut file_opt = this.file.borrow_mut();
         let file = file_opt.as_mut().ok_or(MP_EBADF)?;
 
@@ -238,7 +238,18 @@ fn open_inner(pos_args: &[Obj], kw_map: &Map) -> Result<FileObj, Exception> {
 
     let path = reader.next_positional::<&str>()?;
 
-    let mode_obj = kw_map.get(Obj::from_qstr(qstr!(mode)));
+    let mode_kw_obj = kw_map.get(Obj::from_qstr(qstr!(mode)));
+    let mode_obj = if let Ok(m) = reader.next_positional::<Obj>() {
+        if mode_kw_obj.is_some() {
+            return Err(
+                type_error(c"argument 'mode' passed as both positional and keyword").into(),
+            );
+        }
+        Some(m)
+    } else {
+        mode_kw_obj
+    };
+
     let mode = mode_obj
         .as_ref()
         .map(|m| ModeParser.parse(m))
@@ -247,7 +258,7 @@ fn open_inner(pos_args: &[Obj], kw_map: &Map) -> Result<FileObj, Exception> {
             ParseError::TypeError { expected } => KeywordError::TypeError {
                 kw: "mode",
                 expected,
-                found: type_name(&mode_obj.unwrap()),
+                found: type_name(mode_obj.as_ref().unwrap()),
             },
             ParseError::ValueError { mk_msg } => KeywordError::ValueError {
                 msg: mk_msg("argument 'mode'"),
@@ -259,7 +270,6 @@ fn open_inner(pos_args: &[Obj], kw_map: &Map) -> Result<FileObj, Exception> {
         .open(path)
         .unwrap_or_else(|e| raise_os_error(token(), io_to_errno(e)));
 
-    // TODO: find a way to push an nlr callback that closes the file
     Ok(FileObj {
         base: ObjBase::new(FileObj::OBJ_TYPE),
         file: RefCell::new(Some(file)),
@@ -272,4 +282,5 @@ fn open(pos_args: &[Obj], kw_map: &Map) -> Obj {
 
 #[allow(non_upper_case_globals)]
 #[unsafe(no_mangle)]
+// cant use #[fun] cause it only generates an Obj :(
 static mut mp_builtin_open_obj: FunVarKw = fun_var_kw!(open, 1);

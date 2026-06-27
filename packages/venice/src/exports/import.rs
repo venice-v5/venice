@@ -103,7 +103,6 @@ pub fn import(token: InitToken, module_name_qstr: Qstr, _fromtuple: Obj, level: 
     }
 
     if module_name.is_empty() {
-        // TODO: Add exception API
         value_error(c"module name cannot be empty").raise(token);
     }
 
@@ -131,14 +130,15 @@ unsafe extern "C" fn venice_import(arg_count: usize, args: *const Obj) -> Obj {
     let token = token();
 
     let module_name_obj = args[0];
-    let (fromtuple, level) = if args.len() >= 4 {
+    let (fromtuple, level) = if args.len() >= 5 {
         let level = args[4].try_to_int().unwrap();
         if level < 0 {
-            // TODO: Add exception API
             value_error(c"level cannot be negative").raise(token);
         } else {
             (args[3], level)
         }
+    } else if args.len() >= 4 {
+        (args[3], 0)
     } else {
         (Obj::NONE, 0)
     };

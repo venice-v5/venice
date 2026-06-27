@@ -1,0 +1,104 @@
+use std::fmt::Write;
+
+use argparse::Args;
+use micropython_macros::{class, class_methods};
+use micropython_rs::{
+    obj::{AttrOp, Obj, ObjBase, ObjTrait, ObjType},
+    ops::BinaryOpCode,
+    print::{Print, PrintKind},
+    qstr::Qstr,
+};
+use vexide_devices::smart::ai_vision::AiVisionColor;
+
+use crate::modvenice::{Exception, color::ColorObj, read_only_attr::read_only_attr};
+
+#[class(qstr!(AiVisionColor))]
+#[repr(C)]
+pub struct AiVisionColorObj {
+    base: ObjBase,
+    color: AiVisionColor,
+}
+
+impl AiVisionColorObj {
+    pub fn color(&self) -> AiVisionColor {
+        self.color
+    }
+
+    pub fn new(color: AiVisionColor) -> Self {
+        Self {
+            base: Self::OBJ_TYPE.into(),
+            color,
+        }
+    }
+}
+
+#[class_methods]
+impl AiVisionColorObj {
+    #[attr]
+    #[stub(attrs = [
+        "r: int",
+        "g: int",
+        "b: int",
+        "hue_range: float",
+        "saturation_range: float",
+    ])]
+    fn attr(&self, attr: Qstr, op: AttrOp) {
+        let AttrOp::Load { result } = op else {
+            read_only_attr::<Self>()
+        };
+        result.return_value(match attr.as_str() {
+            "r" => Obj::from_int(self.color.rgb.r as _),
+            "g" => Obj::from_int(self.color.rgb.g as _),
+            "b" => Obj::from_int(self.color.rgb.b as _),
+            "hue_range" => Obj::from_float(self.color.hue_range as _),
+            "saturation_range" => Obj::from_float(self.color.saturation_range as _),
+            _ => return,
+        });
+    }
+
+    #[make_new]
+    #[stub(sig = "(self, rgb: Color, hue_range: float, saturation_range: float) -> None")]
+    fn make_new(
+        ty: &'static ObjType,
+        n_pos: usize,
+        n_kw: usize,
+        args: &[Obj],
+    ) -> Result<Self, Exception> {
+        let mut reader = Args::new(n_pos, n_kw, args).reader();
+        reader.assert_npos(5, 5).assert_nkw(0, 0);
+
+        let rgb = reader.next_positional::<&ColorObj>()?;
+        let hue_range = reader.next_positional()?;
+        let saturation_range = reader.next_positional()?;
+
+        Ok(Self {
+            base: ObjBase::new(ty),
+            color: AiVisionColor {
+                rgb: rgb.color(),
+                hue_range,
+                saturation_range,
+            },
+        })
+    }
+
+    #[binary_op]
+    fn binary_op(op: BinaryOpCode, lhs: &Self, rhs: Obj) -> Obj {
+        match op {
+            BinaryOpCode::Equal => Obj::from_bool(lhs.color == rhs.as_obj::<Self>().color),
+            _ => Obj::NULL,
+        }
+    }
+
+    #[printer]
+    fn printer(&self, print: &mut Print, _kind: PrintKind) {
+        let _ = write!(
+            print,
+            "AiVisionColor(r={}, g={}, b={}, hue_range={}, saturation_range={})",
+            self.color.rgb.r,
+            self.color.rgb.g,
+            self.color.rgb.b,
+            self.color.hue_range,
+            self.color.saturation_range
+        );
+    }
+}
