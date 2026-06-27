@@ -24,7 +24,6 @@ use micropython_rs::{
     init::{InitToken, init_mp},
     module::exec_module,
     nlr::push_nlr,
-    qstr::Qstr,
 };
 use talc::Span;
 use venice_program_table::Vpt;
@@ -55,12 +54,8 @@ fn init_main(token: InitToken) {
     let entrypoint = MODULE_MAP
         .get()
         .unwrap()
-        .get(b"main")
-        .unwrap_or_else(|| {
-            panic!(
-                "malformed VPT: package 'main' not present"
-            )
-        })
+        .get(b"main" as &[u8])
+        .unwrap_or_else(|| panic!("malformed VPT: package 'main' not present"))
         .payload();
 
     push_nlr(token, || exec_module(token, qstr!(main), entrypoint));
