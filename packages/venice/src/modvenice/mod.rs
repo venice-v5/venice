@@ -144,7 +144,7 @@ pub fn device_error(msg: impl Into<Message>) -> Exception {
 
 #[fun(ty = var_between(min = 0, max = 1))]
 fn monotonic_time(args: &[Obj]) -> Obj {
-    let mut reader = Args::new(1, 0, args).reader();
+    let mut reader = Args::new(args.len(), 0, args).reader();
     let unit = reader.next_positional().unwrap_or(crate::modvenice::units::time::TimeUnitObj::SECOND);
 
     let duration = std::time::Duration::from_micros(unsafe { vex_sdk::vexSystemHighResTimeGet() });
