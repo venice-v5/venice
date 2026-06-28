@@ -11,12 +11,12 @@
 **Venice** is a modern Micropython runtime for the VEX V5 brain and platform as an alternative to VEXcode Python.
 
 ## Features
-* To add Venice to a project, you can just install it! The [Venice CLI](https://github.com/venice-v5/venice-cli) and runtime SDK are available as a regular PyPI package. This is in contrast to VEX Python, which is only available through VEXcode or a proprietary VSCode extension.
-* All of your program's metadata is stored in the industry-standard pyproject.toml config file, compared to VEX Python's custom configuration formula.
-* Multi-file support is built-in to Venice, just like any other Python project. In VEX Python, you can only have one file, which is a dealbreaker for many teams.
-* Venice takes advantage of modern Python features, such as advanced typing annotations, `async`/`await` multitasking, idiomatic APIs, and more. The VEX Python SDK is unidiomatic, preventing integration with the broader Python ecosystem.
-* Venice can be used everywhere! You can write Venice code in a code editor of your choice; the Venice CLI is just a regular executable package that you can run from anywhere with a terminal.
-* Venice is designed for speed, with bytecode compiled at build-time to decrease startup latency and MicroPython math optimizations enabled to make math-heavy calculations faster.
+* To add Venice to a project, you can **just install it**! The [Venice CLI](https://github.com/venice-v5/venice-cli) and runtime SDK are available as regular PyPI package. This is in contrast to VEX Python, which is only available through VEXcode or a proprietary VSCode extension.
+* All of your program's metadata is stored in the **industry-standard pyproject.toml** config file, compared to VEX Python's custom configuration formula.
+* **Multi-file support** is built-in to Venice, just like any other Python project. In VEX Python, you can only have one file, which is a dealbreaker for many teams.
+* Venice takes advantage of **modern Python features**, such as advanced typing annotations, `async`/`await` multitasking, idiomatic APIs, and more. The VEX Python SDK is unidiomatic, preventing integration with the broader Python ecosystem.
+* Venice can be used everywhere! You can write Venice code in a **code editor of your choice**, and the Venice CLI is just a regular executable package that you can run from anywhere with a terminal.
+* Venice is **designed for speed**, with bytecode compiled at build-time to decrease startup latency and MicroPython math optimizations enabled to make math-heavy calculations faster.
 
 ## Getting Started
 
