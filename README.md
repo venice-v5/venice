@@ -3,41 +3,65 @@
 <!--[![GitHub Release](https://img.shields.io/github/v/release/venice-v5/venice)](https://github.com/venice-v5/venice)-->
 <!-- the badge below is a placeholder until v0.1.0 is released and we can use the badge above -->
 ![GitHub Release](https://img.shields.io/badge/release-v0.1.0--alpha-yellow)
-[![API Reference](https://img.shields.io/badge/API-Reference-007acc?style=flat-square&logo=visual-studio-code&logoColor=white)](https://your-subdomain.yourwebsite.com/api)
+[![API Reference](https://img.shields.io/badge/API-Reference-007acc?style=flat-square&logo=visual-studio-code&logoColor=white)](https://venice.fibn.cc/reference/)
 ![GitHub License](https://img.shields.io/github/license/venice-v5/venice)
 [![Discord](https://img.shields.io/discord/1385488860661678171.svg?label=discord&logo=discord&color=7289DA&logoColor=white)](https://discord.gg/UhGmfY28)
 
 <!-- TODO: add more details -->
-**Venice** is a modern alternative to VEXcode Python.
+**Venice** is a modern Micropython runtime for the VEX V5 brain and platform as an alternative to VEXcode Python.
 
 ## Features
-
-- **Multi-File Projects & Libraries/Templates**: Venice lets you organize your code into multiple files and cleanly import them. Want to use a template for odometry or PID? Just drop its files into your project and import them inside your code.
-- **Intuitive Robot Control**: `import venice` gives you a robust Pythonic library for controlling your VEX V5 devices. It exposes certain functions and devices that are left out of VEXcode.
-- **Efficient Multitasking**: Venice uses modern `async`/`await` multitasking, with the efficient custom-made `vasyncio` event loop, letting you run dozens of tasks without freezing your robot.
-- **Predictable, Immediate-Mode Control**: Instead of registering callbacks for events (e.g. button presses) to be called unpredictably in the background, Venice gives you control over event detection. Controller inputs can be read whenever you need in your main loops, encouraging readable and predictable code practices.
-- **Optimized Math for Autonomous**: Venice internally optimizes the representation of numbers in memory, saving memory and letting your math run faster.
-- **Industry-Standard Tooling**: Use [`venice-cli`](https://github.com/venice-v5/venice-cli/) for project scaffolding, building, and uploading. It integrates seamlessly with standard Python project structures and modern dev environments.
-- **Smart Auto-Complete & Type-Hinting**: The `venice` PyPI package provides complete, type-safe, and documented stubs for all Venice APIs.
+* To add Venice to a project, you can just install it! The [Venice CLI](https://github.com/venice-v5/venice-cli) and runtime SDK are available as a regular PyPI package. This is in * contrast to VEX Python, which is only available through VEXcode or a proprietary VSCode extension.
+* All of your program's metadata is stored in the industry-standard pyproject.toml config file, compared to VEX Python's custom configuration * formula.
+* Multi-file support is built-in to Venice, just like any other Python project. In VEX Python, you can only have one file, which is a dealbreaker for many teams.
+* Venice takes advantage of modern Python features, such as advanced typing annotations, `async`/`await` multitasking, idiomatic APIs, and more. The VEX Python SDK is unidiomatic, preventing integration with the broader Python ecosystem.
+* Venice can be used everywhere! You can write Venice code in a code editor of your choice; the venice CLI is just a regular executable package that you can run from anywhere with a terminal.
+* Venice is designed for speed, with bytecode compiled at build-time to decrease startup latency and Micropython math optimizations enabled to make math-heavy calculations faster.
 
 ## Getting Started
 
-TBA
+First, install `uv` if you haven't already using [these instructions](https://docs.astral.sh/uv/getting-started/installation/).
+
+```
+uvx venice-cli new my-project
+```
+
+This creates a Venice project with `venice` and `venice-cli` installed, with a minimal `main.py`:
+```py
+from venice import *
+import vasyncio
+
+async def main():
+    print("Hello, Venice!")
+
+vasyncio.run(main())
+```
+
+To upload programs, connect your computer to a controller or brain. From the `my-project` directory, run
+```
+uv run venice-cli run
+```
+which uploads and runs your code, then opens the terminal to view output.
+
+To see other commands, run
+```
+uv run venice-cli help
+```
+
 
 ## Competition Template
 
 ```python
-# Import all Venice devices and submodules.
 from venice import *
 
-# Initialize your devices here.
+# Initialize your devices here
 motor = Motor(1)
 imu = InertialSensor(2)
 
-# Create a competition template.
+# Create a competition template
 comp = Competition()
 
-# Add your driver routine.
+# Driver routine
 @comp.driver
 async def driver():
     print("Driver control!")
@@ -47,26 +71,26 @@ async def driver():
         # IMPORTANT: Make sure you sleep in your loops! 5-10 milliseconds is the recommended duration.
         await vasyncio.Sleep(10, MILLIS)
     
-# Add your autonomous routine.
+# Autonomous routine
 @comp.autonomous
 async def auton():
     print("Autonomous!")
     await vasyncio.Sleep(1000, MILLIS)
 
-# Define your `async` entrypoint. This is where you should put your initialization logic. (e.g. calibration)
+# Define your `async` entrypoint. This is where you should put your initialization logic (e.g. calibration)
 async def main():
     await imu.calibrate()
     
-    # Start the competition runtime. Now your routines will be run until the end of the program.
+    # Start the competition runtime. Now your routines will be run until the end of the program
     await comp.run()
 
-# Finally, spin up an `async` runtime and start executing your `main` function.
+# Create an `async` runtime and start executing your `main` function
 vasyncio.run(main())
 ```
 
 ## Documentation
 
-An API reference for the `venice` module is available at https://venice.fibn.cc/reference/.
+An API reference for the `venice` module is available at https://venice.fibn.cc/reference/. A work-in-progress tutorial series is also available at https://venice.fibn.cc/docs/.
 
 ## Development
 
