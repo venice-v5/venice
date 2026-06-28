@@ -48,6 +48,7 @@ To see other commands, run
 uv run venice-cli help
 ```
 
+Note that you can't just run `venice-cli`. If you're inside a Venice project, use `uv run venice-cli`. Otherwise, use `uvx venice-cli` (this will only support the `new`, `help`, and `terminal` subcommands). 
 
 ## Competition Template
 
