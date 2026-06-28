@@ -143,12 +143,12 @@ pub fn device_error(msg: impl Into<Message>) -> Exception {
 }
 
 #[fun(ty = var_between(min = 0, max = 1))]
-fn monotonic_time(args: &[Obj]) -> Obj {
+fn monotonic_time(args: &[Obj]) -> Result<Obj, Exception> {
     let mut reader = Args::new(args.len(), 0, args).reader();
-    let unit = reader.next_positional_or(crate::modvenice::units::time::TimeUnitObj::SECOND).unwrap();
+    let unit = reader.next_positional_or(crate::modvenice::units::time::TimeUnitObj::SECOND)?;
 
     let duration = std::time::Duration::from_micros(unsafe { vex_sdk::vexSystemHighResTimeGet() });
-    unit.unit().dur_to_float(duration).into()
+    Ok(unit.unit().dur_to_float(duration).into())
 }
 
 fn smart_port_index(n: u8) -> u32 {
