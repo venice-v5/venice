@@ -56,7 +56,7 @@ fn init_main(token: InitToken) {
         .unwrap()
         .get(b"main" as &[u8])
         .unwrap_or_else(|| panic!("malformed VPT: package 'main' not present"))
-        .payload();
+        .payload;
 
     push_nlr(token, || exec_module(token, qstr!(main), entrypoint));
 }

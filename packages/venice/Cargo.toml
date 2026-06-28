@@ -8,7 +8,7 @@ edition = "2024"
 toolchain = "llvm-21.1.1"
 
 [dependencies]
-venice-program-table = { git = "https://github.com/venice-v5/venice-program-table.git", rev = "e5a1762be2eeaf94841bb972af4e447bbf5f4eea" }
+venice-program-table = { git = "https://github.com/venice-v5/venice-program-table.git", rev = "0f0186eb6ac16c0e25e34ca7eb539fd23c9b4615" }
 micropython-rs.path = "../micropython-rs"
 micropython-macros.path = "../micropython-macros"
 argparse.path = "../argparse"
