@@ -5,7 +5,7 @@ use bitflags::bitflags;
 use micropython_macros::{class, class_methods};
 use micropython_rs::{
     except::type_error,
-    generator::{GEN_INSTANCE_TYPE, VmReturnKind, resume_gen},
+    generator::{GEN_INSTANCE_TYPE, VmReturnKind, close_gen, resume_gen},
     init::token,
     nlr,
     obj::{Obj, ObjBase, ObjTrait, ObjType},
@@ -116,20 +116,30 @@ pub struct CompetitionRuntime {
 }
 
 impl CompetitionRuntime {
-    /// Updates the competition phase from the latest status.
+    /// Returns the next competition status and phase when the active phase must change.
     ///
     /// Connected and disconnected routines are transient phases. Status changes update the stored
-    /// status while one of those routines runs, but do not interrupt the routine.
-    fn update_phase(&self) -> bool {
+    /// status while one of those routines runs, but do not interrupt the routine. Interruptible
+    /// phase updates are not committed until the previous routine closes successfully.
+    fn next_phase(&self) -> Option<(Status, Phase)> {
         let old_phase = self.phase.get();
         let new_status = status();
-        let old_status = self.status.replace(new_status);
+        let old_status = self.status.get();
 
-        let new_phase = if old_phase == Phase::Initial {
-            Phase::Mode(new_status.mode())
-        } else if old_status == new_status || !old_phase.interruptable() {
-            return false;
-        } else if old_status.connected() != new_status.connected() {
+        if old_phase == Phase::Initial {
+            return Some((new_status, Phase::Mode(new_status.mode())));
+        }
+
+        if old_status == new_status {
+            return None;
+        }
+
+        if !old_phase.interruptable() {
+            self.status.set(new_status);
+            return None;
+        }
+
+        let new_phase = if old_status.connected() != new_status.connected() {
             match new_status.connected() {
                 true => Phase::Connected,
                 false => Phase::Disconnected,
@@ -139,15 +149,15 @@ impl CompetitionRuntime {
         };
 
         if old_phase == new_phase {
-            false
+            self.status.set(new_status);
+            None
         } else {
-            self.phase.set(new_phase);
-            true
+            Some((new_status, new_phase))
         }
     }
 
-    fn phase_name(&self) -> &'static str {
-        match self.phase.get() {
+    fn phase_name(phase: Phase) -> &'static str {
+        match phase {
             Phase::Connected => "connected",
             Phase::Disconnected => "disconnected",
             Phase::Mode(Mode::Driver) => "driver",
@@ -162,8 +172,17 @@ impl CompetitionRuntime {
         self.routine_wait.set(RoutineWait::Ready);
     }
 
-    fn start_phase_routine(&self) -> Result<(), Exception> {
-        let coro = match self.phase.get() {
+    fn close_phase_routine(&self) {
+        let coro = self.coro.replace(Obj::NULL);
+        self.routine_wait.set(RoutineWait::Ready);
+
+        if !coro.is_null() {
+            close_gen(coro);
+        }
+    }
+
+    fn create_phase_routine(&self, phase: Phase) -> Result<Obj, Exception> {
+        let coro = match phase {
             Phase::Connected => self.connected,
             Phase::Disconnected => self.disconnected,
             Phase::Mode(Mode::Driver) => self.driver,
@@ -177,14 +196,18 @@ impl CompetitionRuntime {
         if !coro.is_null() && !coro.is(GEN_INSTANCE_TYPE) {
             Err(type_error(error_msg!(
                 "expected coroutine return value from {} routine, got <{}>",
-                self.phase_name(),
+                Self::phase_name(phase),
                 ArgType::of(&coro)
             )))?;
         }
 
+        Ok(coro)
+    }
+
+    fn set_phase_routine(&self, phase: Phase, coro: Obj) {
+        self.phase.set(phase);
         self.coro.set(coro);
         self.routine_wait.set(RoutineWait::Ready);
-        Ok(())
     }
 
     /// Returns whether the active routine can be resumed without violating its current await.
@@ -216,8 +239,10 @@ impl CompetitionRuntime {
     }
 
     fn enter_current_mode(&self) -> Result<(), Exception> {
-        self.phase.set(Phase::Mode(self.status.get().mode()));
-        self.start_phase_routine()
+        let phase = Phase::Mode(self.status.get().mode());
+        let coro = self.create_phase_routine(phase)?;
+        self.set_phase_routine(phase, coro);
+        Ok(())
     }
 
     /// Polls the competition runtime once and returns the object that its active routine yielded.
@@ -226,11 +251,14 @@ impl CompetitionRuntime {
     /// through the coroutine that awaits this runtime so the event loop schedules only that outer
     /// task.
     pub fn tick(&self) -> Result<Obj, Exception> {
-        if self.update_phase() {
-            // A phase change abandons the previous phase routine. Do not poll the old routine after
-            // its phase has ended.
-            self.clear_phase_routine();
-            self.start_phase_routine()?;
+        if let Some((new_status, new_phase)) = self.next_phase() {
+            // Close the previous phase routine before starting the new one. This injects
+            // GeneratorExit so synchronous finally blocks can clean up mode-specific state.
+            // Commit the new state only after cleanup and routine creation both succeed.
+            self.close_phase_routine();
+            let coro = self.create_phase_routine(new_phase)?;
+            self.status.set(new_status);
+            self.set_phase_routine(new_phase, coro);
         }
 
         loop {
