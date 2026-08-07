@@ -49,7 +49,6 @@ pub struct EventLoop {
     base: ObjBase,
     ready: RefCell<VecDeque<Obj, Gc>>,
     sleepers: RefCell<BinaryHeap<Sleeper, Gc>>,
-    current_task: Cell<Obj>,
 }
 
 thread_local! {
@@ -63,7 +62,6 @@ impl EventLoop {
             base: Self::OBJ_TYPE.into(),
             ready: RefCell::new(VecDeque::new_in(gc)),
             sleepers: RefCell::new(BinaryHeap::new_in(gc)),
-            current_task: Cell::new(Obj::NULL),
         }
     }
 
@@ -73,29 +71,24 @@ impl EventLoop {
         task
     }
 
-    /// `task_obj` and `coro` are nullable
-    pub fn tick_coro(&self, mut task_obj: Obj, mut coro: Obj) -> bool {
-        if task_obj.is_null() {
-            task_obj = self.current_task.get()
-        }
-
+    /// Resumes a task's root coroutine and schedule the task from the yielded result.
+    ///
+    /// Child coroutines and custom awaitables must delegate their yielded objects to this root
+    /// coroutine. Scheduling a child through this method would incorrectly treat child completion
+    /// as task completion.
+    fn tick_task(&self, task_obj: Obj) {
         let task = task_obj.as_obj::<Task>();
-        if coro.is_null() {
-            coro = task.coro();
-        }
-        assert!(coro.is(micropython_rs::generator::GEN_INSTANCE_TYPE));
+        let coro = task.coro();
+        assert!(coro.is(GEN_INSTANCE_TYPE));
 
-        let prev_task_obj = self.current_task.replace(task_obj);
         let result = resume_gen(coro, Obj::NONE, Obj::NULL);
-        let terminated = match result.return_kind {
+        match result.return_kind {
             VmReturnKind::Normal => {
                 let mut ready = self.ready.borrow_mut();
                 task.complete_with(result.obj);
                 task.waiting_tasks()
                     .iter()
-                    .for_each(|&w| ready.push_front(w));
-
-                true
+                    .for_each(|&waiting| ready.push_front(waiting));
             }
             VmReturnKind::Yield => {
                 if let Some(sleep) = result.obj.try_as_obj::<Sleep>() {
@@ -109,14 +102,9 @@ impl EventLoop {
                 } else {
                     self.ready.borrow_mut().push_back(task_obj);
                 }
-
-                false
             }
             VmReturnKind::Exception => nlr::raise(token(), result.obj),
-        };
-
-        self.current_task.set(prev_task_obj);
-        terminated
+        }
     }
 
     // returns:
@@ -141,7 +129,7 @@ impl EventLoop {
         drop(sleepers);
 
         if let Some(task_obj) = task_obj {
-            self.tick_coro(task_obj, Obj::NULL);
+            self.tick_task(task_obj);
         }
 
         unsafe { vexTasksRun() };

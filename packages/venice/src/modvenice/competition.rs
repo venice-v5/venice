@@ -5,14 +5,15 @@ use bitflags::bitflags;
 use micropython_macros::{class, class_methods};
 use micropython_rs::{
     except::type_error,
-    generator::GEN_INSTANCE_TYPE,
+    generator::{GEN_INSTANCE_TYPE, VmReturnKind, resume_gen},
     init::token,
+    nlr,
     obj::{Obj, ObjBase, ObjTrait, ObjType},
 };
 
 use crate::modvenice::{
     Exception,
-    vasyncio::event_loop::{EventLoop, get_running_loop},
+    vasyncio::{sleep::Sleep, task::Task, time32},
 };
 
 bitflags! {
@@ -71,6 +72,16 @@ impl Phase {
     }
 }
 
+#[derive(Clone, Copy)]
+enum RoutineWait {
+    Ready,
+    Sleep {
+        sleep: Obj,
+        deadline: time32::Instant,
+    },
+    Task(Obj),
+}
+
 #[class(qstr!(Competition))]
 #[repr(C)]
 pub struct Competition {
@@ -101,98 +112,180 @@ pub struct CompetitionRuntime {
 
     // nullable
     coro: Cell<Obj>,
+    routine_wait: Cell<RoutineWait>,
 }
 
 impl CompetitionRuntime {
-    pub fn poll_update(&self) -> Option<Status> {
+    /// Updates the competition phase from the latest status.
+    ///
+    /// Connected and disconnected routines are transient phases. Status changes update the stored
+    /// status while one of those routines runs, but do not interrupt the routine.
+    fn update_phase(&self) -> bool {
+        let old_phase = self.phase.get();
         let new_status = status();
-        let prev_status = self.status.replace(new_status);
+        let old_status = self.status.replace(new_status);
 
-        if prev_status != new_status {
-            Some(prev_status)
+        let new_phase = if old_phase == Phase::Initial {
+            Phase::Mode(new_status.mode())
+        } else if old_status == new_status || !old_phase.interruptable() {
+            return false;
+        } else if old_status.connected() != new_status.connected() {
+            match new_status.connected() {
+                true => Phase::Connected,
+                false => Phase::Disconnected,
+            }
         } else {
-            None
+            Phase::Mode(new_status.mode())
+        };
+
+        if old_phase == new_phase {
+            false
+        } else {
+            self.phase.set(new_phase);
+            true
         }
     }
 
-    pub fn tick(&self) -> Result<(), Exception> {
-        let mut phase_updated = false;
+    fn phase_name(&self) -> &'static str {
+        match self.phase.get() {
+            Phase::Connected => "connected",
+            Phase::Disconnected => "disconnected",
+            Phase::Mode(Mode::Driver) => "driver",
+            Phase::Mode(Mode::Autonomous) => "autonomous",
+            Phase::Mode(Mode::Disabled) => "disabled",
+            Phase::Initial => unreachable!(),
+        }
+    }
 
-        if self.phase.get() == Phase::Initial {
-            // jump immediately into a mode phase
-            self.phase.set(Phase::Mode(self.status.get().mode()));
-            phase_updated = true;
-        } else if let Some(prev_status) = self.poll_update() {
-            let new_status = self.status.get();
-            if self.phase.get().interruptable() {
-                let old_phase = self.phase.get();
-                let new_phase = if prev_status.connected() != new_status.connected() {
-                    match new_status.connected() {
-                        true => Phase::Connected,
-                        false => Phase::Disconnected,
-                    }
+    fn clear_phase_routine(&self) {
+        self.coro.set(Obj::NULL);
+        self.routine_wait.set(RoutineWait::Ready);
+    }
+
+    fn start_phase_routine(&self) -> Result<(), Exception> {
+        let coro = match self.phase.get() {
+            Phase::Connected => self.connected,
+            Phase::Disconnected => self.disconnected,
+            Phase::Mode(Mode::Driver) => self.driver,
+            Phase::Mode(Mode::Autonomous) => self.autonomous,
+            Phase::Mode(Mode::Disabled) => self.disabled,
+            Phase::Initial => unreachable!(),
+        }
+        .map(|routine| routine.call(0, &[]))
+        .unwrap_or(Obj::NULL);
+
+        if !coro.is_null() && !coro.is(GEN_INSTANCE_TYPE) {
+            Err(type_error(error_msg!(
+                "expected coroutine return value from {} routine, got <{}>",
+                self.phase_name(),
+                ArgType::of(&coro)
+            )))?;
+        }
+
+        self.coro.set(coro);
+        self.routine_wait.set(RoutineWait::Ready);
+        Ok(())
+    }
+
+    /// Returns whether the active routine can be resumed without violating its current await.
+    ///
+    /// Competition status must remain responsive while a routine sleeps or awaits a task. The
+    /// competition runtime therefore tracks those waits itself and yields a generic wake signal so
+    /// its outer task remains in the event loop's ready queue.
+    fn routine_ready(&self) -> bool {
+        match self.routine_wait.get() {
+            RoutineWait::Ready => true,
+            RoutineWait::Sleep { sleep, deadline } => {
+                if deadline <= time32::Instant::now() {
+                    sleep.as_obj::<Sleep>().complete();
+                    self.routine_wait.set(RoutineWait::Ready);
+                    true
                 } else {
-                    Phase::Mode(new_status.mode())
-                };
-
-                if old_phase != new_phase {
-                    self.phase.set(new_phase);
-                    phase_updated = true;
+                    false
+                }
+            }
+            RoutineWait::Task(task) => {
+                if task.as_obj::<Task>().is_complete() {
+                    self.routine_wait.set(RoutineWait::Ready);
+                    true
+                } else {
+                    false
                 }
             }
         }
+    }
 
-        if !self.coro.get().is_null() {
-            // tick the coroutine on the current task
-            let terminated = get_running_loop()
-                .as_obj::<EventLoop>()
-                .tick_coro(Obj::NULL, self.coro.get());
+    fn enter_current_mode(&self) -> Result<(), Exception> {
+        self.phase.set(Phase::Mode(self.status.get().mode()));
+        self.start_phase_routine()
+    }
 
-            if terminated {
+    /// Polls the competition runtime once and returns the object that its active routine yielded.
+    ///
+    /// This method deliberately does not call the event loop. The yielded object must propagate
+    /// through the coroutine that awaits this runtime so the event loop schedules only that outer
+    /// task.
+    pub fn tick(&self) -> Result<Obj, Exception> {
+        if self.update_phase() {
+            // A phase change abandons the previous phase routine. Do not poll the old routine after
+            // its phase has ended.
+            self.clear_phase_routine();
+            self.start_phase_routine()?;
+        }
+
+        loop {
+            let coro = self.coro.get();
+
+            if coro.is_null() {
+                // Missing connected/disconnected routines behave like completed no-op routines.
+                // This prevents the runtime from becoming stuck in a transient phase.
                 match self.phase.get() {
                     Phase::Connected | Phase::Disconnected => {
-                        self.phase.set(Phase::Mode(self.status.get().mode()));
-                        phase_updated = true;
+                        self.enter_current_mode()?;
+                        continue;
                     }
-                    Phase::Mode(_) => {}
+                    Phase::Mode(_) => return Ok(Obj::NONE),
                     Phase::Initial => unreachable!(),
                 }
             }
-        }
 
-        // update coroutine
-        if phase_updated {
-            self.coro.set({
-                let coro = match self.phase.get() {
-                    Phase::Connected => self.connected,
-                    Phase::Disconnected => self.disconnected,
-                    Phase::Mode(Mode::Driver) => self.driver,
-                    Phase::Mode(Mode::Autonomous) => self.autonomous,
-                    Phase::Mode(Mode::Disabled) => self.disabled,
-                    Phase::Initial => unreachable!(),
+            if !self.routine_ready() {
+                return Ok(Obj::NONE);
+            }
+
+            let result = resume_gen(coro, Obj::NONE, Obj::NULL);
+            match result.return_kind {
+                VmReturnKind::Yield => {
+                    if let Some(sleep) = result.obj.try_as_obj::<Sleep>() {
+                        self.routine_wait.set(RoutineWait::Sleep {
+                            sleep: result.obj,
+                            deadline: time32::Instant::now() + sleep.duration(),
+                        });
+                        return Ok(Obj::NONE);
+                    }
+
+                    if result.obj.try_as_obj::<Task>().is_some() {
+                        self.routine_wait.set(RoutineWait::Task(result.obj));
+                        return Ok(Obj::NONE);
+                    }
+
+                    // Unknown wake signals already cause the event loop to requeue the outer task.
+                    return Ok(result.obj);
                 }
-                .map(|c| c.call(0, &[]))
-                .unwrap_or(Obj::NULL);
-
-                if !coro.is(GEN_INSTANCE_TYPE) && !coro.is_null() {
-                    let phase_name = match self.phase.get() {
-                        Phase::Connected => "connected",
-                        Phase::Disconnected => "disconnected",
-                        Phase::Mode(Mode::Driver) => "driver",
-                        Phase::Mode(Mode::Autonomous) => "autonomous",
-                        Phase::Mode(Mode::Disabled) => "disabled",
+                VmReturnKind::Normal => {
+                    self.clear_phase_routine();
+                    match self.phase.get() {
+                        Phase::Connected | Phase::Disconnected => {
+                            self.enter_current_mode()?;
+                        }
+                        // A completed mode routine remains stopped until the mode changes.
+                        Phase::Mode(_) => return Ok(Obj::NONE),
                         Phase::Initial => unreachable!(),
-                    };
-                    Err(type_error(error_msg!(
-                        "expected coroutine return value from {phase_name} routine, got <{}>",
-                        ArgType::of(&coro)
-                    )))?;
+                    }
                 }
-
-                coro
-            });
+                VmReturnKind::Exception => nlr::raise(token(), result.obj),
+            }
         }
-        Ok(())
     }
 }
 
@@ -266,6 +359,7 @@ impl Competition {
             disabled: self.disabled.get(),
 
             coro: Cell::new(Obj::NULL),
+            routine_wait: Cell::new(RoutineWait::Ready),
         }
     }
 }
