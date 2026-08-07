@@ -18,12 +18,22 @@ use crate::modvenice::{
     vision::{SignatureId, code::VisionCodeObj},
 };
 
+/// The detection method used to identify a `VisionObject`.
+///
+/// `DetectionSource` is an abstract base and cannot be instantiated directly. Construct its
+/// associated-only variants as `DetectionSource.Signature(...)`, `DetectionSource.Code(...)`, or
+/// `DetectionSource.Line()`. The variant classes are not package-root imports.
 #[class(qstr!(DetectionSource))]
 #[repr(C)]
 pub struct DetectionSourceObj {
     base: ObjBase,
 }
 
+/// A normal Vision signature not associated with a color code was used to detect a `VisionObject`.
+///
+/// Construct this associated-only class as `DetectionSource.Signature(id)`; it is not package-root
+/// importable. The read-only integer attribute `id` is the matching signature slot from 1 to 7. Values
+/// compare equal when their IDs match and print as `DetectionSource.Signature(id=...)`.
 #[class(qstr!(Signature))]
 #[repr(C)]
 pub struct Signature {
@@ -31,6 +41,11 @@ pub struct Signature {
     id: u8,
 }
 
+/// Multiple signatures joined in a color code were used to detect a `VisionObject`.
+///
+/// Construct this associated-only class as `DetectionSource.Code(code)`; it is not package-root
+/// importable. The read-only `code` attribute is the matching `VisionCode`. Values compare equal when
+/// their codes match and print as `DetectionSource.Code(code=...)`.
 #[class(qstr!(Code))]
 #[repr(C)]
 pub struct Code {
@@ -38,6 +53,11 @@ pub struct Code {
     code: Obj,
 }
 
+/// Line detection was used to find a `VisionObject`.
+///
+/// Construct this associated-only class as `DetectionSource.Line()`; it is not package-root
+/// importable. Construction always returns the same singleton, which prints as
+/// `DetectionSource.Line()`.
 #[class(qstr!(Line))]
 #[repr(C)]
 pub struct Line {
@@ -46,16 +66,26 @@ pub struct Line {
 
 #[class_methods]
 impl DetectionSourceObj {
+    /// Rejects direct construction of the abstract `DetectionSource` base class.
+    ///
+    /// Use one of the associated variant classes instead.
+    ///
+    /// # Raises
+    ///
+    /// - `TypeError`: Always.
     #[make_new]
     #[stub(sig = "(self) -> None")]
     fn make_new(_: &ObjType, _: usize, _: usize, _: &[Obj]) {
         type_error(c"DetectionSource is an abstract base class; use a variant like DetectionSource.Signature").raise(token());
     }
 
+    /// The associated class for a normal Vision signature source, constructed as `DetectionSource.Signature(id)`.
     #[constant(qstr!(Signature))]
     const SIGNATURE: &ObjType = Signature::OBJ_TYPE;
+    /// The associated class for multiple signatures joined in a color code, constructed as `DetectionSource.Code(code)`.
     #[constant(qstr!(Code))]
     const CODE: &ObjType = Code::OBJ_TYPE;
+    /// The associated class for line detection, constructed as `DetectionSource.Line()`.
     #[constant(qstr!(Line))]
     const LINE: &ObjType = Line::OBJ_TYPE;
 }
@@ -65,6 +95,15 @@ impl Signature {
     #[parent]
     const PARENT: &ObjType = DetectionSourceObj::OBJ_TYPE;
 
+    /// Creates a normal Vision signature source for signature slot `id`.
+    ///
+    /// `id` is a positional-only integer from 1 to 7.
+    ///
+    /// # Raises
+    ///
+    /// - `TypeError`: If `id` is not an integer, a keyword argument is supplied, or the argument count is
+    ///   not one.
+    /// - `ValueError`: If `id` is outside the inclusive range 1 to 7.
     #[make_new]
     #[stub(sig = "(self, id: int) -> None")]
     fn make_new(
@@ -115,6 +154,14 @@ impl Code {
     #[parent]
     const PARENT: &ObjType = DetectionSourceObj::OBJ_TYPE;
 
+    /// Creates a source indicating that multiple signatures joined in `code` detected the object.
+    ///
+    /// `code` must be a positional-only `VisionCode`.
+    ///
+    /// # Raises
+    ///
+    /// - `TypeError`: If `code` is not a `VisionCode`, a keyword argument is supplied, or the argument
+    ///   count is not one.
     #[make_new]
     #[stub(sig = "(self, code: VisionCode) -> None")]
     fn make_new(
@@ -183,6 +230,11 @@ impl Line {
         base: ObjBase::new(Self::OBJ_TYPE),
     };
 
+    /// Returns the singleton source indicating that line detection found the object.
+    ///
+    /// # Raises
+    ///
+    /// - `TypeError`: If any positional or keyword arguments are supplied.
     #[make_new]
     #[stub(sig = "(self) -> None")]
     fn make_new(_: &ObjType, _: usize, _: usize, args: &[Obj]) -> Result<Obj, Exception> {

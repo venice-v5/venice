@@ -12,6 +12,16 @@ pub enum RotationUnit {
     Turns,
 }
 
+/// A unit selector for angular values.
+///
+/// Venice APIs accept a numeric angle together with one of these singleton values and return numeric
+/// angles in the selected unit. Angles are signed displacements from some rotation representing zero;
+/// they are unbounded and are not automatically made modular. One turn equals 360 degrees or `2 * pi`
+/// radians.
+///
+/// This class is not constructed directly. Use `RotationUnit.RADIANS`, `RotationUnit.DEGREES`, or
+/// `RotationUnit.TURNS`, which are also exported at the package root as `RADIANS`, `DEGREES`, and
+/// `TURNS`. Values have readable representations such as `RotationUnit.DEGREES`.
 #[class(qstr!(RotationUnit))]
 #[repr(C)]
 pub struct RotationUnitObj {
@@ -47,10 +57,13 @@ impl RotationUnitObj {
         }
     }
 
+    /// Selects the number of radians rotated; also root-importable as `RADIANS`.
     #[constant]
     pub const RADIANS: &Self = &Self::new(RotationUnit::Radians);
+    /// Selects the number of degrees rotated; also root-importable as `DEGREES`.
     #[constant]
     pub const DEGREES: &Self = &Self::new(RotationUnit::Degrees);
+    /// Selects the number of turns (revolutions) rotated; also root-importable as `TURNS`.
     #[constant]
     pub const TURNS: &Self = &Self::new(RotationUnit::Turns);
 

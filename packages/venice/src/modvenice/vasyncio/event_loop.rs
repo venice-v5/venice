@@ -43,6 +43,25 @@ impl Ord for Sleeper {
     }
 }
 
+/// A cooperative scheduler for Venice coroutine tasks and timed sleeps.
+///
+/// A *task* is a lightweight, non-blocking unit of execution. Tasks allow you to cooperatively perform
+/// work in the background without blocking other code from running.
+///
+/// - Tasks are **lightweight**. Because tasks are scheduled and managed by Venice, creating new tasks
+///   or switching between tasks does not require a context switch and has fairly low overhead.
+///   Creating, running, and destroying large numbers of tasks is relatively cheap in comparison to
+///   traditional threads.
+/// - Tasks are scheduled **cooperatively**. A task will run until it voluntarily yields using an
+///   `await` point, giving control back to the event loop. The loop then switches to executing a
+///   different task.
+/// - Tasks are **non-blocking**. When a task cannot continue executing, it should yield, allowing the
+///   event loop to schedule another task in its place. Tasks should not perform operations that could
+///   block the CPU for a long period without an `await` point, because this prevents other tasks from
+///   executing as well. This includes long-running tight loops without `await` points.
+///
+/// The loop runs one ready task at a time. Users normally call `vasyncio.run` instead of managing an
+/// event loop directly.
 #[class(qstr!(EventLoop))]
 #[repr(C)]
 pub struct EventLoop {
@@ -71,11 +90,11 @@ impl EventLoop {
         task
     }
 
-    /// Resumes a task's root coroutine and schedule the task from the yielded result.
+    /// Resumes a task's root coroutine and schedules the task from the yielded result.
     ///
-    /// Child coroutines and custom awaitables must delegate their yielded objects to this root
-    /// coroutine. Scheduling a child through this method would incorrectly treat child completion
-    /// as task completion.
+    /// Child coroutines and custom awaitables must delegate their yielded objects to this root coroutine.
+    /// Scheduling a child through this method would incorrectly treat child completion as task
+    /// completion.
     fn tick_task(&self, task_obj: Obj) {
         let task = task_obj.as_obj::<Task>();
         let coro = task.coro();
@@ -143,6 +162,11 @@ impl EventLoop {
 
 #[class_methods]
 impl EventLoop {
+    /// Creates an empty event loop.
+    ///
+    /// # Raises
+    ///
+    /// - `TypeError`: If any positional or keyword arguments are supplied.
     #[make_new]
     #[stub(sig = "(self) -> None")]
     fn make_new(
@@ -172,6 +196,15 @@ impl EventLoop {
         self_in.as_obj::<EventLoop>().spawn(coro)
     }
 
+    /// Schedules coroutine object `coro` on this loop and returns an awaitable `Task`.
+    ///
+    /// Scheduling does not run the coroutine until the loop is running. The `Task` itself can be awaited
+    /// to retrieve the output of its coroutine. Due to a current scheduler limitation, starting to await
+    /// a task after it has already finished can leave the waiting coroutine unfinished.
+    ///
+    /// # Raises
+    ///
+    /// - `TypeError`: If `coro` is not a coroutine object.
     #[constant(qstr!(spawn))]
     #[stub(sig = "(self, coro: Any) -> Task")]
     const SPAWN: &Fun2 = &Fun2::new(Self::py_spawn);
@@ -189,11 +222,41 @@ impl EventLoop {
         Obj::NONE
     }
 
+    /// Runs scheduled tasks until no ready tasks or pending sleeps remain.
+    ///
+    /// While this method is running, `vasyncio.get_running_loop` returns this loop and `vasyncio.spawn`
+    /// adds tasks to it. An exception raised by a task stops the loop and is propagated to the caller. Due
+    /// to a current scheduler limitation, awaiting an already completed task can let the queues empty
+    /// before that waiter resumes.
     #[constant(qstr!(run))]
     #[stub(sig = "(self) -> None")]
     const RUN: &Fun1 = &Fun1::new(Self::py_run);
 }
 
+/// Runs coroutine object `coro` on a new event loop until no work remains.
+///
+/// The loop also waits for tasks spawned into it and pending `Sleep` objects before returning `None`.
+/// The root coroutine's return value is discarded, and an exception from any task stops the loop and
+/// is propagated to the caller. Due to a current scheduler limitation, awaiting a task after it has
+/// already completed can let the queues empty before the waiting coroutine resumes, so start awaiting
+/// a returned `Task` before it finishes.
+///
+/// # Examples
+///
+/// ```python
+/// from venice import *
+///
+/// async def main():
+///     print("start")
+///     await vasyncio.Sleep(100, MILLIS)
+///     print("done")
+///
+/// vasyncio.run(main())
+/// ```
+///
+/// # Raises
+///
+/// - `TypeError`: If `coro` is not a coroutine object.
 #[fun]
 #[stub(sig = "(coro: Any) -> None")]
 pub fn run(coro: Obj) -> Obj {
@@ -206,6 +269,32 @@ pub fn run(coro: Obj) -> Obj {
     EventLoop::py_run(alloc_obj(eloop))
 }
 
+/// Spawns a new asynchronous task that can be controlled with the returned `Task` handle.
+///
+/// Call this from code already executing under `vasyncio.run` or `EventLoop.run`. The `Task` itself can
+/// be awaited to retrieve the output of its coroutine; awaiting it only after completion is subject to
+/// the scheduler limitation described by `Task`.
+///
+/// # Examples
+///
+/// ```python
+/// from venice import *
+///
+/// async def answer():
+///     await vasyncio.Sleep(10, MILLIS)
+///     return 42
+///
+/// async def main():
+///     task = vasyncio.spawn(answer())
+///     print(await task)
+///
+/// vasyncio.run(main())
+/// ```
+///
+/// # Raises
+///
+/// - `RuntimeError`: If no event loop is running.
+/// - `TypeError`: If `coro` is not a coroutine object.
 #[fun]
 #[stub(sig = "(coro: Any) -> Task")]
 pub fn spawn(coro: Obj) -> Obj {
@@ -217,6 +306,10 @@ pub fn spawn(coro: Obj) -> Obj {
     EventLoop::py_spawn(eloop, coro)
 }
 
+/// Returns the event loop currently executing tasks.
+///
+/// Outside `vasyncio.run` or `EventLoop.run`, the current implementation returns `None` even though the
+/// declared return type is `EventLoop`.
 #[fun]
 #[stub(sig = "() -> EventLoop")]
 pub fn get_running_loop() -> Obj {

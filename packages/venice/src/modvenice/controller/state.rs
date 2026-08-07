@@ -11,6 +11,19 @@ use vexide_devices::controller::{ButtonState, ControllerState, JoystickState};
 
 use crate::{modvenice::read_only_attr::read_only_attr, obj::alloc_obj};
 
+/// Holds a read-only snapshot of the state of the controller.
+///
+/// Instances are returned by `Controller.read_state` and compare by value.
+///
+/// - `left_stick` is the left joystick's `JoystickState`.
+/// - `right_stick` is the right joystick's `JoystickState`.
+/// - `button_a`, `button_b`, `button_x`, and `button_y` are the face-button `ButtonState` values.
+/// - `button_up`, `button_down`, `button_left`, and `button_right` are the directional-button
+///   `ButtonState` values.
+/// - `button_l1`, `button_l2`, `button_r1`, and `button_r2` are the shoulder-button `ButtonState`
+///   values.
+///
+/// Every attribute is read-only.
 #[class(qstr!(ControllerState))]
 #[repr(C)]
 pub struct ControllerStateObj {
@@ -18,6 +31,16 @@ pub struct ControllerStateObj {
     state: ControllerState,
 }
 
+/// Represents the read-only state of a button on the controller.
+///
+/// - `is_pressed` is `True` if this button is currently being pressed.
+/// - `is_released` is `True` if this button is currently released (not being pressed).
+/// - `is_now_pressed` is `True` if the button state was released in the previous call to
+///   `Controller.read_state`, but is now pressed.
+/// - `is_now_released` is `True` if the button state was pressed in the previous call to
+///   `Controller.read_state`, but is now released.
+///
+/// Instances compare by value and can't be constructed directly.
 #[class(qstr!(ButtonState))]
 #[repr(C)]
 pub struct ButtonStateObj {
@@ -25,6 +48,14 @@ pub struct ButtonStateObj {
     state: ButtonState,
 }
 
+/// Stores how far the joystick is away from the center (at *(0, 0)*) from -1 to 1.
+///
+/// - On the x axis, left is negative and right is positive.
+/// - On the y axis, down is negative and up is positive.
+///
+/// The read-only `x` and `y` attributes are normalized to [-1.0, 1.0]. The read-only `x_raw` and
+/// `y_raw` attributes are the raw positions from [-127, 127]. Instances compare by value and can't be
+/// constructed directly.
 #[class(qstr!(JoystickState))]
 #[repr(C)]
 pub struct JoystickStateObj {

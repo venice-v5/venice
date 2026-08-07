@@ -27,6 +27,12 @@ use crate::{
     registry::ControllerGuard,
 };
 
+/// V5 Controller.
+///
+/// This class allows you to read from the buttons and joysticks on a controller and write to the
+/// controller's display. The read-only `id` attribute is the `ControllerId` selected at
+/// construction. Only one live Venice binding may hold each controller at a time; call
+/// `Controller.free` before reusing its ID.
 #[class(qstr!(Controller))]
 #[repr(C)]
 pub struct ControllerObj {
@@ -40,6 +46,11 @@ impl From<ControllerError> for Exception {
     }
 }
 
+/// Represents the state of a controller's connection. Values are returned by
+/// `Controller.get_connection`.
+///
+/// This associated class isn't currently exported from the `venice` module, so its named constants
+/// aren't directly reachable even though returned values use this type.
 #[class(qstr!(ControllerConnection))]
 #[repr(C)]
 pub struct ControllerConnectionObj {
@@ -58,10 +69,13 @@ impl ControllerConnectionObj {
 
 #[class_methods]
 impl ControllerConnectionObj {
+    /// No controller is connected.
     #[constant]
     pub const OFFLINE: &Self = &Self::new(ControllerConnection::Offline);
+    /// Controller is tethered through a wired Smart Port connection.
     #[constant]
     pub const TETHERED: &Self = &Self::new(ControllerConnection::Tethered);
+    /// Controller is wirelessly connected over a VEXNet radio.
     #[constant]
     pub const VEX_NET: &Self = &Self::new(ControllerConnection::VexNet);
 
@@ -86,6 +100,18 @@ enum ControllerFuture {
 }
 
 // TODO: does this future need exclusive access to the controller as long as it lives?
+/// An awaitable that completes once a write to the controller screen or vibration motor has been
+/// performed.
+///
+/// This awaitable waits until the controller is able to accept a new write and fails if the controller
+/// is disconnected or if the requested write is bad. Users receive it from `Controller.rumble`,
+/// `Controller.clear_line`, `Controller.clear_screen`, or `Controller.set_text` rather than constructing
+/// it directly. Awaiting it returns `None`.
+///
+/// # Raises
+///
+/// - `DeviceError`: If the controller is not connected.
+/// - `ValueError`: If a requested line or column is outside its visible range.
 #[class(qstr!(ControllerFuture))]
 #[repr(C)]
 pub struct ControllerFutureObj {
@@ -212,13 +238,23 @@ fn set_text_prelude(args: &[Obj]) -> Result<(&ControllerObj, &str, Line, Column)
 
 #[class_methods]
 impl ControllerObj {
+    /// The update rate of the controller, in milliseconds. Its value is 25.
     #[constant]
     const UPDATE_INTERVAL_MS: i32 = Controller::UPDATE_INTERVAL.as_millis() as i32;
+    /// Maximum number of characters that can be drawn to a text line. Its value is 19.
     #[constant]
     const MAX_COLUMNS: i32 = Controller::MAX_COLUMNS as i32;
+    /// Number of available text lines on the controller before clearing the screen. Its value is 3.
     #[constant]
     const MAX_LINES: i32 = Controller::MAX_LINES as i32;
 
+    /// Creates a new controller selected by `id`.
+    ///
+    /// `id` defaults to `ControllerId.PRIMARY`.
+    ///
+    /// # Raises
+    ///
+    /// - `ValueError`: If that controller ID is already in use by another `Controller` binding.
     #[make_new]
     #[stub(sig = "(self, id: ControllerId = ControllerId.PRIMARY) -> None")]
     fn make_new(
@@ -254,12 +290,50 @@ impl ControllerObj {
         })
     }
 
+    /// Returns the current state of all buttons and joysticks on the controller.
+    ///
+    /// # Note
+    ///
+    /// If the current competition mode is not driver control, this method raises an exception.
+    ///
+    /// # Examples
+    ///
+    /// ```python
+    /// from venice import *
+    ///
+    /// async def main():
+    ///     controller = Controller()
+    ///
+    ///     while True:
+    ///         state = controller.read_state()
+    ///
+    ///         print("Left Stick X:", state.left_stick.x)
+    ///         if state.button_a.is_now_pressed:
+    ///             print("Button A was just pressed!")
+    ///         if state.button_x.is_pressed:
+    ///             print("Button X is pressed!")
+    ///         if state.button_b.is_released:
+    ///             print("Button B is released!")
+    ///
+    ///         await vasyncio.Sleep(Controller.UPDATE_INTERVAL_MS, MILLIS)
+    ///
+    /// vasyncio.run(main())
+    /// ```
+    ///
+    /// # Raises
+    ///
+    /// - `DeviceError`: If access to controller data is restricted by competition control, or the
+    ///   controller is not connected.
     #[method]
     fn read_state(&self) -> Result<ControllerStateObj, Exception> {
         let state = self.guard.borrow().state()?;
         Ok(ControllerStateObj::new(state))
     }
 
+    /// Returns the controller's connection type.
+    ///
+    /// The result is a `ControllerConnection`. That associated class is currently missing from the
+    /// root runtime dictionary, so its named constants aren't directly importable.
     #[method]
     #[stub(sig = "(self) -> ControllerConnection")]
     fn get_connection(&self) -> Obj {
@@ -270,21 +344,91 @@ impl ControllerObj {
         }
     }
 
+    /// Returns the controller's battery capacity as a float in the interval [0.0, 1.0].
+    ///
+    /// # Examples
+    ///
+    /// Print the controller's battery capacity:
+    ///
+    /// ```python
+    /// from venice import *
+    ///
+    /// controller = Controller()
+    /// print("Controller battery capacity:", controller.get_battery_capacity())
+    /// ```
+    ///
+    /// # Raises
+    ///
+    /// - `DeviceError`: If the controller is not connected.
     #[method]
     fn get_battery_capacity(&self) -> Result<f32, Exception> {
         Ok(self.guard.borrow().battery_capacity()? as f32)
     }
 
+    /// Returns the controller's battery level.
+    ///
+    /// # Examples
+    ///
+    /// Print a warning if the controller battery is low:
+    ///
+    /// ```python
+    /// from venice import *
+    ///
+    /// async def main():
+    ///     controller = Controller()
+    ///     while True:
+    ///         # If the controller isn't connected, it may as well be dead.
+    ///         try:
+    ///             battery_level = controller.get_battery_level()
+    ///         except DeviceError:
+    ///             battery_level = 0
+    ///         if battery_level < 10:
+    ///             print("WARNING: Controller battery is low!")
+    ///         await vasyncio.Sleep(Controller.UPDATE_INTERVAL_MS, MILLIS)
+    ///
+    /// vasyncio.run(main())
+    /// ```
+    ///
+    /// # Raises
+    ///
+    /// - `DeviceError`: If the controller is not connected.
     #[method]
     fn get_battery_level(&self) -> Result<i32, Exception> {
         Ok(self.guard.borrow().battery_level()?)
     }
 
+    /// Returns the controller's flags.
+    ///
+    /// # Raises
+    ///
+    /// - `DeviceError`: If the controller is not connected.
     #[method]
     fn get_flags(&self) -> Result<i32, Exception> {
         Ok(self.guard.borrow().flags()?)
     }
 
+    /// Sends a rumble `pattern` to the controller's vibration motor.
+    ///
+    /// This method takes a string consisting of the characters `'.'`, `'-'`, and `' '`, where dots are
+    /// short rumbles, dashes are long rumbles, and spaces are pauses. Maximum supported length is 8
+    /// characters. The operation isn't sent until the returned `ControllerFuture` is awaited.
+    ///
+    /// # Examples
+    ///
+    /// ```python
+    /// from venice import *
+    ///
+    /// async def main():
+    ///     controller = Controller()
+    ///     await controller.rumble(". -. -.")
+    ///
+    /// vasyncio.run(main())
+    /// ```
+    ///
+    /// # Raises
+    ///
+    /// - `ValueError`: If `pattern` contains a NUL character.
+    /// - `DeviceError`: When awaited, if the controller is not connected.
     #[method]
     fn rumble(&self, pattern: &str) -> ControllerFutureObj {
         let text = str_to_cstring_vec(pattern, c"rumble pattern has forbidden nul byte");
@@ -300,11 +444,67 @@ impl ControllerObj {
         }
     }
 
+    /// Sends a rumble `pattern` to the controller's vibration motor.
+    ///
+    /// Unlike `Controller.rumble`, this method will fail if the controller screen is busy.
+    ///
+    /// This method takes a string consisting of the characters `'.'`, `'-'`, and `' '`, where dots are
+    /// short rumbles, dashes are long rumbles, and spaces are pauses. Maximum supported length is 8
+    /// characters. An embedded NUL isn't safely reported as a Python exception by this immediate
+    /// method; use `Controller.rumble` when input may contain one.
+    ///
+    /// # Examples
+    ///
+    /// ```python
+    /// from venice import *
+    ///
+    /// controller = Controller()
+    /// controller.try_rumble(". -. -.")
+    /// ```
+    ///
+    /// # Raises
+    ///
+    /// - `DeviceError`: If the controller is not connected or the screen is busy.
     #[method]
     fn try_rumble(&self, pattern: &str) -> Result<(), Exception> {
         Ok(self.guard.borrow_mut().try_rumble(pattern)?)
     }
 
+    /// Clears the contents of a specific text `line`, waiting until the controller successfully clears
+    /// the line.
+    ///
+    /// Lines are 1-indexed.
+    ///
+    /// <section class="warning">
+    ///
+    /// Controller text setting is a slow process, so calls to this function at intervals faster than 10ms
+    /// on a wired connection or 50ms over VEXNet will take longer to complete.
+    ///
+    /// </section>
+    ///
+    /// # Examples
+    ///
+    /// ```python
+    /// from venice import *
+    ///
+    /// async def main():
+    ///     controller = Controller()
+    ///
+    ///     # Write to line 1.
+    ///     await controller.set_text("Hello, world!", 1, 1)
+    ///
+    ///     await vasyncio.Sleep(500, MILLIS)
+    ///
+    ///     # Clear line 1.
+    ///     await controller.clear_line(1)
+    ///
+    /// vasyncio.run(main())
+    /// ```
+    ///
+    /// # Raises
+    ///
+    /// - `ValueError`: If `line` is outside 1 through `Controller.MAX_LINES`.
+    /// - `DeviceError`: If the controller is not connected.
     #[method]
     #[stub(sig = "(self, line: int) -> ControllerFuture")]
     fn clear_line(&self, line: Line) -> ControllerFutureObj {
@@ -319,12 +519,75 @@ impl ControllerObj {
         }
     }
 
+    /// Attempts to clear the contents of a specific text `line`.
+    ///
+    /// Lines are 1-indexed. Unlike `Controller.clear_line`, this method will fail if the controller screen
+    /// is busy.
+    ///
+    /// <section class="warning">
+    ///
+    /// Controller text setting is a slow process, so updates faster than 10ms on a wired connection or
+    /// 50ms over VEXNet will not be applied to the controller.
+    ///
+    /// </section>
+    ///
+    /// # Examples
+    ///
+    /// ```python
+    /// from venice import *
+    ///
+    /// async def main():
+    ///     controller = Controller()
+    ///
+    ///     # Write to line 1.
+    ///     await controller.set_text("Hello, world!", 1, 1)
+    ///
+    ///     await vasyncio.Sleep(500, MILLIS)
+    ///
+    ///     # Clear line 1.
+    ///     controller.try_clear_line(1)
+    ///
+    /// vasyncio.run(main())
+    /// ```
+    ///
+    /// # Raises
+    ///
+    /// - `ValueError`: If `line` is outside 1 through `Controller.MAX_LINES`.
+    /// - `DeviceError`: If the controller is not connected or the screen is busy.
     #[method]
     #[stub(sig = "(self, line: int) -> None")]
     fn try_clear_line(&self, line: Line) -> Result<(), Exception> {
         Ok(self.guard.borrow_mut().try_clear_line(line.0 as u8)?)
     }
 
+    /// Clears the whole screen, waiting until the controller successfully clears the screen.
+    ///
+    /// This includes the default widget displayed by the controller if it hasn't already been cleared.
+    ///
+    /// <section class="warning">
+    ///
+    /// Controller text setting is a slow process, so calls to this function at intervals faster than 10ms
+    /// on a wired connection or 50ms over VEXNet will take longer to complete.
+    ///
+    /// </section>
+    ///
+    /// # Examples
+    ///
+    /// ```python
+    /// from venice import *
+    ///
+    /// async def main():
+    ///     controller = Controller()
+    ///
+    ///     # Remove the default widget on the controller screen that displays match time.
+    ///     await controller.clear_screen()
+    ///
+    /// vasyncio.run(main())
+    /// ```
+    ///
+    /// # Raises
+    ///
+    /// - `DeviceError`: If the controller is not connected.
     #[method]
     fn clear_screen(&self) -> ControllerFutureObj {
         ControllerFutureObj {
@@ -338,11 +601,67 @@ impl ControllerObj {
         }
     }
 
+    /// Clears the whole screen, including the default widget displayed by the controller if it hasn't
+    /// already been cleared.
+    ///
+    /// Unlike `Controller.clear_screen`, this method will fail if the controller screen is busy.
+    ///
+    /// <section class="warning">
+    ///
+    /// Controller text setting is a slow process, so updates faster than 10ms on a wired connection or
+    /// 50ms over VEXNet will not be applied to the controller.
+    ///
+    /// </section>
+    ///
+    /// # Examples
+    ///
+    /// ```python
+    /// from venice import *
+    ///
+    /// controller = Controller()
+    ///
+    /// # Remove the default widget on the controller screen that displays match time.
+    /// controller.try_clear_screen()
+    /// ```
+    ///
+    /// # Raises
+    ///
+    /// - `DeviceError`: If the controller is not connected or the screen is busy.
     #[method]
     fn try_clear_screen(&self) -> Result<(), Exception> {
         Ok(self.guard.borrow_mut().try_clear_screen()?)
     }
 
+    /// Sets the text contents at a specific `line`/`column` offset, waiting until the controller
+    /// successfully writes the `text`.
+    ///
+    /// Both lines and columns are 1-indexed.
+    ///
+    /// <section class="warning">
+    ///
+    /// Controller text setting is a slow process, so calls to this function at intervals faster than 10ms
+    /// on a wired connection or 50ms over VEXNet will take longer to complete.
+    ///
+    /// </section>
+    ///
+    /// # Examples
+    ///
+    /// ```python
+    /// from venice import *
+    ///
+    /// async def main():
+    ///     controller = Controller()
+    ///     await controller.set_text("Hello, world!", 1, 1)
+    ///     await controller.set_text("Hello, world!", 2, 1)
+    ///
+    /// vasyncio.run(main())
+    /// ```
+    ///
+    /// # Raises
+    ///
+    /// - `ValueError`: If `line` or `column` is outside its visible range, or `text` contains a NUL
+    ///   character.
+    /// - `DeviceError`: If the controller is not connected.
     #[method(ty = var(min = 4))]
     #[stub(sig = "(self, text: str, line: int, column: int) -> ControllerFuture")]
     fn set_text(args: &[Obj]) -> Result<ControllerFutureObj, Exception> {
@@ -359,6 +678,34 @@ impl ControllerObj {
         })
     }
 
+    /// Sets the `text` contents at a specific `line`/`column` offset.
+    ///
+    /// Both lines and columns are 1-indexed. An embedded NUL in `text` isn't safely reported as a
+    /// Python exception by this immediate method; use `Controller.set_text` when input may contain
+    /// one.
+    ///
+    /// Unlike `Controller.set_text`, this method will fail if the controller screen is busy.
+    ///
+    /// <section class="warning">
+    ///
+    /// Controller text setting is a slow process, so updates faster than 10ms on a wired connection or
+    /// 50ms over VEXNet will not be applied to the controller.
+    ///
+    /// </section>
+    ///
+    /// # Examples
+    ///
+    /// ```python
+    /// from venice import *
+    ///
+    /// controller = Controller()
+    /// controller.try_set_text("Hello, world!", 1, 1)
+    /// ```
+    ///
+    /// # Raises
+    ///
+    /// - `ValueError`: If `line` or `column` is outside its visible range.
+    /// - `DeviceError`: If the controller is not connected or the screen is busy.
     #[method(ty = var(min = 4))]
     #[stub(sig = "(self, text: str, line: int, column: int) -> None")]
     fn try_set_text(args: &[Obj]) -> Result<(), Exception> {
@@ -370,6 +717,13 @@ impl ControllerObj {
             .try_set_text(text, line.0 as u8, column.0 as u8)?)
     }
 
+    /// Releases this binding so another `Controller` can use the same controller ID.
+    ///
+    /// The object is unusable afterward.
+    ///
+    /// # Raises
+    ///
+    /// - `ValueError`: If the controller has already been freed.
     #[method]
     fn free(&self) {
         self.guard.free_or_raise();

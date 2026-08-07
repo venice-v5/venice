@@ -7,6 +7,7 @@ use vexide_devices::smart::ai_vision::AiVisionDetectionMode;
 
 use crate::obj::alloc_obj;
 
+/// Flags relating to the sensor's detection mode. Combine these values with `|`.
 #[class(qstr!(AiVisionDetectionMode))]
 #[repr(C)]
 pub struct AiVisionDetectionModeObj {
@@ -16,12 +17,16 @@ pub struct AiVisionDetectionModeObj {
 
 #[class_methods]
 impl AiVisionDetectionModeObj {
+    /// Enables AprilTag detection.
     #[constant]
     pub const APRILTAG: &Self = &Self::new(AiVisionDetectionMode::APRILTAG);
+    /// Enables color detection.
     #[constant]
     pub const COLOR: &Self = &Self::new(AiVisionDetectionMode::COLOR);
+    /// Enables model detection.
     #[constant]
     pub const MODEL: &Self = &Self::new(AiVisionDetectionMode::MODEL);
+    /// Merges color blobs.
     #[constant]
     pub const COLOR_MERGE: &Self = &Self::new(AiVisionDetectionMode::COLOR_MERGE);
 

@@ -13,6 +13,11 @@ use crate::{
     modvenice::{Exception, read_only_attr::read_only_attr},
 };
 
+/// A one-use reference to one ADI socket on an `AdiExpander`.
+///
+/// Users receive these objects through the expander's `a` through `h` attributes and pass them to ADI
+/// device constructors. A port is consumed by the first device constructed from it and cannot be
+/// constructed directly.
 #[class(qstr!(AdiExpanderPort))]
 pub struct AdiExpanderPortObj {
     base: ObjBase,
@@ -28,6 +33,16 @@ impl From<AdiPort> for AdiExpanderPortObj {
     }
 }
 
+/// Provides eight additional ADI ports from one V5 Smart Port.
+///
+/// ADI expanders are identical to the built-in three-wire ports on the Brain, with the exception that
+/// ports on an expander will not work properly if the Brain can't verify that the expander is
+/// connected and valid.
+///
+/// The read-only attributes `a`, `b`, `c`, `d`, `e`, `f`, `g`, and `h` each contain the matching
+/// `AdiExpanderPort`. Each attribute may be consumed once by an ADI device constructor. Operations on
+/// devices made from these ports raise `DeviceError` if the expander is disconnected or the Smart
+/// Port contains another device type.
 #[class(qstr!(AdiExpander))]
 pub struct AdiExpanderObj {
     base: ObjBase,
@@ -46,6 +61,24 @@ impl AdiExpanderPortObj {}
 
 #[class_methods]
 impl AdiExpanderObj {
+    /// Creates a new ADI expander on Smart Port `port`.
+    ///
+    /// `port` is an integer from 1 through 21. Construction reserves that Smart Port immediately; the
+    /// expander itself does not check whether the hardware is connected.
+    ///
+    /// # Examples
+    ///
+    /// ```python
+    /// from venice import *
+    ///
+    /// expander = AdiExpander(1)
+    /// analog = AdiAnalogIn(expander.a)
+    /// print(analog.get_voltage())
+    /// ```
+    ///
+    /// # Raises
+    ///
+    /// - `ValueError`: If `port` is outside 1 through 21 or is already occupied.
     #[make_new]
     #[stub(sig = "(self, port: int) -> None")]
     fn make_new(

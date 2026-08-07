@@ -579,29 +579,28 @@ impl MotorObj {
     /// when dealing with the raw value, meaning this measurement will be taken relative to the
     /// motor's internal position *before* being geared down from 3600RPM.
     ///
-    /// Methods such as `Motor::reset_position` and `Motor::set_position` do not
-    /// change the value of this raw measurement.
+    /// Methods such as `Motor.reset_position` and `Motor.set_position` do not change the value of
+    /// this raw measurement.
     ///
     /// # Raises
     ///
-    /// `DeviceError`: If no device is connected to the port, or if the wrong type of device is
-    /// connected.
+    /// - `DeviceError`: If no device is connected to the port, or if the wrong type of device is
+    ///   connected.
     ///
     /// # Examples
     ///
     /// ```python
-    /// use vexide::prelude::*;
-    ///
-    /// motor = Motor(1)
+    /// from venice import *
     ///
     /// async def main():
+    ///     motor = Motor(1)
     ///     while True:
     ///         raw_pos = motor.get_raw_position()
     ///         print(f"Raw Position: {raw_pos}")
     ///
-    ///         await vasyncio.sleep(10, MILLIS)
+    ///         await vasyncio.Sleep(Motor.WRITE_INTERVAL_MS, MILLIS)
     ///
-    /// vasyncio.run(main)
+    /// vasyncio.run(main())
     /// ```
     #[method]
     fn get_raw_position(&self) -> Result<i32, Exception> {

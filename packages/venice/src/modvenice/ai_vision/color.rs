@@ -12,6 +12,11 @@ use vexide_devices::smart::ai_vision::AiVisionColor;
 
 use crate::modvenice::{Exception, color::ColorObj, read_only_attr::read_only_attr};
 
+/// A color signature used by an AI Vision Sensor to detect color blobs.
+///
+/// The read-only `r`, `g`, and `b` attributes are the RGB color value's channels from 0 through 255.
+/// `hue_range` is the accepted hue range of the color; VEXcode limits this value to [0, 20].
+/// `saturation_range` is the accepted saturation range of the color. Signatures compare by value.
 #[class(qstr!(AiVisionColor))]
 #[repr(C)]
 pub struct AiVisionColorObj {
@@ -56,6 +61,24 @@ impl AiVisionColorObj {
         });
     }
 
+    /// Creates a color signature from `rgb`, `hue_range`, and `saturation_range`.
+    ///
+    /// The current runtime has an implementation defect: its positional argument check requires five
+    /// arguments even though this Python signature and the constructor body define three. Consequently,
+    /// the documented three-argument call is currently rejected.
+    ///
+    /// # Examples
+    ///
+    /// ```python
+    /// from venice import *
+    ///
+    /// color = AiVisionColor(Color(255, 0, 0), 10.0, 1.0)
+    /// ```
+    ///
+    /// # Raises
+    ///
+    /// - `TypeError`: Because the binding's argument-count validation does not match this
+    ///   three-argument signature.
     #[make_new]
     #[stub(sig = "(self, rgb: Color, hue_range: float, saturation_range: float) -> None")]
     fn make_new(

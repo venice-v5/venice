@@ -6,6 +6,12 @@ use micropython_rs::{
 };
 use vexide_devices::math::Direction;
 
+/// A rotational direction.
+///
+/// `Direction` is root-importable and isn't constructed directly; use `Direction.FORWARD` or
+/// `Direction.REVERSE`. Applying Python's `~` operator returns the opposite singleton, so
+/// `~Direction.FORWARD` is `Direction.REVERSE`. Each value has a readable representation such as
+/// `Direction.FORWARD`.
 #[class(qstr!(Direction))]
 #[repr(C)]
 pub struct DirectionObj {
@@ -22,8 +28,10 @@ impl DirectionObj {
         }
     }
 
+    /// Rotates in the forward direction.
     #[constant]
     pub const FORWARD: &Self = &Self::new(Direction::Forward);
+    /// Rotates in the reverse direction.
     #[constant]
     pub const REVERSE: &Self = &Self::new(Direction::Reverse);
 

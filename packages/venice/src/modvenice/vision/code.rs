@@ -12,6 +12,18 @@ use vexide_devices::smart::vision::VisionCode;
 
 use crate::modvenice::{Exception, read_only_attr::read_only_attr, vision::SignatureId};
 
+/// A vision detection code.
+///
+/// This class is root-importable. Codes are a special type of detection signature that group multiple `VisionSignature` objects
+/// together. A `VisionCode` can associate 2-5 color signatures together, detecting the resulting
+/// object when its color signatures are present close to each other.
+///
+/// These codes work very similarly to
+/// [Pixy2 Color Codes](https://docs.pixycam.com/wiki/doku.php?id=wiki:v2:using_color_codes).
+///
+/// The read-only `sig1` and `sig2` attributes are required signature IDs from 1 to 7; read-only `sig3`,
+/// `sig4`, and `sig5` contain additional IDs or `None`. Codes compare equal when all five slots match
+/// and have a readable `VisionCode(...)` representation.
 #[class(qstr!(VisionCode))]
 #[repr(C)]
 pub struct VisionCodeObj {
@@ -32,6 +44,27 @@ impl VisionCodeObj {
         self.code
     }
 
+    /// Creates a new vision code.
+    ///
+    /// Two signatures, `sig1` and `sig2`, are required to create a vision code, with an additional three
+    /// optional signatures, `sig3`, `sig4`, and `sig5`. Each supplied ID must be an integer from 1 to 7.
+    /// Although the generated annotation includes `None` for the trailing slots, the runtime accepts
+    /// omission rather than an explicitly passed `None`. All arguments are positional-only.
+    ///
+    /// # Examples
+    ///
+    /// ```python
+    /// from venice import *
+    ///
+    /// # Create a vision code associated with signatures 1, 2, and 3.
+    /// code = VisionCode(1, 2, 3)
+    /// ```
+    ///
+    /// # Raises
+    ///
+    /// - `TypeError`: If a supplied ID is not an integer, `None` is passed explicitly, a keyword argument
+    ///   is supplied, or the argument count is outside two to five.
+    /// - `ValueError`: If a supplied signature ID is outside the inclusive range 1 to 7.
     #[make_new]
     #[stub(
         sig = "(self, sig1: int, sig2: int, sig3: int | None = None, sig4: int | None = None, sig5: int | None = None) -> None"
@@ -67,6 +100,30 @@ impl VisionCodeObj {
         })
     }
 
+    /// Creates a `VisionCode` from a bit representation of its signature IDs.
+    ///
+    /// The low 15 bits of `id` are interpreted as five three-bit signature slots; zero means an absent
+    /// optional slot. This method is intended for packed IDs reported by the sensor and does not validate
+    /// that the two required decoded slots are nonzero.
+    ///
+    /// # Examples
+    ///
+    /// ```python
+    /// from venice import *
+    ///
+    /// sig_1_id = 1
+    /// sig_2_id = 2
+    ///
+    /// # Store IDs 1 and 2 in the first two of the five three-bit slots.
+    /// code_id = (sig_1_id << 12) | (sig_2_id << 9)
+    ///
+    /// # Create a VisionCode from signatures 1 and 2.
+    /// code = VisionCode.from_id(code_id)
+    /// ```
+    ///
+    /// # Raises
+    ///
+    /// - `TypeError`: If `id` is not an integer.
     #[method(binding = "static")]
     fn from_id(id: i32) -> Self {
         Self::new(VisionCode::from_id(id as u16))

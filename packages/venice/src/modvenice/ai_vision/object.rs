@@ -17,6 +17,16 @@ use crate::{
     obj::alloc_obj,
 };
 
+/// An object detected by color blob detection.
+///
+/// Instances are returned by `AiVisionSensor.get_objects` and can't be constructed directly.
+///
+/// - `id` is the ID of the signature used to detect this object.
+/// - `x` and `y` are the top-left corner of the object in pixels.
+/// - `width` is the width of the object in pixels.
+/// - `height` is the height of the object in pixels.
+///
+/// The sensor image is 320 by 240 pixels, with the origin at the top-left.
 #[class(qstr!(AiVisionColorObject))]
 #[repr(C)]
 pub struct Color {
@@ -55,6 +65,16 @@ impl Color {
     }
 }
 
+/// An object detected by color code detection.
+///
+/// Instances are returned by `AiVisionSensor.get_objects` and can't be constructed directly.
+///
+/// - `id` is the ID of the code used to detect this object.
+/// - `x` and `y` are the position of the object in pixels.
+/// - `width` is the width of the object in pixels.
+/// - `height` is the height of the object in pixels.
+///
+/// The sensor image is 320 by 240 pixels, with the origin at the top-left.
 #[class(qstr!(AiVisionCodeObject))]
 #[repr(C)]
 pub struct Code {
@@ -84,6 +104,7 @@ impl Code {
         })
     }
 
+    /// Returns the angle of the object's associated colors in the supplied `unit`. This angle is not always reliably available.
     #[method]
     fn get_angle(&self, unit: &RotationUnitObj) -> f32 {
         unit.unit()
@@ -105,6 +126,17 @@ impl Code {
     }
 }
 
+/// An object detected by AprilTag detection.
+///
+/// Instances are returned by `AiVisionSensor.get_objects` and can't be constructed directly.
+///
+/// - `id` is the detected AprilTag ID number.
+/// - `top_left_x` and `top_left_y` are the position of the top-left corner of the tag.
+/// - `top_right_x` and `top_right_y` are the position of the top-right corner of the tag.
+/// - `bottom_right_x` and `bottom_right_y` are the position of the bottom-right corner of the tag.
+/// - `bottom_left_x` and `bottom_left_y` are the position of the bottom-left corner of the tag.
+///
+/// Coordinates are in pixels. The sensor image is 320 by 240 pixels, with the origin at the top-left.
 #[class(qstr!(AiVisionAprilTagObject))]
 #[repr(C)]
 pub struct AprilTag {
@@ -166,6 +198,18 @@ impl AprilTag {
     }
 }
 
+/// An object detected by an onboard model.
+///
+/// Instances are returned by `AiVisionSensor.get_objects` and can't be constructed directly.
+///
+/// - `id` is the ID of the detected object.
+/// - `classification` is a string describing the specific onboard model used to detect this object.
+/// - `x` and `y` are the position of the object in pixels.
+/// - `width` is the width of the object in pixels.
+/// - `height` is the height of the object in pixels.
+/// - `confidence` is the confidence reported by the model.
+///
+/// The sensor image is 320 by 240 pixels, with the origin at the top-left.
 #[class(qstr!(AiVisionModelObject))]
 #[repr(C)]
 pub struct Model {

@@ -9,6 +9,35 @@ use micropython_rs::{
 
 use crate::alloc::Gc;
 
+/// A spawned task.
+///
+/// A `Task` can be awaited to retrieve the output of its coroutine.
+///
+/// `EventLoop.spawn` and `vasyncio.spawn` return tasks; `Task` is not directly exported from the
+/// `vasyncio` submodule and is not constructed by users. Awaiting a task before it finishes
+/// cooperatively waits for its coroutine and returns that coroutine's return value. The current
+/// scheduler doesn't immediately resume a coroutine that starts awaiting an already completed task,
+/// so begin awaiting the handle before its coroutine finishes. A coroutine exception propagates out
+/// of the running event loop. `Task` objects cannot be cancelled.
+///
+/// # Examples
+///
+/// ```python
+/// from venice import *
+///
+/// async def work():
+///     print("Hello from a task!")
+///     return 1 + 2
+///
+/// async def main():
+///     # Spawn a coroutine onto the event loop.
+///     task = vasyncio.spawn(work())
+///
+///     # Wait for the task's output.
+///     assert await task == 3
+///
+/// vasyncio.run(main())
+/// ```
 #[class(qstr!(Task))]
 #[repr(C)]
 pub struct Task {

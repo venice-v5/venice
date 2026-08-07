@@ -34,6 +34,14 @@ impl TimeUnit {
     }
 }
 
+/// A unit selector for time intervals and durations.
+///
+/// Venice time APIs interpret or return numeric values in the selected unit. One second equals 1,000
+/// milliseconds.
+///
+/// This class is not constructed directly. Use `TimeUnit.MILLIS` or `TimeUnit.SECOND`, which are also
+/// exported at the package root as `MILLIS` and the singular `SECOND`. Values have readable
+/// representations such as `TimeUnit.SECOND`.
 #[class(qstr!(TimeUnit))]
 #[repr(C)]
 pub struct TimeUnitObj {
@@ -50,8 +58,10 @@ impl TimeUnitObj {
         }
     }
 
+    /// Selects milliseconds; also root-importable as `MILLIS`.
     #[constant]
     pub const MILLIS: &Self = &Self::new(TimeUnit::Millis);
+    /// Selects seconds; also root-importable as the singular name `SECOND`.
     #[constant]
     pub const SECOND: &Self = &Self::new(TimeUnit::Second);
 

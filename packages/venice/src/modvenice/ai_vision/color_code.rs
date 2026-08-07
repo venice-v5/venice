@@ -11,6 +11,19 @@ use vexide_devices::smart::ai_vision::AiVisionColorCode;
 
 use crate::modvenice::Exception;
 
+/// A color code used by an AI Vision Sensor to detect groups of color blobs.
+///
+/// Color codes are effectively "groups" of color signatures. A color code associated with multiple
+/// color signatures on the sensor will be detected as a single object when all signatures are seen
+/// next to each other.
+///
+/// Color codes can associate up to 7 color signatures and detections will be returned as
+/// `AiVisionCodeObject` instances.
+///
+/// Indexing uses positions 0 through 6; reading returns an `int` or `None`, and assignment accepts an
+/// `int` or `None`. Deleting an item isn't supported. Codes compare by value. Sensor color-signature
+/// IDs are 1 through 7. The current implementation doesn't bounds-check subscript indices, so an
+/// index outside 0 through 6 can terminate the operation instead of raising a Python exception.
 #[class(qstr!(AiVisionColorCode))]
 #[repr(C)]
 pub struct AiVisionColorCodeObj {
@@ -41,6 +54,25 @@ impl AiVisionColorCodeObj {
 // TODO: refactor this API to be more practical for competition use
 #[class_methods]
 impl AiVisionColorCodeObj {
+    /// Creates a new color code with the given color signature IDs.
+    ///
+    /// `color1` is required; `color2`, `color3`, `color4`, `color5`, `color6`, and `color7` may be omitted.
+    /// Each supplied value must fit in an unsigned byte; use IDs from 1 through 7 when the code will be
+    /// registered with an `AiVisionSensor`.
+    ///
+    /// # Examples
+    ///
+    /// ```python
+    /// from venice import *
+    ///
+    /// code = AiVisionColorCode(1, 2)
+    /// ```
+    ///
+    /// # Raises
+    ///
+    /// - `TypeError`: If a supplied ID isn't an integer, `None` is passed explicitly, a keyword
+    ///   argument is supplied, or the argument count is outside one to seven.
+    /// - `ValueError`: If a supplied color ID is outside 0 through 255.
     #[make_new]
     #[stub(
         sig = "(self, color1: int, color2: int | None = None, color3: int | None = None, color4: int | None = None, color5: int | None = None, color6: int | None = None, color7: int | None = None) -> None"

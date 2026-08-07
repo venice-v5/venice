@@ -13,6 +13,21 @@ use vexide_devices::{
 
 use crate::modvenice::{read_only_attr::read_only_attr, units::rotation::RotationUnitObj};
 
+/// A detected vision object.
+///
+/// This root-importable class contains metadata about objects detected by the Vision Sensor.
+/// Instances are returned by `VisionSensor.get_objects` after adding signatures and color codes to
+/// the sensor, and cannot be constructed directly. All attributes are read-only.
+///
+/// - `source` is the signature or color code used to detect this object.
+/// - `width` is the width of the detected object's bounding box in pixels.
+/// - `height` is the height of the detected object's bounding box in pixels.
+/// - `offset_x` and `offset_y` are the top-left coordinate of the detected object relative to the
+///   top-left of the camera's field of view.
+/// - `center_x` and `center_y` are the center coordinate of the detected object relative to the
+///   top-left of the camera's field of view.
+///
+/// The readable representation summarizes the source and all six pixel measurements.
 #[class(qstr!(VisionObject))]
 #[repr(C)]
 pub struct VisionObjectObj {
@@ -65,6 +80,20 @@ impl VisionObjectObj {
         })
     }
 
+    /// Returns the approximate rotation of the detected object's bounding box in `unit`.
+    ///
+    /// The underlying sensor reports tenths of a degree, which Venice converts to `DEGREES`, `RADIANS`, or
+    /// `TURNS`.
+    ///
+    /// # Examples
+    ///
+    /// ```python
+    /// from venice import *
+    ///
+    /// sensor = VisionSensor(1)
+    /// for object in sensor.get_objects():
+    ///     print(object.get_angle(DEGREES))
+    /// ```
     #[method]
     fn get_angle(&self, unit: &RotationUnitObj) -> f32 {
         unit.unit()
