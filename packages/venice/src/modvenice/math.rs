@@ -407,7 +407,7 @@ impl Point2 {
     fn attr(&self, attr: Qstr, op: AttrOp) {
         let coord = match attr.as_str() {
             "x" => &self.x,
-            "y" => &self.x,
+            "y" => &self.y,
             _ => return,
         };
 
