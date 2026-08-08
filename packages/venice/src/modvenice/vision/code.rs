@@ -1,8 +1,9 @@
 use std::fmt::Write;
 
-use argparse::{Args, ArgsReader, PositionalError};
+use argparse::{Args, ArgsReader, PositionalError, error_msg};
 use micropython_macros::{class, class_methods};
 use micropython_rs::{
+    except::value_error,
     obj::{AttrOp, Obj, ObjBase, ObjTrait, ObjType},
     ops::BinaryOpCode,
     print::{Print, PrintKind},
@@ -22,13 +23,36 @@ use crate::modvenice::{Exception, read_only_attr::read_only_attr, vision::Signat
 /// [Pixy2 Color Codes](https://docs.pixycam.com/wiki/doku.php?id=wiki:v2:using_color_codes).
 ///
 /// The read-only `sig1` and `sig2` attributes are required signature IDs from 1 to 7; read-only `sig3`,
-/// `sig4`, and `sig5` contain additional IDs or `None`. Codes compare equal when all five slots match
-/// and have a readable `VisionCode(...)` representation.
+/// `sig4`, and `sig5` contain additional IDs or `None`. Codes compare equal when all five slots
+/// match, return `False` when compared with another type, and have a readable `VisionCode(...)`
+/// representation.
 #[class(qstr!(VisionCode))]
 #[repr(C)]
 pub struct VisionCodeObj {
     base: ObjBase,
     code: VisionCode,
+}
+
+fn decode_code_id(id: i32) -> Result<VisionCode, &'static str> {
+    const MAX_CODE_ID: i32 = 0x7fff;
+
+    if !(0..=MAX_CODE_ID).contains(&id) {
+        return Err("id must be in the range [0, 32767]");
+    }
+
+    let id = u16::try_from(id).expect("the validated code ID fits in u16");
+    let code = VisionCode::from_id(id);
+
+    if code.0 == 0 || code.1 == 0 {
+        return Err("id must contain nonzero sig1 and sig2 slots");
+    }
+    if (code.2.is_none() && (code.3.is_some() || code.4.is_some()))
+        || (code.3.is_none() && code.4.is_some())
+    {
+        return Err("id must not contain a nonzero signature after an empty slot");
+    }
+
+    Ok(code)
 }
 
 #[class_methods]
@@ -66,9 +90,10 @@ impl VisionCodeObj {
     ///   is supplied, or the argument count is outside two to five.
     /// - `ValueError`: If a supplied signature ID is outside the inclusive range 1 to 7.
     #[make_new]
-    #[stub(
-        sig = "(self, sig1: int, sig2: int, sig3: int | None = None, sig4: int | None = None, sig5: int | None = None) -> None"
-    )]
+    #[stub(sig = "(self, sig1: int, sig2: int, /) -> None")]
+    #[stub(sig = "(self, sig1: int, sig2: int, sig3: int, /) -> None")]
+    #[stub(sig = "(self, sig1: int, sig2: int, sig3: int, sig4: int, /) -> None")]
+    #[stub(sig = "(self, sig1: int, sig2: int, sig3: int, sig4: int, sig5: int, /) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -102,9 +127,9 @@ impl VisionCodeObj {
 
     /// Creates a `VisionCode` from a bit representation of its signature IDs.
     ///
-    /// The low 15 bits of `id` are interpreted as five three-bit signature slots; zero means an absent
-    /// optional slot. This method is intended for packed IDs reported by the sensor and does not validate
-    /// that the two required decoded slots are nonzero.
+    /// `id` must be from 0 through 32767 and is interpreted as five three-bit signature slots.
+    /// `sig1` and `sig2` must be nonzero; zero means an absent optional slot, and populated optional
+    /// slots must be contiguous.
     ///
     /// # Examples
     ///
@@ -124,9 +149,14 @@ impl VisionCodeObj {
     /// # Raises
     ///
     /// - `TypeError`: If `id` is not an integer.
+    /// - `ValueError`: If `id` is outside 0 through 32767, either required slot is zero, or a
+    ///   populated optional slot follows an empty one.
     #[method(binding = "static")]
-    fn from_id(id: i32) -> Self {
-        Self::new(VisionCode::from_id(id as u16))
+    #[stub(sig = "(id: int, /) -> VisionCode")]
+    fn from_id(id: i32) -> Result<Self, Exception> {
+        decode_code_id(id)
+            .map(Self::new)
+            .map_err(|message| value_error(error_msg!("{message}")).into())
     }
 
     #[attr]
@@ -154,7 +184,10 @@ impl VisionCodeObj {
     #[binary_op]
     fn binary_op(op: BinaryOpCode, lhs: &Self, rhs: Obj) -> Obj {
         match op {
-            BinaryOpCode::Equal => Obj::from_bool(lhs.code == rhs.as_obj::<Self>().code),
+            BinaryOpCode::Equal => Obj::from_bool(
+                rhs.try_as_obj::<Self>()
+                    .is_some_and(|rhs| lhs.code == rhs.code),
+            ),
             _ => Obj::NULL,
         }
     }

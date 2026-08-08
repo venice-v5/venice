@@ -112,7 +112,7 @@ impl From<KeywordError<'_>> for Exception {
                 expected,
                 found,
             } => type_error(error_msg!(
-                "expected '{expected}' found argument '{kw}', found '{found}'"
+                "expected '{expected}' for argument '{kw}', found '{found}'"
             )),
             KeywordError::ValueError { msg } => value_error(msg),
         }
@@ -122,15 +122,20 @@ impl From<KeywordError<'_>> for Exception {
 impl<'a> ArgType<'a> {
     pub fn of(obj: &'a Obj) -> Self {
         use repr_c::Ty;
-        match obj.ty().unwrap() {
+
+        if obj.is_none() {
+            return Self::None;
+        }
+
+        match obj
+            .ty()
+            .expect("all Python objects have a representation type")
+        {
             Ty::Int => Self::Int,
             Ty::Qstr => Self::Str,
             Ty::Immediate => {
-                if obj.is_bool() {
-                    Self::Bool
-                } else {
-                    unimplemented!();
-                }
+                debug_assert!(obj.is_bool());
+                Self::Bool
             }
             Ty::Float => Self::Float,
             Ty::Ptr => {
@@ -260,13 +265,13 @@ impl<'a> ArgsReader<'a> {
                         ParseError::TypeError { expected } => {
                             let found = type_name(arg);
                             PositionalError::TypeError {
-                                n: self.n_pos,
+                                n: self.n_pos + 1,
                                 expected,
                                 found,
                             }
                         }
                         ParseError::ValueError { mk_msg } => PositionalError::ValueError {
-                            msg: mk_msg(&format!("argument #{}", self.n_pos)),
+                            msg: mk_msg(&format!("argument #{}", self.n_pos + 1)),
                         },
                     })
                     .inspect(|_| self.n_pos += 1)

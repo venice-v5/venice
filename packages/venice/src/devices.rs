@@ -190,6 +190,17 @@ pub fn lock_controller(id: ControllerId) -> ControllerGuard {
     }
 }
 
+pub fn controller_generation_is_active(id: ControllerId, generation: u64) -> bool {
+    match id {
+        ControllerId::Primary => REGISTRIES
+            .primary_controller
+            .is_generation_active(generation),
+        ControllerId::Partner => REGISTRIES
+            .partner_controller
+            .is_generation_active(generation),
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AdiPortNumber {
     A,
@@ -202,18 +213,24 @@ pub enum AdiPortNumber {
     H,
 }
 
+impl AdiPortNumber {
+    pub const fn number(self) -> u8 {
+        match self {
+            Self::A => 1,
+            Self::B => 2,
+            Self::C => 3,
+            Self::D => 4,
+            Self::E => 5,
+            Self::F => 6,
+            Self::G => 7,
+            Self::H => 8,
+        }
+    }
+}
+
 impl std::fmt::Display for AdiPortNumber {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::A => f.write_char('a'),
-            Self::B => f.write_char('b'),
-            Self::C => f.write_char('c'),
-            Self::D => f.write_char('d'),
-            Self::E => f.write_char('e'),
-            Self::F => f.write_char('f'),
-            Self::G => f.write_char('g'),
-            Self::H => f.write_char('h'),
-        }
+        f.write_char(char::from(b'a' + self.number() - 1))
     }
 }
 
@@ -255,6 +272,10 @@ impl<'a> ArgParser<'a> for AdiPortNumberParser {
 
 impl DefaultParser<'_> for AdiPortNumber {
     type Parser = AdiPortNumberParser;
+}
+
+pub fn adi_port_is_available(port: AdiPortNumber) -> bool {
+    REGISTRIES.adi_registry_by_port(port).is_available()
 }
 
 pub fn try_lock_adi_port(port: AdiPortNumber) -> Result<AdiPort, DeviceOccupiedError> {

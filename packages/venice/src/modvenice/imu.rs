@@ -3,7 +3,7 @@ use std::cell::Cell;
 use argparse::{Args, error_msg};
 use micropython_macros::{class, class_methods};
 use micropython_rs::{
-    except::{raise_stop_iteration, value_error},
+    except::raise_stop_iteration,
     init::token,
     obj::{Obj, ObjBase, ObjTrait, ObjType},
     print::{Print, PrintKind},
@@ -193,7 +193,7 @@ impl InertialSensorObj {
     /// imu = InertialSensor(1)
     /// ```
     #[make_new]
-    #[stub(sig = "(self, port: int) -> None")]
+    #[stub(sig = "(self, port: int, /) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -286,7 +286,7 @@ impl InertialSensorObj {
     /// vasyncio.run(main)
     /// ```
     #[method]
-    #[stub(sig = "(self) -> CalibrateFuture")]
+    #[stub(sig = "(self, /) -> CalibrateFuture")]
     fn calibrate(self_in: Obj) -> CalibrateFuture {
         CalibrateFuture {
             base: ObjBase::new(CalibrateFuture::OBJ_TYPE),
@@ -717,7 +717,7 @@ impl InertialSensorObj {
     ///
     /// vasyncio.run(main)
     #[method]
-    #[stub(sig = "(self) -> InertialOrientation")]
+    #[stub(sig = "(self, /) -> InertialOrientation")]
     fn get_physical_orientation(&self) -> Result<Obj, Exception> {
         Ok(match self.guard.borrow().physical_orientation()? {
             InertialOrientation::XDown => Obj::from_static(InertialOrientationObj::X_DOWN),
@@ -747,7 +747,7 @@ impl InertialSensorObj {
     ///
     /// - `DeviceError`: If no device is connected to the port, or if the wrong type of device is
     /// connected.
-    /// - `ValueError`: If `interval` is negative.
+    /// - `ValueError`: If `interval` is negative, non-finite, or too large to represent.
     ///
     /// # Examples
     ///
@@ -761,10 +761,7 @@ impl InertialSensorObj {
     /// ```
     #[method]
     fn set_data_interval(&self, interval: f32, unit: &TimeUnitObj) -> Result<(), Exception> {
-        if interval < 0.0 {
-            Err(value_error(c"interval cannot be negative"))?
-        }
-        let dur = unit.unit().float_to_dur(interval);
+        let dur = unit.unit().float_to_dur(interval)?;
         self.guard.borrow_mut().set_data_interval(dur)?;
         Ok(())
     }
@@ -818,31 +815,35 @@ impl CalibrateFuture {
     extern "C" fn iter(self_in: Obj) -> Obj {
         let this = self_in.try_as_obj::<Self>().unwrap();
 
-        let imu = this
-            .imu
-            .try_as_obj::<InertialSensorObj>()
-            .unwrap()
-            .guard
-            .borrow();
+        let (device, status_result) = {
+            let imu = this
+                .imu
+                .try_as_obj::<InertialSensorObj>()
+                .unwrap()
+                .guard
+                .borrow();
+            let device = unsafe { device_handle(smart_port_index(imu.port_number())) };
 
-        let device = unsafe { device_handle(smart_port_index(imu.port_number())) };
+            // Get the sensor's status flags, which tell us whether or not we are still calibrating.
+            let status_result = imu.validate_port().map(|()| {
+                // Get status flags from VEXos.
+                let flags = unsafe { vexDeviceImuStatusGet(device) };
+                if flags == 0x0 {
+                    this.state.set(CalibrateFutureState::Waiting {
+                        timestamp: time32::Instant::now(),
+                        phase: CalibrationPhase::Status,
+                    });
+                }
+                flags
+            });
+            (device, status_result)
+        };
 
-        // Get the sensor's status flags, which tell us whether or not we are still calibrating.
-        let status = InertialStatus::from_bits_retain(if let Err(e) = imu.validate_port() {
-            // IMU got unplugged, so we'll resolve early.
-            Exception::from(e).raise(token());
-        } else {
-            // Get status flags from VEXos.
-            let flags = unsafe { vexDeviceImuStatusGet(device) };
-            if flags == 0x0 {
-                this.state.set(CalibrateFutureState::Waiting {
-                    timestamp: time32::Instant::now(),
-                    phase: CalibrationPhase::Status,
-                });
-            }
-
-            flags
-        });
+        // Drop the registry borrow before raising through MicroPython's non-local-return boundary.
+        let status = match status_result {
+            Ok(flags) => InertialStatus::from_bits_retain(flags),
+            Err(error) => Exception::from(error).raise(token()),
+        };
 
         match this.state.get() {
             // The "calibrate" phase begins the calibration process.

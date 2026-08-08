@@ -5,7 +5,7 @@ use std::{
 
 use micropython_macros::{class, class_methods, fun};
 use micropython_rs::{
-    except::{RUNTIME_ERROR_TYPE, raise_msg, type_error},
+    except::{RUNTIME_ERROR_TYPE, raise_msg, runtime_error, type_error, value_error},
     fun::{Fun1, Fun2},
     generator::{GEN_INSTANCE_TYPE, VmReturnKind, resume_gen},
     init::token,
@@ -90,6 +90,20 @@ impl EventLoop {
         task
     }
 
+    fn await_would_cycle(waiting_task: Obj, mut awaited_task: Obj) -> bool {
+        loop {
+            if waiting_task.inner() == awaited_task.inner() {
+                return true;
+            }
+
+            let dependency = awaited_task.as_obj::<Task>().waiting_on();
+            if dependency.is_null() {
+                return false;
+            }
+            awaited_task = dependency;
+        }
+    }
+
     /// Resumes a task's root coroutine and schedules the task from the yielded result.
     ///
     /// Child coroutines and custom awaitables must delegate their yielded objects to this root coroutine.
@@ -105,19 +119,33 @@ impl EventLoop {
             VmReturnKind::Normal => {
                 let mut ready = self.ready.borrow_mut();
                 task.complete_with(result.obj);
-                task.waiting_tasks()
-                    .iter()
-                    .for_each(|&waiting| ready.push_front(waiting));
+                while let Some(waiting) = task.pop_waiting_task() {
+                    waiting.as_obj::<Task>().clear_waiting_on();
+                    ready.push_front(waiting);
+                }
             }
             VmReturnKind::Yield => {
                 if let Some(sleep) = result.obj.try_as_obj::<Sleep>() {
+                    let deadline = time32::Instant::now()
+                        .checked_add(sleep.duration())
+                        .unwrap_or_else(|| {
+                            value_error(c"sleep deadline is too large").raise(token())
+                        });
                     self.sleepers.borrow_mut().push(Sleeper {
                         task: task_obj,
-                        deadline: time32::Instant::now() + sleep.duration(),
+                        deadline,
                         sleep: result.obj,
                     });
                 } else if let Some(awaited_task) = result.obj.try_as_obj::<Task>() {
-                    awaited_task.add_waiting_task(task_obj);
+                    if awaited_task.is_complete() {
+                        self.ready.borrow_mut().push_front(task_obj);
+                    } else {
+                        if Self::await_would_cycle(task_obj, result.obj) {
+                            runtime_error(c"task await cycle detected").raise(token());
+                        }
+                        task.set_waiting_on(result.obj);
+                        awaited_task.add_waiting_task(task_obj);
+                    }
                 } else {
                     self.ready.borrow_mut().push_back(task_obj);
                 }
@@ -168,7 +196,7 @@ impl EventLoop {
     ///
     /// - `TypeError`: If any positional or keyword arguments are supplied.
     #[make_new]
-    #[stub(sig = "(self) -> None")]
+    #[stub(sig = "(self, /) -> None")]
     fn make_new(
         _: &ObjType,
         _n_args: usize,
@@ -198,15 +226,14 @@ impl EventLoop {
 
     /// Schedules coroutine object `coro` on this loop and returns an awaitable `Task`.
     ///
-    /// Scheduling does not run the coroutine until the loop is running. The `Task` itself can be awaited
-    /// to retrieve the output of its coroutine. Due to a current scheduler limitation, starting to await
-    /// a task after it has already finished can leave the waiting coroutine unfinished.
+    /// Scheduling does not run the coroutine until the loop is running. Awaiting the returned task
+    /// yields its return value whether the task is still running or has already finished.
     ///
     /// # Raises
     ///
     /// - `TypeError`: If `coro` is not a coroutine object.
     #[constant(qstr!(spawn))]
-    #[stub(sig = "(self, coro: Any) -> Task")]
+    #[stub(sig = "(self, coro: Any, /) -> Task")]
     const SPAWN: &Fun2 = &Fun2::new(Self::py_spawn);
 
     // this function can't use a Fun generator because it needs the EventLoop in Obj form, not as a
@@ -224,22 +251,24 @@ impl EventLoop {
 
     /// Runs scheduled tasks until no ready tasks or pending sleeps remain.
     ///
-    /// While this method is running, `vasyncio.get_running_loop` returns this loop and `vasyncio.spawn`
-    /// adds tasks to it. An exception raised by a task stops the loop and is propagated to the caller. Due
-    /// to a current scheduler limitation, awaiting an already completed task can let the queues empty
-    /// before that waiter resumes.
+    /// While this method is running, `vasyncio.get_running_loop` returns this loop and
+    /// `vasyncio.spawn` adds tasks to it. An exception raised by a task stops the loop and is
+    /// propagated to the caller.
+    ///
+    /// # Raises
+    ///
+    /// - `RuntimeError`: If tasks form a direct or transitive await cycle.
+    /// - `ValueError`: If a `Sleep` deadline is too large to represent.
     #[constant(qstr!(run))]
-    #[stub(sig = "(self) -> None")]
+    #[stub(sig = "(self, /) -> None")]
     const RUN: &Fun1 = &Fun1::new(Self::py_run);
 }
 
 /// Runs coroutine object `coro` on a new event loop until no work remains.
 ///
-/// The loop also waits for tasks spawned into it and pending `Sleep` objects before returning `None`.
-/// The root coroutine's return value is discarded, and an exception from any task stops the loop and
-/// is propagated to the caller. Due to a current scheduler limitation, awaiting a task after it has
-/// already completed can let the queues empty before the waiting coroutine resumes, so start awaiting
-/// a returned `Task` before it finishes.
+/// The loop also waits for tasks spawned into it and pending `Sleep` objects before returning
+/// `None`. The root coroutine's return value is discarded, and an exception from any task stops
+/// the loop and is propagated to the caller.
 ///
 /// # Examples
 ///
@@ -257,8 +286,10 @@ impl EventLoop {
 /// # Raises
 ///
 /// - `TypeError`: If `coro` is not a coroutine object.
+/// - `RuntimeError`: If tasks form a direct or transitive await cycle.
+/// - `ValueError`: If a `Sleep` deadline is too large to represent.
 #[fun]
-#[stub(sig = "(coro: Any) -> None")]
+#[stub(sig = "(coro: Any, /) -> None")]
 pub fn run(coro: Obj) -> Obj {
     if !coro.is(GEN_INSTANCE_TYPE) {
         type_error(c"expected coroutine").raise(token());
@@ -271,9 +302,8 @@ pub fn run(coro: Obj) -> Obj {
 
 /// Spawns a new asynchronous task that can be controlled with the returned `Task` handle.
 ///
-/// Call this from code already executing under `vasyncio.run` or `EventLoop.run`. The `Task` itself can
-/// be awaited to retrieve the output of its coroutine; awaiting it only after completion is subject to
-/// the scheduler limitation described by `Task`.
+/// Call this from code already executing under `vasyncio.run` or `EventLoop.run`. Awaiting the task
+/// yields the coroutine's return value whether the task is still running or has already completed.
 ///
 /// # Examples
 ///
@@ -296,7 +326,7 @@ pub fn run(coro: Obj) -> Obj {
 /// - `RuntimeError`: If no event loop is running.
 /// - `TypeError`: If `coro` is not a coroutine object.
 #[fun]
-#[stub(sig = "(coro: Any) -> Task")]
+#[stub(sig = "(coro: Any, /) -> Task")]
 pub fn spawn(coro: Obj) -> Obj {
     let eloop = RUNNING_LOOP.get();
     if eloop.is_none() {
@@ -306,12 +336,10 @@ pub fn spawn(coro: Obj) -> Obj {
     EventLoop::py_spawn(eloop, coro)
 }
 
-/// Returns the event loop currently executing tasks.
-///
-/// Outside `vasyncio.run` or `EventLoop.run`, the current implementation returns `None` even though the
-/// declared return type is `EventLoop`.
+/// Returns the event loop currently executing tasks, or `None` outside `vasyncio.run` or
+/// `EventLoop.run`.
 #[fun]
-#[stub(sig = "() -> EventLoop")]
+#[stub(sig = "() -> EventLoop | None")]
 pub fn get_running_loop() -> Obj {
     RUNNING_LOOP.get()
 }

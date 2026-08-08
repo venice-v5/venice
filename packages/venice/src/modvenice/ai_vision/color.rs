@@ -16,7 +16,9 @@ use crate::modvenice::{Exception, color::ColorObj, read_only_attr::read_only_att
 ///
 /// The read-only `r`, `g`, and `b` attributes are the RGB color value's channels from 0 through 255.
 /// `hue_range` is the accepted hue range of the color; VEXcode limits this value to [0, 20].
-/// `saturation_range` is the accepted saturation range of the color. Signatures compare by value.
+/// `saturation_range` is the accepted saturation range of the color. Signatures compare by value,
+/// return `False` when compared with another type, and print as
+/// `AiVisionColor(r=..., g=..., b=..., hue_range=..., saturation_range=...)`.
 #[class(qstr!(AiVisionColor))]
 #[repr(C)]
 pub struct AiVisionColorObj {
@@ -63,9 +65,7 @@ impl AiVisionColorObj {
 
     /// Creates a color signature from `rgb`, `hue_range`, and `saturation_range`.
     ///
-    /// The current runtime has an implementation defect: its positional argument check requires five
-    /// arguments even though this Python signature and the constructor body define three. Consequently,
-    /// the documented three-argument call is currently rejected.
+    /// All three arguments are positional-only.
     ///
     /// # Examples
     ///
@@ -77,10 +77,9 @@ impl AiVisionColorObj {
     ///
     /// # Raises
     ///
-    /// - `TypeError`: Because the binding's argument-count validation does not match this
-    ///   three-argument signature.
+    /// - `TypeError`: If the argument count or an argument's type is invalid, or a keyword is supplied.
     #[make_new]
-    #[stub(sig = "(self, rgb: Color, hue_range: float, saturation_range: float) -> None")]
+    #[stub(sig = "(self, rgb: Color, hue_range: float, saturation_range: float, /) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -88,7 +87,7 @@ impl AiVisionColorObj {
         args: &[Obj],
     ) -> Result<Self, Exception> {
         let mut reader = Args::new(n_pos, n_kw, args).reader();
-        reader.assert_npos(5, 5).assert_nkw(0, 0);
+        reader.assert_npos(3, 3).assert_nkw(0, 0);
 
         let rgb = reader.next_positional::<&ColorObj>()?;
         let hue_range = reader.next_positional()?;
@@ -107,7 +106,10 @@ impl AiVisionColorObj {
     #[binary_op]
     fn binary_op(op: BinaryOpCode, lhs: &Self, rhs: Obj) -> Obj {
         match op {
-            BinaryOpCode::Equal => Obj::from_bool(lhs.color == rhs.as_obj::<Self>().color),
+            BinaryOpCode::Equal => Obj::from_bool(
+                rhs.try_as_obj::<Self>()
+                    .is_some_and(|rhs| lhs.color == rhs.color),
+            ),
             _ => Obj::NULL,
         }
     }

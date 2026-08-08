@@ -4,11 +4,15 @@ use micropython_rs::{
     except::value_error,
     obj::{Obj, ObjBase, ObjType},
 };
-use vexide_devices::adi::{AdiPort, range_finder::AdiRangeFinder};
+use vexide_devices::adi::range_finder::AdiRangeFinder;
 
 use crate::modvenice::{
     Exception,
-    adi::{adi_port_name, expander::AdiPortParser, expander_index},
+    adi::{
+        adi_port_name,
+        expander::{AdiPortParser, AdiPortSpec, commit_adi_port_pair},
+        expander_index,
+    },
 };
 
 /// ADI Ultrasonic Range Finder
@@ -61,12 +65,12 @@ pub struct AdiRangeFinderObj {
     range_finder: AdiRangeFinder,
 }
 
-fn check_ports(output_port: &AdiPort, input_port: &AdiPort) -> Result<(), Exception> {
+fn check_ports(output_port: AdiPortSpec<'_>, input_port: AdiPortSpec<'_>) -> Result<(), Exception> {
     let output_number = output_port.number();
     let input_number = input_port.number();
 
     // Input and output must be plugged into the same ADI expander.
-    if expander_index(input_port.expander_number()) != expander_index(input_port.expander_number())
+    if expander_index(output_port.expander_number()) != expander_index(input_port.expander_number())
     {
         Err(value_error(error_msg!(
             "The specified output and input ports belong to different ADI expanders. Both expanders {:?} and {:?} were provided.",
@@ -101,9 +105,7 @@ impl AdiRangeFinderObj {
     /// Creates a new rangefinder sensor from an `input_port` and `output_port`.
     ///
     /// Both ports must belong to the same Brain or `AdiExpander`. The `output_port` must be A, C, E, or G,
-    /// and `input_port` must be the next port above it. The current binding checks the expander identity of
-    /// `input_port` against itself instead of `output_port`, so two ports from different expanders are not
-    /// rejected as intended.
+    /// and `input_port` must be the next port above it.
     ///
     /// # Examples
     ///
@@ -124,11 +126,11 @@ impl AdiRangeFinderObj {
     ///
     /// # Raises
     ///
-    /// - `ValueError`: If either port is invalid or occupied, `output_port` is not A, C, E, or G, or
-    ///   `input_port` is not directly above it.
+    /// - `ValueError`: If either port is invalid or occupied, the ports belong to different ADI
+    ///   expanders, `output_port` is not A, C, E, or G, or `input_port` is not directly above it.
     #[make_new]
     #[stub(
-        sig = "(self, input_port: str | AdiExpanderPort, output_port: str | AdiExpanderPort) -> None"
+        sig = "(self, input_port: str | AdiExpanderPort, output_port: str | AdiExpanderPort, /) -> None"
     )]
     fn make_new(
         ty: &'static ObjType,
@@ -141,7 +143,8 @@ impl AdiRangeFinderObj {
 
         let input_port = reader.next_positional_with(AdiPortParser)?;
         let output_port = reader.next_positional_with(AdiPortParser)?;
-        check_ports(&output_port, &input_port)?;
+        check_ports(output_port, input_port)?;
+        let (input_port, output_port) = commit_adi_port_pair(input_port, output_port)?;
 
         Ok(Self {
             base: ty.into(),

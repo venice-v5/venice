@@ -49,8 +49,9 @@ impl AdiAddrLedVar {
 
     fn set_buffer(&mut self, buf: &[u32]) -> Result<usize, PortError> {
         validate_expander(self.port.expander_number())?;
-        self.update(buf, 0);
-        Ok(buf.len().min(self.n))
+        let len = buf.len().min(self.n);
+        self.update(&buf[..len], 0);
+        Ok(len)
     }
 
     fn set_pixel(&mut self, index: usize, color: u32) -> Result<(), PortError> {
@@ -109,8 +110,7 @@ impl AdiAddrLedObj {
     /// Initializes an LED strip with a given `count` on an ADI port.
     ///
     /// `count` must be from 0 through 64. `port` is an onboard ADI label from `"A"` through `"H"`, or an
-    /// unused `AdiExpanderPort`. The current binding incorrectly accepts exactly one positional argument
-    /// before attempting to read both arguments, so construction is not reachable.
+    /// unused `AdiExpanderPort`.
     ///
     /// # Examples
     ///
@@ -123,10 +123,10 @@ impl AdiAddrLedObj {
     ///
     /// # Raises
     ///
-    /// - `TypeError`: Because the binding's argument-count validation does not match this signature.
+    /// - `TypeError`: If the argument count or either argument's type is invalid.
     /// - `ValueError`: If `port` is invalid or occupied, or `count` is outside 0 through 64.
     #[make_new]
-    #[stub(sig = "(self, port: str | AdiExpanderPort, count: int) -> None")]
+    #[stub(sig = "(self, port: str | AdiExpanderPort, count: int, /) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -134,10 +134,11 @@ impl AdiAddrLedObj {
         args: &[Obj],
     ) -> Result<Self, Exception> {
         let mut reader = Args::new(n_pos, n_kw, args).reader();
-        reader.assert_npos(1, 1).assert_nkw(0, 0);
+        reader.assert_npos(2, 2).assert_nkw(0, 0);
 
         let port = reader.next_positional_with(AdiPortParser)?;
         let n = reader.next_positional_with(IntParser::new(0..=64))?;
+        let port = port.commit()?;
 
         Ok(Self {
             base: ty.into(),
@@ -148,8 +149,8 @@ impl AdiAddrLedObj {
     /// Attempts to write a buffer of colors to the LED strip. Returns how many colors were actually
     /// written.
     ///
-    /// `buffer` must expose contiguous unsigned 32-bit packed colors. At most the configured pixel count
-    /// is reported, although the binding passes the entire buffer to the device.
+    /// `buffer` must expose contiguous unsigned 32-bit packed colors. Values beyond the configured
+    /// pixel count are ignored.
     ///
     /// # Examples
     ///
@@ -180,15 +181,14 @@ impl AdiAddrLedObj {
     /// - `TypeError`: If `buffer` does not provide a compatible buffer.
     /// - `DeviceError`: If the associated ADI expander is disconnected or is the wrong device type.
     #[method]
-    #[stub(sig = "(self, buffer: Any) -> int")]
+    #[stub(sig = "(self, buffer: Any, /) -> int")]
     fn set_buffer(&self, buf: Buffer<'_, u32>) -> Result<i32, Exception> {
         Ok(self.led.borrow_mut().set_buffer(buf.buffer())? as i32)
     }
 
     /// Sets the color of an individual diode on the strip.
     ///
-    /// Valid `index` values are intended to run from zero through one less than the configured count. The
-    /// current range check also accepts an index equal to the count, which addresses past the strip.
+    /// Valid `index` values run from zero through one less than the configured count.
     ///
     /// # Examples
     ///
@@ -204,18 +204,24 @@ impl AdiAddrLedObj {
     ///
     /// # Raises
     ///
-    /// - `ValueError`: If `index` is greater than the configured pixel count.
+    /// - `ValueError`: If `index` is outside the configured pixel range.
     /// - `DeviceError`: If the associated ADI expander is disconnected or is the wrong device type.
     #[method]
     fn set_pixel(&self, index: i32, color: &ColorObj) -> Result<(), Exception> {
         let mut led = self.led.borrow_mut();
-        if index as usize > led.n {
+        let Ok(index) = usize::try_from(index) else {
             Err(value_error(error_msg!(
-                "pixel index ({index}) is out of range for LED stripe size ({})",
+                "pixel index ({index}) is out of range for LED strip size ({})",
+                led.n,
+            )))?
+        };
+        if index >= led.n {
+            Err(value_error(error_msg!(
+                "pixel index ({index}) is out of range for LED strip size ({})",
                 led.n,
             )))?
         }
-        Ok(led.set_pixel(index as usize, color.color().into_raw())?)
+        Ok(led.set_pixel(index, color.color().into_raw())?)
     }
 
     /// Sets the entire LED strip to one color.

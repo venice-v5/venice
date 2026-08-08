@@ -6,7 +6,7 @@ use std::cell::RefCell;
 use argparse::{ArgParser, Args, DefaultParser, IntParser, error_msg};
 use micropython_macros::{class, class_methods};
 use micropython_rs::{
-    except::{Message, raise_stop_iteration, value_error},
+    except::{Message, raise_stop_iteration, runtime_error, value_error},
     init::token,
     obj::{AttrOp, Obj, ObjBase, ObjTrait, ObjType},
     print::{Print, PrintKind},
@@ -32,7 +32,7 @@ use crate::{
 /// This class allows you to read from the buttons and joysticks on a controller and write to the
 /// controller's display. The read-only `id` attribute is the `ControllerId` selected at
 /// construction. Only one live Venice binding may hold each controller at a time; call
-/// `Controller.free` before reusing its ID.
+/// `Controller.free` before reusing its ID. Using a freed binding raises `ValueError`.
 #[class(qstr!(Controller))]
 #[repr(C)]
 pub struct ControllerObj {
@@ -46,11 +46,8 @@ impl From<ControllerError> for Exception {
     }
 }
 
-/// Represents the state of a controller's connection. Values are returned by
-/// `Controller.get_connection`.
-///
-/// This associated class isn't currently exported from the `venice` module, so its named constants
-/// aren't directly reachable even though returned values use this type.
+/// Represents the state of a controller's connection. This class is root-importable, and values are
+/// returned by `Controller.get_connection`.
 #[class(qstr!(ControllerConnection))]
 #[repr(C)]
 pub struct ControllerConnectionObj {
@@ -95,6 +92,7 @@ enum ControllerFuture {
         column: u8,
         text: Vec<u8, Gc>, // CString doesn't support custom allocators
         controller_id: ControllerId,
+        controller_generation: u64,
     },
     Complete,
 }
@@ -110,8 +108,10 @@ enum ControllerFuture {
 ///
 /// # Raises
 ///
+/// - `ValueError`: If a requested line or column is outside its visible range, or if the originating
+///   controller binding is freed or replaced before the operation completes.
 /// - `DeviceError`: If the controller is not connected.
-/// - `ValueError`: If a requested line or column is outside its visible range.
+/// - `RuntimeError`: If the completed or failed one-shot future is awaited again.
 #[class(qstr!(ControllerFuture))]
 #[repr(C)]
 pub struct ControllerFutureObj {
@@ -169,49 +169,82 @@ impl DefaultParser<'_> for Column {
 impl ControllerFutureObj {
     #[iter]
     extern "C" fn iter(self_in: Obj) -> Obj {
-        let this = self_in.as_obj::<ControllerFutureObj>();
-        let mut future = this.future.borrow_mut();
-
-        if let ControllerFuture::WaitingForIdle {
-            line,
-            column,
-            text,
-            controller_id,
-        } = &*future
-        {
-            match validate_connection(*controller_id) {
-                Ok(()) => {
-                    let id = V5_ControllerId::from(*controller_id);
-
-                    let result = unsafe {
-                        vexControllerTextSet(
-                            u32::from(id.0),
-                            *line as u32,
-                            (*column - 1) as u32,
-                            text.as_ptr().cast(),
-                        )
-                    };
-
-                    if result == 1 {
-                        *future = ControllerFuture::Complete;
-                        raise_stop_iteration(token(), Obj::NONE);
-                    }
-                }
-                Err(e) => {
-                    *future = ControllerFuture::Complete;
-                    Exception::from(e).raise(token());
-                }
-            }
+        enum PollResult {
+            Pending,
+            Succeeded,
+            Failed(Exception),
+            Reused,
         }
 
-        Obj::NONE
+        let this = self_in.as_obj::<ControllerFutureObj>();
+        let result = {
+            let mut future = this.future.borrow_mut();
+            match &*future {
+                ControllerFuture::Complete => PollResult::Reused,
+                ControllerFuture::WaitingForIdle {
+                    line,
+                    column,
+                    text,
+                    controller_id,
+                    controller_generation,
+                } => {
+                    // A future is authorized by the exact registry acquisition that created it.
+                    // Checking only the ID would let an old future write through a new Controller
+                    // that reacquired the same physical controller after free().
+                    if !devices::controller_generation_is_active(
+                        *controller_id,
+                        *controller_generation,
+                    ) {
+                        *future = ControllerFuture::Complete;
+                        PollResult::Failed(
+                            value_error(
+                                c"controller future is stale because its controller was freed",
+                            )
+                            .into(),
+                        )
+                    } else if let Err(error) = validate_connection(*controller_id) {
+                        *future = ControllerFuture::Complete;
+                        PollResult::Failed(error.into())
+                    } else {
+                        let id = V5_ControllerId::from(*controller_id);
+                        let accepted = unsafe {
+                            vexControllerTextSet(
+                                u32::from(id.0),
+                                *line as u32,
+                                (*column - 1) as u32,
+                                text.as_ptr().cast(),
+                            ) == 1
+                        };
+                        if accepted {
+                            *future = ControllerFuture::Complete;
+                            PollResult::Succeeded
+                        } else {
+                            PollResult::Pending
+                        }
+                    }
+                }
+            }
+        };
+
+        match result {
+            PollResult::Pending => Obj::NONE,
+            PollResult::Succeeded => raise_stop_iteration(token(), Obj::NONE),
+            PollResult::Failed(error) => error.raise(token()),
+            PollResult::Reused => {
+                runtime_error(c"ControllerFuture cannot be awaited more than once").raise(token())
+            }
+        }
+    }
+}
+
+fn reject_embedded_nul(str: &str, error_msg: impl Into<Message>) {
+    if str.contains('\0') {
+        value_error(error_msg.into()).raise(token());
     }
 }
 
 fn str_to_cstring_vec(str: &str, error_msg: impl Into<Message>) -> Vec<u8, Gc> {
-    if str.find('\0').is_some() {
-        value_error(error_msg.into()).raise(token());
-    }
+    reject_embedded_nul(str, error_msg);
 
     let mut vec = Vec::with_capacity_in(str.len() + 1, Gc { token: token() });
     vec.extend_from_slice(str.as_bytes());
@@ -256,7 +289,7 @@ impl ControllerObj {
     ///
     /// - `ValueError`: If that controller ID is already in use by another `Controller` binding.
     #[make_new]
-    #[stub(sig = "(self, id: ControllerId = ControllerId.PRIMARY) -> None")]
+    #[stub(sig = "(self, id: ControllerId = ControllerId.PRIMARY, /) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -322,6 +355,7 @@ impl ControllerObj {
     ///
     /// # Raises
     ///
+    /// - `ValueError`: If the controller binding has been freed.
     /// - `DeviceError`: If access to controller data is restricted by competition control, or the
     ///   controller is not connected.
     #[method]
@@ -330,12 +364,25 @@ impl ControllerObj {
         Ok(ControllerStateObj::new(state))
     }
 
-    /// Returns the controller's connection type.
+    /// Returns the controller's connection type as a root-importable `ControllerConnection`.
     ///
-    /// The result is a `ControllerConnection`. That associated class is currently missing from the
-    /// root runtime dictionary, so its named constants aren't directly importable.
+    /// # Examples
+    ///
+    /// Print less information over a slow and unreliable VEXNet connection:
+    ///
+    /// ```python
+    /// from venice import *
+    ///
+    /// controller = Controller()
+    /// if controller.get_connection() != ControllerConnection.VEX_NET:
+    ///     print("A big info dump")
+    /// ```
+    ///
+    /// # Raises
+    ///
+    /// - `ValueError`: If the controller binding has been freed.
     #[method]
-    #[stub(sig = "(self) -> ControllerConnection")]
+    #[stub(sig = "(self, /) -> ControllerConnection")]
     fn get_connection(&self) -> Obj {
         match self.guard.borrow().connection() {
             ControllerConnection::Offline => Obj::from_static(ControllerConnectionObj::OFFLINE),
@@ -359,6 +406,7 @@ impl ControllerObj {
     ///
     /// # Raises
     ///
+    /// - `ValueError`: If the controller binding has been freed.
     /// - `DeviceError`: If the controller is not connected.
     #[method]
     fn get_battery_capacity(&self) -> Result<f32, Exception> {
@@ -391,6 +439,7 @@ impl ControllerObj {
     ///
     /// # Raises
     ///
+    /// - `ValueError`: If the controller binding has been freed.
     /// - `DeviceError`: If the controller is not connected.
     #[method]
     fn get_battery_level(&self) -> Result<i32, Exception> {
@@ -401,6 +450,7 @@ impl ControllerObj {
     ///
     /// # Raises
     ///
+    /// - `ValueError`: If the controller binding has been freed.
     /// - `DeviceError`: If the controller is not connected.
     #[method]
     fn get_flags(&self) -> Result<i32, Exception> {
@@ -427,7 +477,7 @@ impl ControllerObj {
     ///
     /// # Raises
     ///
-    /// - `ValueError`: If `pattern` contains a NUL character.
+    /// - `ValueError`: If `pattern` contains a NUL character or the controller binding has been freed.
     /// - `DeviceError`: When awaited, if the controller is not connected.
     #[method]
     fn rumble(&self, pattern: &str) -> ControllerFutureObj {
@@ -439,6 +489,7 @@ impl ControllerObj {
                 column: 1,
                 text,
                 controller_id: self.guard.borrow().id(),
+                controller_generation: self.guard.generation().unwrap(),
             }),
             base: ObjBase::new(ControllerFutureObj::OBJ_TYPE),
         }
@@ -450,8 +501,7 @@ impl ControllerObj {
     ///
     /// This method takes a string consisting of the characters `'.'`, `'-'`, and `' '`, where dots are
     /// short rumbles, dashes are long rumbles, and spaces are pauses. Maximum supported length is 8
-    /// characters. An embedded NUL isn't safely reported as a Python exception by this immediate
-    /// method; use `Controller.rumble` when input may contain one.
+    /// characters. An embedded NUL raises `ValueError`.
     ///
     /// # Examples
     ///
@@ -464,9 +514,11 @@ impl ControllerObj {
     ///
     /// # Raises
     ///
+    /// - `ValueError`: If `pattern` contains a NUL character or the controller binding has been freed.
     /// - `DeviceError`: If the controller is not connected or the screen is busy.
     #[method]
     fn try_rumble(&self, pattern: &str) -> Result<(), Exception> {
+        reject_embedded_nul(pattern, c"rumble pattern has forbidden nul byte");
         Ok(self.guard.borrow_mut().try_rumble(pattern)?)
     }
 
@@ -503,10 +555,11 @@ impl ControllerObj {
     ///
     /// # Raises
     ///
-    /// - `ValueError`: If `line` is outside 1 through `Controller.MAX_LINES`.
+    /// - `ValueError`: If `line` is outside 1 through `Controller.MAX_LINES` or the controller
+    ///   binding has been freed.
     /// - `DeviceError`: If the controller is not connected.
     #[method]
-    #[stub(sig = "(self, line: int) -> ControllerFuture")]
+    #[stub(sig = "(self, line: int, /) -> ControllerFuture")]
     fn clear_line(&self, line: Line) -> ControllerFutureObj {
         ControllerFutureObj {
             future: RefCell::new(ControllerFuture::WaitingForIdle {
@@ -514,6 +567,7 @@ impl ControllerObj {
                 column: 1,
                 text: empty_cstring_vec(),
                 controller_id: self.guard.borrow().id(),
+                controller_generation: self.guard.generation().unwrap(),
             }),
             base: ObjBase::new(ControllerFutureObj::OBJ_TYPE),
         }
@@ -552,10 +606,11 @@ impl ControllerObj {
     ///
     /// # Raises
     ///
-    /// - `ValueError`: If `line` is outside 1 through `Controller.MAX_LINES`.
+    /// - `ValueError`: If `line` is outside 1 through `Controller.MAX_LINES` or the controller
+    ///   binding has been freed.
     /// - `DeviceError`: If the controller is not connected or the screen is busy.
     #[method]
-    #[stub(sig = "(self, line: int) -> None")]
+    #[stub(sig = "(self, line: int, /) -> None")]
     fn try_clear_line(&self, line: Line) -> Result<(), Exception> {
         Ok(self.guard.borrow_mut().try_clear_line(line.0 as u8)?)
     }
@@ -587,6 +642,7 @@ impl ControllerObj {
     ///
     /// # Raises
     ///
+    /// - `ValueError`: If the controller binding has been freed.
     /// - `DeviceError`: If the controller is not connected.
     #[method]
     fn clear_screen(&self) -> ControllerFutureObj {
@@ -596,6 +652,7 @@ impl ControllerObj {
                 column: 1,
                 text: empty_cstring_vec(),
                 controller_id: self.guard.borrow().id(),
+                controller_generation: self.guard.generation().unwrap(),
             }),
             base: ObjBase::new(ControllerFutureObj::OBJ_TYPE),
         }
@@ -626,6 +683,7 @@ impl ControllerObj {
     ///
     /// # Raises
     ///
+    /// - `ValueError`: If the controller binding has been freed.
     /// - `DeviceError`: If the controller is not connected or the screen is busy.
     #[method]
     fn try_clear_screen(&self) -> Result<(), Exception> {
@@ -659,11 +717,11 @@ impl ControllerObj {
     ///
     /// # Raises
     ///
-    /// - `ValueError`: If `line` or `column` is outside its visible range, or `text` contains a NUL
-    ///   character.
+    /// - `ValueError`: If `line` or `column` is outside its visible range, `text` contains a NUL
+    ///   character, or the controller binding has been freed.
     /// - `DeviceError`: If the controller is not connected.
     #[method(ty = var(min = 4))]
-    #[stub(sig = "(self, text: str, line: int, column: int) -> ControllerFuture")]
+    #[stub(sig = "(self, text: str, line: int, column: int, /) -> ControllerFuture")]
     fn set_text(args: &[Obj]) -> Result<ControllerFutureObj, Exception> {
         let (this, text, line, column) = set_text_prelude(args)?;
 
@@ -673,6 +731,7 @@ impl ControllerObj {
                 column: column.0,
                 text: str_to_cstring_vec(text, c"text has forbidden nul byte"),
                 controller_id: this.guard.borrow().id(),
+                controller_generation: this.guard.generation().unwrap(),
             }),
             base: ObjBase::new(ControllerFutureObj::OBJ_TYPE),
         })
@@ -680,9 +739,7 @@ impl ControllerObj {
 
     /// Sets the `text` contents at a specific `line`/`column` offset.
     ///
-    /// Both lines and columns are 1-indexed. An embedded NUL in `text` isn't safely reported as a
-    /// Python exception by this immediate method; use `Controller.set_text` when input may contain
-    /// one.
+    /// Both lines and columns are 1-indexed. An embedded NUL in `text` raises `ValueError`.
     ///
     /// Unlike `Controller.set_text`, this method will fail if the controller screen is busy.
     ///
@@ -704,12 +761,14 @@ impl ControllerObj {
     ///
     /// # Raises
     ///
-    /// - `ValueError`: If `line` or `column` is outside its visible range.
+    /// - `ValueError`: If `line` or `column` is outside its visible range, `text` contains a NUL
+    ///   character, or the controller binding has been freed.
     /// - `DeviceError`: If the controller is not connected or the screen is busy.
     #[method(ty = var(min = 4))]
-    #[stub(sig = "(self, text: str, line: int, column: int) -> None")]
+    #[stub(sig = "(self, text: str, line: int, column: int, /) -> None")]
     fn try_set_text(args: &[Obj]) -> Result<(), Exception> {
         let (this, text, line, column) = set_text_prelude(args)?;
+        reject_embedded_nul(text, c"text has forbidden nul byte");
 
         Ok(this
             .guard

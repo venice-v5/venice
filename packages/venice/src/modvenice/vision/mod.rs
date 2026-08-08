@@ -130,7 +130,7 @@ impl VisionSensorObj {
     /// sensor = VisionSensor(1)
     /// ```
     #[make_new]
-    #[stub(sig = "(self, port: int) -> None")]
+    #[stub(sig = "(self, port: int, /) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -183,7 +183,7 @@ impl VisionSensorObj {
     /// sensor.set_signature(1, example_signature)
     /// ```
     #[method]
-    #[stub(sig = "(self, id: int, signature: VisionSignature) -> None")]
+    #[stub(sig = "(self, id: int, signature: VisionSignature, /) -> None")]
     fn set_signature(
         &self,
         id: SignatureId,
@@ -219,7 +219,7 @@ impl VisionSensorObj {
     /// print(signature)
     /// ```
     #[method]
-    #[stub(sig = "(self, id: int) -> VisionSignature | None")]
+    #[stub(sig = "(self, id: int, /) -> VisionSignature | None")]
     fn get_signature(&self, id: SignatureId) -> Result<Option<VisionSignatureObj>, Exception> {
         Ok(self
             .guard
@@ -263,7 +263,7 @@ impl VisionSensorObj {
     ///         print(f"Found sig saved on sensor: {signature}")
     /// ```
     #[method]
-    #[stub(sig = "(self) -> tuple[VisionSignature | None, ...]")]
+    #[stub(sig = "(self, /) -> tuple[VisionSignature | None, ...]")]
     fn get_signatures(&self) -> Result<Obj, Exception> {
         let vec = self
             .guard
@@ -359,7 +359,7 @@ impl VisionSensorObj {
     /// vasyncio.run(main)
     /// ```
     #[method]
-    #[stub(sig = "(self) -> LedMode")]
+    #[stub(sig = "(self, /) -> LedMode")]
     fn get_led_mode(&self) -> Result<Obj, Exception> {
         Ok(led_mode::new(self.guard.borrow().led_mode()?))
     }
@@ -413,7 +413,7 @@ impl VisionSensorObj {
     ///         print(f"Detected object matching sig_2: {object}")
     /// ```
     #[method]
-    #[stub(sig = "(self) -> tuple[VisionObject, ...]")]
+    #[stub(sig = "(self, /) -> tuple[VisionObject, ...]")]
     fn get_objects(&self) -> Result<Obj, Exception> {
         let objects = self.guard.borrow().objects()?;
         let obj_objects = objects
@@ -513,7 +513,7 @@ impl VisionSensorObj {
     /// vasyncio.run(main)
     /// ```
     #[method]
-    #[stub(sig = "(self) -> WhiteBalance")]
+    #[stub(sig = "(self, /) -> WhiteBalance")]
     fn get_white_balance(&self) -> Result<Obj, Exception> {
         Ok(white_balance::new(self.guard.borrow().white_balance()?))
     }
@@ -561,7 +561,7 @@ impl VisionSensorObj {
     /// sensor.set_white_balance(WhiteBalance.Manual(255, 255, 255))
     /// ```
     #[method]
-    #[stub(sig = "(self, balance: WhiteBalance) -> None")]
+    #[stub(sig = "(self, balance: WhiteBalance, /) -> None")]
     fn set_white_balance(&self, balance: WhiteBalanceArg) -> Result<(), Exception> {
         self.guard.borrow_mut().set_white_balance(balance.0)?;
         Ok(())
@@ -589,7 +589,7 @@ impl VisionSensorObj {
     /// sensor.set_led_mode(LedMode.Manual(255, 0, 0, 1))
     /// ```
     #[method]
-    #[stub(sig = "(self, mode: LedMode) -> None")]
+    #[stub(sig = "(self, mode: LedMode, /) -> None")]
     fn set_led_mode(&self, mode: LedModeArg) -> Result<(), Exception> {
         self.guard.borrow_mut().set_led_mode(mode.0)?;
         Ok(())
@@ -648,7 +648,7 @@ impl VisionSensorObj {
     /// vasyncio.run(main)
     /// ```
     #[method]
-    #[stub(sig = "(self) -> VisionMode")]
+    #[stub(sig = "(self, /) -> VisionMode")]
     fn get_mode(&self) -> Result<Obj, Exception> {
         Ok(Obj::from_static(match self.guard.borrow().mode()? {
             VisionMode::ColorDetection => VisionModeObj::COLOR_DETECTION,

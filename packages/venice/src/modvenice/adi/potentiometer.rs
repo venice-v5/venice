@@ -132,7 +132,7 @@ impl AdiPotentiometerObj {
     /// - `ValueError`: If `port` is invalid or already occupied.
     #[make_new]
     #[stub(
-        sig = "(self, port: str | AdiExpanderPort, potentiometer_type: PotentiometerType) -> None"
+        sig = "(self, port: str | AdiExpanderPort, potentiometer_type: PotentiometerType, /) -> None"
     )]
     fn make_new(
         ty: &'static ObjType,
@@ -145,6 +145,7 @@ impl AdiPotentiometerObj {
 
         let port = reader.next_positional_with(AdiPortParser)?;
         let potentiometer_type = reader.next_positional::<&PotentiometerTypeObj>()?;
+        let port = port.commit()?;
 
         Ok(Self {
             base: ty.into(),

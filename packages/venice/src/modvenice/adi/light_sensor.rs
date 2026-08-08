@@ -57,7 +57,7 @@ impl AdiLightSensorObj {
     ///
     /// - `ValueError`: If `port` is invalid or already occupied.
     #[make_new]
-    #[stub(sig = "(self, port: str | AdiExpanderPort) -> None")]
+    #[stub(sig = "(self, port: str | AdiExpanderPort, /) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -67,7 +67,7 @@ impl AdiLightSensorObj {
         let mut reader = Args::new(n_pos, n_kw, args).reader();
         reader.assert_npos(1, 1).assert_nkw(0, 0);
 
-        let port = reader.next_positional_with(AdiPortParser)?;
+        let port = reader.next_positional_with(AdiPortParser)?.commit()?;
         Ok(Self {
             base: ty.into(),
             sensor: AdiLightSensor::new(port),

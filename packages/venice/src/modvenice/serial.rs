@@ -9,7 +9,7 @@ use std::{
 use micropython_macros::{class, class_methods};
 use micropython_rs::{
     errno::{MP_EINVAL, MP_EIO},
-    except::raise_stop_iteration,
+    except::{raise_stop_iteration, runtime_error, value_error},
     fun::{Fun1, Fun2, FunVarBetween},
     init::token,
     ioctl_from_fn,
@@ -32,6 +32,12 @@ use crate::{
     registry::{RegistryGuard, SmartGuard, UpgradeGuard},
 };
 
+fn checked_baud_rate(baud_rate: i32) -> Option<u32> {
+    (1..=SerialPort::MAX_BAUD_RATE as i32)
+        .contains(&baud_rate)
+        .then_some(baud_rate as u32)
+}
+
 /// A Smart Port configured as a generic RS-485 serial port.
 ///
 /// This class provides an interface for using V5 Smart Ports as serial communication ports over
@@ -49,10 +55,9 @@ use crate::{
 ///
 /// Open a port with `await SerialPort.open(...)`; `SerialPort` cannot be constructed directly. The
 /// object implements the MicroPython stream methods `read`, `read1`, `write`, `write1`, `flush`, and
-/// `ioctl`. Reads consume the bytes currently available rather than waiting for the requested amount.
-/// This binding currently marks the stream as text, so `read` and `read1` produce `str` objects at
-/// runtime even though their generated annotations say `bytes`; this is a known runtime/stub mismatch
-/// for binary serial data.
+/// `ioctl`. Reads consume the bytes currently available rather than waiting for the requested
+/// amount and return `bytes`. After `free` releases the Smart Port, stream and device operations
+/// raise `ValueError`.
 #[class(qstr!(SerialPort))]
 #[repr(C)]
 pub struct SerialPortObj {
@@ -64,8 +69,8 @@ pub struct SerialPortObj {
 ///
 /// If the port was not previously configured as a generic serial port, this may take a few milliseconds
 /// to complete. Awaiting this object returns the opened `SerialPort`. Users receive it from
-/// `SerialPort.open`; it cannot be constructed directly, and the same instance must not be awaited
-/// more than once.
+/// `SerialPort.open`; it cannot be constructed directly. Awaiting the same instance more than once
+/// raises `RuntimeError`.
 #[class(qstr!(SerialPortOpenFuture))]
 #[repr(C)]
 pub struct SerialPortOpenFutureObj {
@@ -86,10 +91,9 @@ impl SerialPortObj {
     /// Opens and configures a generic serial port on Smart Port `port_number`.
     ///
     /// This configures a Smart Port to act as a generic serial controller capable of sending and receiving
-    /// data. Providing `baud_rate`, or the transmission rate of bits, is required. The maximum allowed
-    /// baud rate is 921600. The current binding does not validate that baud-rate range and converts the
-    /// signed value directly to the device's unsigned baud-rate representation. Await the returned
-    /// `SerialPortOpenFuture` to obtain the usable port.
+    /// data. Providing `baud_rate`, or the transmission rate of bits, is required. It must be from
+    /// 1 through `SerialPort.MAX_BAUD_RATE` (921600). Await the returned `SerialPortOpenFuture` to
+    /// obtain the usable port.
     ///
     /// # Examples
     ///
@@ -104,27 +108,33 @@ impl SerialPortObj {
     ///
     /// # Raises
     ///
-    /// - `ValueError`: If `port_number` is outside 1 through 21 or its Smart Port is occupied.
+    /// - `ValueError`: If `port_number` is outside 1 through 21, its Smart Port is occupied, or
+    ///   `baud_rate` is outside 1 through `SerialPort.MAX_BAUD_RATE`.
     /// - `TypeError`: If either argument is not an integer.
     #[method(binding = "static")]
-    #[stub(sig = "(port_number: int, baud_rate: int) -> SerialPortOpenFuture")]
-    fn open(port_number: PortNumber, baud_rate: i32) -> SerialPortOpenFutureObj {
+    #[stub(sig = "(port_number: int, baud_rate: int, /) -> SerialPortOpenFuture")]
+    fn open(
+        port_number: PortNumber,
+        baud_rate: i32,
+    ) -> Result<SerialPortOpenFutureObj, crate::modvenice::Exception> {
+        let baud_rate = checked_baud_rate(baud_rate).ok_or_else(|| {
+            value_error(c"baud_rate must be between 1 and SerialPort.MAX_BAUD_RATE")
+        })?;
         let upgrade = lock_port(port_number, |p| p)
             .start_upgrade()
             .unwrap()
-            .map(|p| SerialPort::open(p, baud_rate as u32));
+            .map(|p| SerialPort::open(p, baud_rate));
 
-        SerialPortOpenFutureObj {
+        Ok(SerialPortOpenFutureObj {
             base: ObjBase::new(SerialPortOpenFutureObj::OBJ_TYPE),
             upgrade: RefCell::new(Some(upgrade)),
-        }
+        })
     }
 
     /// Configures the baud rate of the serial port.
     ///
-    /// Baud rate determines the speed of communication over the data channel. Under normal conditions,
-    /// user code is limited to a maximum baud rate of 921600. The current binding does not validate this
-    /// range and converts a negative value to an unsigned value before passing it to VEXos.
+    /// Baud rate determines the speed of communication over the data channel. It must be from 1
+    /// through `SerialPort.MAX_BAUD_RATE` (921600).
     ///
     /// # Examples
     ///
@@ -143,10 +153,15 @@ impl SerialPortObj {
     /// # Raises
     ///
     /// - `TypeError`: If `baud_rate` is not an integer.
-    /// - `ValueError`: If the port has been freed.
+    /// - `ValueError`: If `baud_rate` is outside 1 through `SerialPort.MAX_BAUD_RATE`, or the port
+    ///   has been freed.
     #[method]
-    fn set_baud_rate(&self, baud_rate: i32) {
-        self.guard.borrow_mut().set_baud_rate(baud_rate as u32);
+    fn set_baud_rate(&self, baud_rate: i32) -> Result<(), crate::modvenice::Exception> {
+        let baud_rate = checked_baud_rate(baud_rate).ok_or_else(|| {
+            value_error(c"baud_rate must be between 1 and SerialPort.MAX_BAUD_RATE")
+        })?;
+        self.guard.borrow_mut().set_baud_rate(baud_rate);
+        Ok(())
     }
 
     /// Clears the internal input and output FIFO buffers.
@@ -255,15 +270,14 @@ impl SerialPortObj {
         read: read_from_fn!(SerialPortObj::stream_read),
         write: write_from_fn!(SerialPortObj::stream_write),
         ioctl: ioctl_from_fn!(SerialPortObj::stream_ioctl),
-        is_text: 1, // uhh maybe
+        is_text: 0,
     };
 
-    /// Reads up to `size` currently available characters from the serial port's FIFO input buffer.
+    /// Reads up to `size` currently available bytes from the serial port's FIFO input buffer.
     ///
     /// `size=-1`, the default, drains all data currently available. A nonnegative `size` limits the result;
-    /// values below -1 are invalid MicroPython stream sizes. An empty FIFO returns an empty `str` without
-    /// waiting. The runtime result is currently `str`, despite the generated `bytes` annotation, because
-    /// the binding registers this as a text stream.
+    /// values below -1 are invalid MicroPython stream sizes. An empty FIFO returns `b""` without
+    /// waiting.
     ///
     /// # Raises
     ///
@@ -272,15 +286,14 @@ impl SerialPortObj {
     /// - `OSError`: If the serial read fails.
     /// - `ValueError`: If the port has been freed.
     #[constant(qstr!(read))]
-    #[stub(sig = "(self, size: int = -1) -> bytes")]
+    #[stub(sig = "(self, size: int = -1, /) -> bytes")]
     const READ: &FunVarBetween = &mp_stream_read_obj;
 
-    /// Reads up to `size` currently available characters from the serial port's FIFO input buffer with
+    /// Reads up to `size` currently available bytes from the serial port's FIFO input buffer with
     /// single-read semantics.
     ///
     /// For a nonnegative `size`, MicroPython performs at most one low-level read. `size=-1`, the default,
-    /// instead drains all data currently available. An empty FIFO returns an empty `str`. As with `read`,
-    /// the runtime currently returns `str` despite the generated `bytes` annotation.
+    /// instead drains all data currently available. An empty FIFO returns `b""`.
     ///
     /// # Raises
     ///
@@ -289,7 +302,7 @@ impl SerialPortObj {
     /// - `OSError`: If the serial read fails.
     /// - `ValueError`: If the port has been freed.
     #[constant(qstr!(read1))]
-    #[stub(sig = "(self, size: int = -1) -> bytes")]
+    #[stub(sig = "(self, size: int = -1, /) -> bytes")]
     const READ1: &FunVarBetween = &mp_stream_read1_obj;
 
     /// Writes `buffer` to the serial port's FIFO output buffer and returns the number of bytes accepted.
@@ -304,7 +317,7 @@ impl SerialPortObj {
     /// - `OSError`: If the serial write fails.
     /// - `ValueError`: If the port has been freed.
     #[constant(qstr!(write))]
-    #[stub(sig = "(self, buffer: bytes | bytearray | memoryview) -> int")]
+    #[stub(sig = "(self, buffer: bytes | bytearray | memoryview, /) -> int")]
     const WRITE: &FunVarBetween = &mp_stream_write_obj;
 
     /// Performs one low-level write from `buffer` to the serial port's FIFO output buffer and returns the
@@ -319,7 +332,7 @@ impl SerialPortObj {
     /// - `OSError`: If the serial write fails.
     /// - `ValueError`: If the port has been freed.
     #[constant(qstr!(write1))]
-    #[stub(sig = "(self, buffer: bytes | bytearray | memoryview) -> int")]
+    #[stub(sig = "(self, buffer: bytes | bytearray | memoryview, /) -> int")]
     const WRITE1: &Fun2 = &mp_stream_write1_obj;
 
     /// Completes the MicroPython flush operation and returns `None`.
@@ -331,10 +344,11 @@ impl SerialPortObj {
     ///
     /// - `ValueError`: If the port has been freed.
     #[constant(qstr!(flush))]
-    #[stub(sig = "(self) -> None")]
+    #[stub(sig = "(self, /) -> None")]
     const FLUSH: &Fun1 = &mp_stream_flush_obj;
 
-    /// Performs a low-level MicroPython stream control `request` with integer `arg`.
+    /// Performs a low-level MicroPython stream control `request` with integer `arg`, which defaults
+    /// to `0`.
     ///
     /// Request `1` flushes the stream. Request `3` polls the flags in `arg`: readable is `0x01`, writable
     /// is `0x04`, and an I/O error is returned as `0x08`. Other requests are unsupported.
@@ -345,7 +359,7 @@ impl SerialPortObj {
     /// - `OSError`: If `request` is unsupported.
     /// - `ValueError`: If the port has been freed.
     #[constant(qstr!(ioctl))]
-    #[stub(sig = "(self, request: int, arg: int = 0) -> int")]
+    #[stub(sig = "(self, request: int, arg: int = 0, /) -> int")]
     const IOCTL: &FunVarBetween = &mp_stream_ioctl_obj;
 }
 
@@ -355,30 +369,30 @@ impl SerialPortOpenFutureObj {
     ///
     /// Returns the opened `SerialPort` when configuration finishes and otherwise yields control to the
     /// scheduler. Users should use `await` rather than calling this protocol operation directly.
+    ///
+    /// # Raises
+    ///
+    /// - `RuntimeError`: If the same one-shot future is awaited more than once.
     #[iter]
     extern "C" fn iter(self_in: Obj) -> Obj {
         let this = self_in.try_as_obj::<SerialPortOpenFutureObj>().unwrap();
-        let mut refmut = this.upgrade.borrow_mut();
-        let Some(mut upgrade) = refmut.take() else {
-            raise_stop_iteration(token(), Obj::NONE)
+        let upgrade = this.upgrade.borrow_mut().take();
+        let Some(mut upgrade) = upgrade else {
+            runtime_error(c"SerialPortOpenFuture cannot be awaited more than once").raise(token())
         };
 
-        let future = upgrade.as_mut();
-
         let mut cx = Context::from_waker(Waker::noop());
-        match Future::poll(Pin::new(future), &mut cx) {
+        match Future::poll(Pin::new(upgrade.as_mut()), &mut cx) {
             std::task::Poll::Ready(serial_port) => {
                 let guard = RegistryGuard::finish_upgrade(upgrade.map(|_| serial_port));
-                raise_stop_iteration(
-                    token(),
-                    alloc_obj(SerialPortObj {
-                        base: ObjBase::new(SerialPortObj::OBJ_TYPE),
-                        guard,
-                    }),
-                );
+                let port = alloc_obj(SerialPortObj {
+                    base: ObjBase::new(SerialPortObj::OBJ_TYPE),
+                    guard,
+                });
+                raise_stop_iteration(token(), port);
             }
             std::task::Poll::Pending => {
-                *refmut = Some(upgrade);
+                *this.upgrade.borrow_mut() = Some(upgrade);
                 Obj::NONE
             }
         }

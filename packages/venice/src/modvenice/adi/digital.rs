@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 
-use argparse::{Args, PositionalError};
+use argparse::Args;
 use micropython_macros::{class, class_methods};
 use micropython_rs::obj::{Obj, ObjBase, ObjType};
 use vexide_devices::adi::digital::{AdiDigitalIn, AdiDigitalOut, LogicLevel};
@@ -68,7 +68,7 @@ impl AdiDigitalInObj {
     ///
     /// - `ValueError`: If `port` is invalid or already occupied.
     #[make_new]
-    #[stub(sig = "(self, port: str | AdiExpanderPort) -> None")]
+    #[stub(sig = "(self, port: str | AdiExpanderPort, /) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -78,7 +78,7 @@ impl AdiDigitalInObj {
         let mut reader = Args::new(n_pos, n_kw, args).reader();
         reader.assert_npos(1, 1).assert_nkw(0, 0);
 
-        let port = reader.next_positional_with(AdiPortParser)?;
+        let port = reader.next_positional_with(AdiPortParser)?.commit()?;
         Ok(Self {
             base: ty.into(),
             r#in: AdiDigitalIn::new(port),
@@ -121,9 +121,8 @@ impl AdiDigitalOutObj {
     /// Creates a digital output from an ADI port, optionally with an initial logic level.
     ///
     /// `port` is an onboard ADI label from `"A"` through `"H"`, or an unused `AdiExpanderPort`.
-    /// `initial_level` defaults to `None`, which leaves the output at the device's default level. The
-    /// current binding accepts exactly one positional argument and no keywords, so explicitly supplying
-    /// `True` or `False` is not reachable.
+    /// `initial_level` defaults to `None`, which leaves the output at the device's default level.
+    /// Pass `True` to start high or `False` to start low.
     ///
     /// # Examples
     ///
@@ -143,10 +142,13 @@ impl AdiDigitalOutObj {
     ///
     /// # Raises
     ///
-    /// - `TypeError`: If `initial_level` is explicitly supplied.
+    /// - `TypeError`: If `initial_level` is not `bool` or `None`, the positional argument count is
+    ///   invalid, or a keyword argument is supplied.
     /// - `ValueError`: If `port` is invalid or already occupied.
     #[make_new]
-    #[stub(sig = "(self, port: str | AdiExpanderPort, initial_level: bool | None = None) -> None")]
+    #[stub(
+        sig = "(self, port: str | AdiExpanderPort, initial_level: bool | None = None, /) -> None"
+    )]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -154,17 +156,16 @@ impl AdiDigitalOutObj {
         args: &[Obj],
     ) -> Result<Self, Exception> {
         let mut reader = Args::new(n_pos, n_kw, args).reader();
-        reader.assert_npos(1, 1).assert_nkw(0, 0);
+        reader.assert_npos(1, 2).assert_nkw(0, 0);
 
         let port = reader.next_positional_with(AdiPortParser)?;
-        let initial_level = match reader.next_positional::<bool>() {
-            Ok(v) => Some(v),
-            Err(e) => match e {
-                PositionalError::ArgumentsExhausted => None,
-                _ => Err(e)?,
-            },
+        let initial_level = if n_pos == 1 || args[1].is_none() {
+            None
+        } else {
+            Some(reader.next_positional::<bool>()?)
         };
 
+        let port = port.commit()?;
         let out = match initial_level {
             Some(level) => AdiDigitalOut::with_initial_level(port, bool_to_level(level)),
             None => AdiDigitalOut::new(port),

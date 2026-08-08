@@ -4,15 +4,18 @@ pub mod color_code;
 pub mod detection_mode;
 pub mod flags;
 pub mod object;
+mod validation;
 
 use argparse::{Args, error_msg};
 use micropython_macros::{class, class_methods};
 use micropython_rs::{
+    except::value_error,
     obj::{Obj, ObjBase, ObjType},
     tuple::new_tuple,
 };
+use vex_sdk_jumptable::{V5_DeviceAiVisionCode, vexDeviceAiVisionCodeSet};
 use vexide_devices::smart::{
-    PortError,
+    PortError, SmartDevice,
     ai_vision::{AiVisionObjectError, AiVisionSensor},
 };
 
@@ -25,7 +28,7 @@ use crate::{
             color_code::AiVisionColorCodeObj, detection_mode::AiVisionDetectionModeObj,
             flags::AiVisionFlagsObj,
         },
-        device_error,
+        device_error, device_handle, smart_port_index,
     },
     registry::SmartGuard,
 };
@@ -59,7 +62,9 @@ use crate::{
 ///
 /// An AI Vision sensor.
 ///
-/// Object coordinates use pixels with the origin at the image's top-left, positive `x` to the right, and positive `y` downward.
+/// Object coordinates use pixels with the origin at the image's top-left, positive `x` to the right,
+/// and positive `y` downward. After `free` releases the Smart Port, using the sensor raises
+/// `ValueError`.
 #[class(qstr!(AiVisionSensor))]
 #[repr(C)]
 pub struct AiVisionSensorObj {
@@ -71,6 +76,15 @@ impl From<AiVisionObjectError> for Exception {
     fn from(value: AiVisionObjectError) -> Self {
         device_error(error_msg!("{value}"))
     }
+}
+
+fn validate_slot_id(id: i32, max: u8, slot_name: &'static str) -> Result<u8, Exception> {
+    validation::narrow_slot_id(id, max).ok_or_else(|| {
+        value_error(error_msg!(
+            "{slot_name} slot ID ({id}) is outside 1 through {max}"
+        ))
+        .into()
+    })
 }
 
 #[class_methods]
@@ -90,7 +104,7 @@ impl AiVisionSensorObj {
     ///
     /// - `ValueError`: If `port` isn't from 1 through 21 or is already in use.
     #[make_new]
-    #[stub(sig = "(self, port: int) -> None")]
+    #[stub(sig = "(self, port: int, /) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -128,6 +142,7 @@ impl AiVisionSensorObj {
     ///
     /// # Raises
     ///
+    /// - `ValueError`: If the sensor binding has been freed.
     /// - `DeviceError`: If the sensor is disconnected or its port contains the wrong device type.
     #[method]
     fn get_temperature(&self) -> Result<f32, Exception> {
@@ -140,11 +155,8 @@ impl AiVisionSensorObj {
     /// color signatures on the sensor will be detected as a single object when all signatures are seen
     /// next to each other.
     ///
-    /// `id` is intended to be in the interval [1, 8], and every signature ID in `code` is intended to be
-    /// in [1, 7]. The configured device dependency currently contains a reversed validation check that
-    /// rejects valid signature IDs, so this operation isn't usable with a valid color code until that
-    /// implementation is fixed. Values outside either documented range aren't safely reported as Python
-    /// exceptions and must be rejected by the caller.
+    /// `id` must be in the interval [1, 8]. `code` must contain a contiguous sequence of one to
+    /// seven color-signature IDs, each in [1, 7].
     ///
     /// # Examples
     ///
@@ -160,19 +172,52 @@ impl AiVisionSensorObj {
     ///
     /// # Raises
     ///
+    /// - `ValueError`: If `id` or a color-signature ID is out of range, the code is empty, its
+    ///   populated entries aren't contiguous, or the sensor binding has been freed.
     /// - `DeviceError`: If the sensor is disconnected or the port contains the wrong device type.
     #[method]
     fn set_color_code(&self, id: i32, code: &AiVisionColorCodeObj) -> Result<(), Exception> {
-        Ok(self
-            .guard
-            .borrow_mut()
-            .set_color_code(id as _, &code.code())?)
+        let id = validate_slot_id(id, 8, "color code")?;
+        let validated = validation::validate_color_code(code.values()).map_err(|error| {
+            value_error(match error {
+                validation::ColorCodeValidationError::Empty => {
+                    error_msg!("color code must contain at least one color signature ID")
+                }
+                validation::ColorCodeValidationError::InvalidId { index, id } => error_msg!(
+                    "color code entry {} has ID ({id}) outside 1 through 7",
+                    index + 1
+                ),
+                validation::ColorCodeValidationError::NonContiguous { index } => error_msg!(
+                    "color code entry {} is populated after an empty entry",
+                    index + 1
+                ),
+            })
+        })?;
+
+        let sensor = self.guard.borrow();
+        sensor.validate_port()?;
+        let device = unsafe { device_handle(smart_port_index(sensor.port_number())) };
+        let ids = validated.ids;
+        let mut code = V5_DeviceAiVisionCode {
+            id,
+            len: validated.len,
+            c1: ids[0],
+            c2: ids[1],
+            c3: ids[2],
+            c4: ids[3],
+            c5: ids[4],
+            c6: ids[5],
+            c7: ids[6],
+        };
+        unsafe {
+            vexDeviceAiVisionCodeSet(device, core::ptr::from_mut(&mut code));
+        }
+        Ok(())
     }
 
     /// Returns the color code set on the AI Vision sensor with the given `id` if it exists.
     ///
-    /// Valid color-code slot IDs are 1 through 8. Other values aren't safely reported as Python
-    /// exceptions and must be rejected by the caller.
+    /// Valid color-code slot IDs are 1 through 8.
     ///
     /// # Examples
     ///
@@ -192,20 +237,21 @@ impl AiVisionSensorObj {
     ///
     /// # Raises
     ///
+    /// - `ValueError`: If `id` is outside 1 through 8 or the sensor binding has been freed.
     /// - `DeviceError`: If the sensor is disconnected or the port contains the wrong device type.
     #[method]
     fn get_color_code(&self, id: i32) -> Result<Option<AiVisionColorCodeObj>, Exception> {
+        let id = validate_slot_id(id, 8, "color code")?;
         Ok(self
             .guard
             .borrow()
-            .color_code(id as _)?
+            .color_code(id)?
             .map(AiVisionColorCodeObj::new))
     }
 
     /// Sets a color signature for the AI Vision sensor.
     ///
-    /// `id` must be in the interval [1, 7]. Other values aren't safely reported as Python exceptions and
-    /// must be rejected by the caller.
+    /// `id` must be in the interval [1, 7].
     ///
     /// # Examples
     ///
@@ -221,16 +267,17 @@ impl AiVisionSensorObj {
     ///
     /// # Raises
     ///
+    /// - `ValueError`: If `id` is outside 1 through 7 or the sensor binding has been freed.
     /// - `DeviceError`: If the sensor is disconnected or the port contains the wrong device type.
     #[method]
     fn set_color(&self, id: i32, color: &AiVisionColorObj) -> Result<(), Exception> {
-        Ok(self.guard.borrow_mut().set_color(id as _, color.color())?)
+        let id = validate_slot_id(id, 7, "color signature")?;
+        Ok(self.guard.borrow_mut().set_color(id, color.color())?)
     }
 
     /// Returns the color signature set on the AI Vision sensor with the given `id` if it exists.
     ///
-    /// `id` must be in the interval [1, 7]. Other values aren't safely reported as Python exceptions and
-    /// must be rejected by the caller.
+    /// `id` must be in the interval [1, 7].
     ///
     /// # Examples
     ///
@@ -250,14 +297,12 @@ impl AiVisionSensorObj {
     ///
     /// # Raises
     ///
+    /// - `ValueError`: If `id` is outside 1 through 7 or the sensor binding has been freed.
     /// - `DeviceError`: If the sensor is disconnected or the port contains the wrong device type.
     #[method]
     fn get_color(&self, id: i32) -> Result<Option<AiVisionColorObj>, Exception> {
-        Ok(self
-            .guard
-            .borrow()
-            .color(id as _)?
-            .map(AiVisionColorObj::new))
+        let id = validate_slot_id(id, 7, "color signature")?;
+        Ok(self.guard.borrow().color(id)?.map(AiVisionColorObj::new))
     }
 
     /// Sets the detection mode of the AI Vision sensor.
@@ -276,6 +321,7 @@ impl AiVisionSensorObj {
     ///
     /// # Raises
     ///
+    /// - `ValueError`: If the sensor binding has been freed.
     /// - `DeviceError`: If the sensor is disconnected or the port contains the wrong device type.
     #[method]
     fn set_detection_mode(&self, mode: &AiVisionDetectionModeObj) -> Result<(), Exception> {
@@ -296,6 +342,7 @@ impl AiVisionSensorObj {
     ///
     /// # Raises
     ///
+    /// - `ValueError`: If the sensor binding has been freed.
     /// - `DeviceError`: If the sensor is disconnected or the port contains the wrong device type.
     #[method]
     fn get_flags(&self) -> Result<AiVisionFlagsObj, Exception> {
@@ -317,6 +364,7 @@ impl AiVisionSensorObj {
     ///
     /// # Raises
     ///
+    /// - `ValueError`: If the sensor binding has been freed.
     /// - `DeviceError`: If the sensor is disconnected or the port contains the wrong device type.
     #[method]
     fn set_flags(&self, flags: &AiVisionFlagsObj) -> Result<(), Exception> {
@@ -327,6 +375,7 @@ impl AiVisionSensorObj {
     ///
     /// # Raises
     ///
+    /// - `ValueError`: If the sensor binding has been freed.
     /// - `DeviceError`: If the sensor is disconnected or the port contains the wrong device type.
     #[method]
     fn start_awb(&self) -> Result<(), Exception> {
@@ -340,6 +389,7 @@ impl AiVisionSensorObj {
     ///
     /// # Raises
     ///
+    /// - `ValueError`: If the sensor binding has been freed.
     /// - `DeviceError`: If the sensor is disconnected or the port contains the wrong device type.
     #[method]
     fn enable_test(&self, test: i32) -> Result<(), Exception> {
@@ -359,6 +409,7 @@ impl AiVisionSensorObj {
     ///
     /// # Raises
     ///
+    /// - `ValueError`: If the sensor binding has been freed.
     /// - `DeviceError`: If the sensor is disconnected or the port contains the wrong device type.
     #[method]
     fn set_apriltag_family(&self, family: &AprilTagFamilyObj) -> Result<(), Exception> {
@@ -388,6 +439,7 @@ impl AiVisionSensorObj {
     ///
     /// # Raises
     ///
+    /// - `ValueError`: If the sensor binding has been freed.
     /// - `DeviceError`: If the sensor is disconnected or the port contains the wrong device type.
     #[method]
     fn get_object_count(&self) -> Result<i32, Exception> {
@@ -420,11 +472,12 @@ impl AiVisionSensorObj {
     ///
     /// # Raises
     ///
+    /// - `ValueError`: If the sensor binding has been freed.
     /// - `DeviceError`: If the sensor is disconnected, the port contains the wrong device type, or the
     ///   sensor reports an invalid object or model classification.
     #[method]
     #[stub(
-        sig = "(self) -> tuple[AiVisionColorObject | AiVisionCodeObject | AiVisionAprilTagObject | AiVisionModelObject, ...]"
+        sig = "(self, /) -> tuple[AiVisionColorObject | AiVisionCodeObject | AiVisionAprilTagObject | AiVisionModelObject, ...]"
     )]
     fn get_objects(&self) -> Result<Obj, Exception> {
         let objects = self.guard.borrow().objects()?;
@@ -435,11 +488,7 @@ impl AiVisionSensorObj {
         Ok(new_tuple(&objects[..]))
     }
 
-    /// Returns all color codes set on the AI Vision sensor.
-    ///
-    /// The current implementation starts at invalid slot 0 and queries only seven slots, while the
-    /// hardware slots are numbered 1 through 8. This method therefore can't currently complete as
-    /// documented.
+    /// Returns all eight color-code slots set on the AI Vision sensor as codes or `None` values.
     ///
     /// # Examples
     ///
@@ -455,12 +504,13 @@ impl AiVisionSensorObj {
     ///
     /// # Raises
     ///
+    /// - `ValueError`: If the sensor binding has been freed.
     /// - `DeviceError`: If the sensor is disconnected or the port contains the wrong device type.
     #[method]
-    #[stub(sig = "(self) -> tuple[AiVisionColorCode | None, ...]")]
+    #[stub(sig = "(self, /) -> tuple[AiVisionColorCode | None, ...]")]
     fn get_color_codes(&self) -> Result<Obj, Exception> {
         let guard = self.guard.borrow();
-        let codes = (0..7)
+        let codes = (1..=8)
             .map(|n| guard.color_code(n))
             .map(|code| code.map(|code| Obj::from(code.map(AiVisionColorCodeObj::new))))
             .collect::<Result<Vec<_>, PortError>>()?;
@@ -475,7 +525,7 @@ impl AiVisionSensorObj {
     ///
     /// - `ValueError`: If the sensor has already been freed.
     #[method]
-    #[stub(sig = "(self) -> None")]
+    #[stub(sig = "(self, /) -> None")]
     fn free(&self) -> Obj {
         self.guard.free_or_raise();
         Obj::NONE

@@ -27,7 +27,8 @@ use crate::{
 ///
 /// Vectors support unary `+` and `-`, component-wise `+` and `-`, scalar multiplication and true
 /// division, component-wise exponentiation by a scalar, and exact component-wise equality.
-/// In-place operators return a new vector rather than mutating the original. Division by zero
+/// Equality with another type returns `False`. In-place operators return a new vector rather than
+/// mutating the original. Division by zero
 /// raises `ZeroDivisionError`.
 #[class(qstr!(Vec3))]
 #[repr(C)]
@@ -42,8 +43,9 @@ pub struct Vec3 {
 ///
 /// `w` is the mutable scalar component, and `x`, `y`, and `z` are the mutable imaginary
 /// components. Assigning an `int` or `float` updates a component. Deleting any component resets it
-/// to `0.0`, including `w`. Quaternions support exact component-wise equality and have a readable
-/// `Quaternion(w=..., x=..., y=..., z=...)` representation.
+/// to `0.0`, including `w`. Quaternions support exact component-wise equality, return `False` when
+/// compared with another type, and have a readable `Quaternion(w=..., x=..., y=..., z=...)`
+/// representation.
 #[class(qstr!(Quaternion))]
 #[repr(C)]
 pub struct Quaternion {
@@ -64,7 +66,8 @@ pub struct Quaternion {
 /// and X axes, respectively. Their angular unit is determined by the producer, such as the `unit`
 /// passed to `InertialSensor.get_euler` or `GpsSensor.get_euler`; directly constructed values have
 /// no stored unit. Assigning an `int` or `float` updates an angle, and deleting one resets it to
-/// `0.0`. Instances support exact component-wise equality and a readable representation.
+/// `0.0`. Instances support exact component-wise equality, return `False` when compared with another
+/// type, and have a readable representation.
 #[class(qstr!(EulerZYX))]
 #[repr(C)]
 pub struct EulerZYX {
@@ -78,8 +81,8 @@ pub struct EulerZYX {
 ///
 /// `x` and `y` are mutable `float` attributes. Their physical unit depends on the consuming API;
 /// GPS positions and offsets use metres. Assigning an `int` or `float` updates a coordinate, and
-/// deleting one resets it to `0.0`. Points support exact coordinate-wise equality and have a
-/// readable `Point2(x=..., y=...)` representation.
+/// deleting one resets it to `0.0`. Points support exact coordinate-wise equality, return `False`
+/// when compared with another type, and have a readable `Point2(x=..., y=...)` representation.
 #[class(qstr!(Point2))]
 #[derive(Clone)]
 #[repr(C)]
@@ -117,7 +120,7 @@ impl Vec3 {
     /// vector = Vec3(1.0, 2.0, 3.0)
     /// ```
     #[make_new]
-    #[stub(sig = "(self, x: float = 0.0, y: float = 0.0, z: float = 0.0) -> None")]
+    #[stub(sig = "(self, x: float = 0.0, y: float = 0.0, z: float = 0.0, /) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -190,7 +193,10 @@ impl Vec3 {
     #[binary_op]
     fn binary_op(op: BinaryOpCode, lhs: &Self, rhs: Obj) -> Obj {
         match op {
-            BinaryOpCode::Equal => Obj::from_bool(Self::eq(lhs, rhs.try_as_obj::<Self>().unwrap())),
+            BinaryOpCode::Equal => Obj::from_bool(
+                rhs.try_as_obj::<Self>()
+                    .is_some_and(|rhs| Self::eq(lhs, rhs)),
+            ),
             BinaryOpCode::Add | BinaryOpCode::InplaceAdd => {
                 let rhs = match rhs.try_as_obj::<Self>() {
                     Some(r) => r,
@@ -245,7 +251,7 @@ impl Vec3 {
                 };
 
                 if rhs == 0.0 {
-                    raise_msg(token(), ZERO_DIVISION_ERROR_TYPE, c"divison by zero")
+                    raise_msg(token(), ZERO_DIVISION_ERROR_TYPE, c"division by zero")
                 }
 
                 Obj::from(Self {
@@ -302,8 +308,9 @@ impl Quaternion {
 
     /// Creates a quaternion with scalar component `w` and imaginary components `x`, `y`, and `z`.
     ///
-    /// Every component defaults to `0.0`. All arguments are positional-only, accept either `int`
-    /// or `float`, and are stored without normalization.
+    /// `w` defaults to `1.0`, while `x`, `y`, and `z` default to `0.0`, producing the identity
+    /// quaternion. All arguments are positional-only, accept either `int` or `float`, and are stored
+    /// without normalization.
     ///
     /// # Raises
     ///
@@ -318,7 +325,9 @@ impl Quaternion {
     /// quaternion = Quaternion(1.0, 0.0, 0.0, 0.0)
     /// ```
     #[make_new]
-    #[stub(sig = "(self, w: float = 1.0, x: float = 0.0, y: float = 0.0, z: float = 0.0) -> None")]
+    #[stub(
+        sig = "(self, w: float = 1.0, x: float = 0.0, y: float = 0.0, z: float = 0.0, /) -> None"
+    )]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -371,7 +380,10 @@ impl Quaternion {
     #[binary_op]
     fn binary_op(op: BinaryOpCode, lhs: &Self, rhs: Obj) -> Obj {
         match op {
-            BinaryOpCode::Equal => Obj::from_bool(Self::eq(lhs, rhs.as_obj())),
+            BinaryOpCode::Equal => Obj::from_bool(
+                rhs.try_as_obj::<Self>()
+                    .is_some_and(|rhs| Self::eq(lhs, rhs)),
+            ),
             _ => Obj::NULL,
         }
     }
@@ -420,7 +432,7 @@ impl EulerZYX {
     /// angles = EulerZYX(1.0, 0.0, 0.0)
     /// ```
     #[make_new]
-    #[stub(sig = "(self, yaw: float = 0.0, pitch: float = 0.0, roll: float = 0.0) -> None")]
+    #[stub(sig = "(self, yaw: float = 0.0, pitch: float = 0.0, roll: float = 0.0, /) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -469,7 +481,10 @@ impl EulerZYX {
     #[binary_op]
     fn binary_op(op: BinaryOpCode, lhs: &Self, rhs: Obj) -> Obj {
         match op {
-            BinaryOpCode::Equal => Obj::from_bool(Self::eq(lhs, rhs.as_obj())),
+            BinaryOpCode::Equal => Obj::from_bool(
+                rhs.try_as_obj::<Self>()
+                    .is_some_and(|rhs| Self::eq(lhs, rhs)),
+            ),
             _ => Obj::NULL,
         }
     }
@@ -507,7 +522,7 @@ impl Point2 {
     /// point = Point2(10.0, 20.0)
     /// ```
     #[make_new]
-    #[stub(sig = "(self, x: float = 0.0, y: float = 0.0) -> None")]
+    #[stub(sig = "(self, x: float = 0.0, y: float = 0.0, /) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -566,7 +581,10 @@ impl Point2 {
     #[binary_op]
     fn binary_op(op: BinaryOpCode, lhs: &Self, rhs: Obj) -> Obj {
         match op {
-            BinaryOpCode::Equal => Obj::from_bool(Self::eq(lhs, rhs.as_obj())),
+            BinaryOpCode::Equal => Obj::from_bool(
+                rhs.try_as_obj::<Self>()
+                    .is_some_and(|rhs| Self::eq(lhs, rhs)),
+            ),
             _ => Obj::NULL,
         }
     }

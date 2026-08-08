@@ -161,9 +161,9 @@ pub mod repr_c {
     }
 
     pub const fn new_int(int: i32) -> *mut c_void {
-        // right shifting a signed integer (as opposed to an unsigned int) performs an arithmetic
-        // right shift where the sign bit is preserved, e.g. 0b1000 >> 1 = 0b1100
-        (int << 1) as *mut c_void
+        // Repr C stores a 31-bit signed value above the low tag bit. Use wrapping unsigned
+        // arithmetic so encoding the negative boundary is well-defined in every build mode.
+        ((int as u32).wrapping_shl(1) | 1) as usize as *mut c_void
     }
 
     pub const fn new_qstr(qstr: u32) -> *mut c_void {

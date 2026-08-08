@@ -101,11 +101,11 @@ impl AdiAccelerometerObj {
     ///
     /// # Raises
     ///
-    /// - `TypeError`: Because the binding's argument-count validation does not match this two-argument signature.
+    /// - `TypeError`: If the argument count or either argument's type is invalid.
     /// - `ValueError`: If `port` is invalid or already occupied.
     #[make_new]
     #[stub(
-        sig = "(self, port: str | AdiExpanderPort, sensitivity: AdiAccelerometerSensitivity) -> None"
+        sig = "(self, port: str | AdiExpanderPort, sensitivity: AdiAccelerometerSensitivity, /) -> None"
     )]
     fn make_new(
         ty: &'static ObjType,
@@ -114,10 +114,11 @@ impl AdiAccelerometerObj {
         args: &[Obj],
     ) -> Result<Self, Exception> {
         let mut reader = Args::new(n_pos, n_kw, args).reader();
-        reader.assert_npos(1, 1).assert_nkw(0, 0);
+        reader.assert_npos(2, 2).assert_nkw(0, 0);
 
         let port = reader.next_positional_with(AdiPortParser)?;
         let sensitivity = reader.next_positional::<&SensitivityObj>()?; // TODO: default value?
+        let port = port.commit()?;
         Ok(Self {
             base: ty.into(),
             accelerometer: AdiAccelerometer::new(port, sensitivity.sensitivity),

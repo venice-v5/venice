@@ -1,4 +1,4 @@
-use std::ops::{Add, Sub};
+use std::ops::Sub;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Nanoseconds(u32);
@@ -56,15 +56,16 @@ impl Duration {
         let nanos = (micros % MICROS_PER_SEC) * NANOS_PER_MICROS;
         Self::new(secs, Nanoseconds(nanos as u32))
     }
-}
 
-impl Add for Duration {
-    type Output = Self;
-
-    fn add(self, rhs: Duration) -> Self::Output {
+    pub const fn checked_add(self, rhs: Self) -> Option<Self> {
         let (nanos, carry) = self.nanos.overflowing_add(rhs.nanos);
-        let secs = self.secs() + rhs.secs() + if carry { 1 } else { 0 };
-        Self::new(secs, nanos)
+        let Some(secs) = self.secs().checked_add(rhs.secs()) else {
+            return None;
+        };
+        let Some(secs) = secs.checked_add(carry as u64) else {
+            return None;
+        };
+        Some(Self::new(secs, nanos))
     }
 }
 
@@ -99,13 +100,12 @@ impl Instant {
     }
 }
 
-impl Add<Duration> for Instant {
-    type Output = Self;
-
-    fn add(self, rhs: Duration) -> Self::Output {
-        Self {
-            inner: self.inner + rhs,
-        }
+impl Instant {
+    pub const fn checked_add(self, rhs: Duration) -> Option<Self> {
+        let Some(inner) = self.inner.checked_add(rhs) else {
+            return None;
+        };
+        Some(Self { inner })
     }
 }
 

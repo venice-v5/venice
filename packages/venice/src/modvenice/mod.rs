@@ -60,7 +60,7 @@ use crate::modvenice::{
     color::ColorObj,
     competition::{Competition, CompetitionRuntime},
     controller::{
-        ControllerObj,
+        ControllerConnectionObj, ControllerObj,
         id::ControllerIdObj,
         state::{ButtonStateObj, ControllerStateObj, JoystickStateObj},
     },
@@ -206,6 +206,7 @@ static mut venice_globals: Dict = Dict::new(const_map![
     // controller
     qstr!(Controller) => Obj::from_static(ControllerObj::OBJ_TYPE),
     qstr!(ControllerId) => Obj::from_static(ControllerIdObj::OBJ_TYPE),
+    qstr!(ControllerConnection) => Obj::from_static(ControllerConnectionObj::OBJ_TYPE),
     qstr!(ControllerState) => Obj::from_static(ControllerStateObj::OBJ_TYPE),
     qstr!(ButtonState) => Obj::from_static(ButtonStateObj::OBJ_TYPE),
     qstr!(JoystickState) => Obj::from_static(JoystickStateObj::OBJ_TYPE),

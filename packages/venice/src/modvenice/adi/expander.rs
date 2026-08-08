@@ -1,4 +1,4 @@
-use std::cell::Cell;
+use std::cell::RefCell;
 
 use argparse::{ArgParser, Args, ObjParser, ParseError, error_msg};
 use micropython_macros::{class, class_methods};
@@ -9,25 +9,32 @@ use micropython_rs::{
 use vexide_devices::{adi::AdiPort, smart::expander::AdiExpander};
 
 use crate::{
-    devices::{self, AdiPortNumberParser},
+    devices::{self, AdiPortNumber, AdiPortNumberParser},
+    lifecycle::{AdiPortIdentity, AdiPortPlanError, validate_adi_port_plan},
     modvenice::{Exception, read_only_attr::read_only_attr},
 };
 
 /// A one-use reference to one ADI socket on an `AdiExpander`.
 ///
 /// Users receive these objects through the expander's `a` through `h` attributes and pass them to ADI
-/// device constructors. A port is consumed by the first device constructed from it and cannot be
-/// constructed directly.
+/// device constructors. A port is consumed by the first device successfully constructed from it;
+/// failed argument parsing or validation leaves it available. Ports cannot be constructed directly.
 #[class(qstr!(AdiExpanderPort))]
 pub struct AdiExpanderPortObj {
     base: ObjBase,
-    port: Cell<Option<AdiPort>>,
+    // Keep the identity after consumption so parsing a used port stays non-destructive and can
+    // report occupancy during the transaction's validation phase.
+    port: RefCell<Option<AdiPort>>,
+    number: u8,
+    expander_number: Option<u8>,
 }
 
 impl From<AdiPort> for AdiExpanderPortObj {
     fn from(value: AdiPort) -> Self {
         Self {
-            port: Cell::new(Some(value)),
+            number: value.number(),
+            expander_number: value.expander_number(),
+            port: RefCell::new(Some(value)),
             base: Self::OBJ_TYPE.into(),
         }
     }
@@ -40,9 +47,9 @@ impl From<AdiPort> for AdiExpanderPortObj {
 /// connected and valid.
 ///
 /// The read-only attributes `a`, `b`, `c`, `d`, `e`, `f`, `g`, and `h` each contain the matching
-/// `AdiExpanderPort`. Each attribute may be consumed once by an ADI device constructor. Operations on
-/// devices made from these ports raise `DeviceError` if the expander is disconnected or the Smart
-/// Port contains another device type.
+/// `AdiExpanderPort`. Each attribute may be consumed once by a successful ADI device constructor;
+/// failed construction leaves it available. Operations on devices made from these ports raise
+/// `DeviceError` if the expander is disconnected or the Smart Port contains another device type.
 #[class(qstr!(AdiExpander))]
 pub struct AdiExpanderObj {
     base: ObjBase,
@@ -80,7 +87,7 @@ impl AdiExpanderObj {
     ///
     /// - `ValueError`: If `port` is outside 1 through 21 or is already occupied.
     #[make_new]
-    #[stub(sig = "(self, port: int) -> None")]
+    #[stub(sig = "(self, port: int, /) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -138,34 +145,123 @@ impl AdiExpanderObj {
     }
 }
 
+#[derive(Clone, Copy)]
+enum AdiPortSource<'a> {
+    Onboard(AdiPortNumber),
+    Expander(&'a AdiExpanderPortObj),
+}
+
+/// A parsed ADI port that has not yet consumed its underlying resource.
+///
+/// Constructor invariants are enforced in three phases: parse every argument into specs and plain
+/// values, validate relationships and availability, then consume the specs without any intervening
+/// fallible Python operation. This is required because a MicroPython non-local raise can bypass
+/// automatic cleanup, so rollback during cleanup isn't sufficient here.
+#[derive(Clone, Copy)]
+pub struct AdiPortSpec<'a> {
+    source: AdiPortSource<'a>,
+    number: u8,
+    expander_number: Option<u8>,
+}
+
+impl AdiPortSpec<'_> {
+    pub fn number(self) -> u8 {
+        self.number
+    }
+
+    pub fn expander_number(self) -> Option<u8> {
+        self.expander_number
+    }
+
+    fn identity(self) -> AdiPortIdentity {
+        AdiPortIdentity::new(self.number, self.expander_number)
+    }
+
+    fn is_available(self) -> bool {
+        match self.source {
+            AdiPortSource::Onboard(number) => devices::adi_port_is_available(number),
+            AdiPortSource::Expander(port) => port.port.borrow().is_some(),
+        }
+    }
+
+    fn take(self) -> AdiPort {
+        match self.source {
+            AdiPortSource::Onboard(number) => devices::try_lock_adi_port(number)
+                .expect("validated onboard ADI port became unavailable during commit"),
+            AdiPortSource::Expander(port) => port
+                .port
+                .borrow_mut()
+                .take()
+                .expect("validated expander ADI port became unavailable during commit"),
+        }
+    }
+
+    pub fn commit(self) -> Result<AdiPort, Exception> {
+        validate_adi_port_plan([(self.identity(), self.is_available())])
+            .map_err(|error| plan_error(error, &[self]))?;
+        Ok(self.take())
+    }
+}
+
+fn plan_error(error: AdiPortPlanError, specs: &[AdiPortSpec<'_>]) -> Exception {
+    match error {
+        AdiPortPlanError::Unavailable(index) => {
+            micropython_rs::except::value_error(match specs[index].source {
+                AdiPortSource::Onboard(number) => {
+                    error_msg!("adi port '{number}' is occupied by another device")
+                }
+                AdiPortSource::Expander(_) => {
+                    error_msg!("adi expander port is occupied by another device")
+                }
+            })
+            .into()
+        }
+        AdiPortPlanError::Duplicate => {
+            micropython_rs::except::value_error(c"the same ADI port cannot be used twice").into()
+        }
+    }
+}
+
+pub fn commit_adi_port_pair(
+    first: AdiPortSpec<'_>,
+    second: AdiPortSpec<'_>,
+) -> Result<(AdiPort, AdiPort), Exception> {
+    // Checking both resources before either take makes this a commit phase. Pair constructors must
+    // perform all argument parsing and relationship validation before calling this function.
+    validate_adi_port_plan([
+        (first.identity(), first.is_available()),
+        (second.identity(), second.is_available()),
+    ])
+    .map_err(|error| plan_error(error, &[first, second]))?;
+    Ok((first.take(), second.take()))
+}
+
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct AdiPortParser;
 
 impl<'a> ArgParser<'a> for AdiPortParser {
-    type Output = AdiPort;
+    type Output = AdiPortSpec<'a>;
 
-    fn parse(&self, obj: &'a Obj) -> Result<Self::Output, argparse::ParseError> {
+    fn parse(&self, obj: &'a Obj) -> Result<Self::Output, ParseError> {
         match AdiPortNumberParser.parse(obj) {
             Ok(number) => {
-                return devices::try_lock_adi_port(number).map_err(|_| ParseError::ValueError {
-                    mk_msg: Box::new(move |arg| {
-                        error_msg!("{arg}: adi port '{number}' is occupied by another device")
-                    }),
+                return Ok(AdiPortSpec {
+                    source: AdiPortSource::Onboard(number),
+                    number: number.number(),
+                    expander_number: None,
                 });
             }
-            Err(e) => match e {
-                ParseError::ValueError { mk_msg } => return Err(ParseError::ValueError { mk_msg }),
-                ParseError::TypeError { .. } => {}
-            },
+            Err(ParseError::ValueError { mk_msg }) => {
+                return Err(ParseError::ValueError { mk_msg });
+            }
+            Err(ParseError::TypeError { .. }) => {}
         };
 
-        let parser = ObjParser::<AdiExpanderPortObj>::default();
-        parser.parse(obj).and_then(|o| {
-            o.port.take().ok_or(ParseError::ValueError {
-                mk_msg: Box::new(|arg| {
-                    error_msg!("{arg}: adi expander port is occupied by another device")
-                }),
-            })
+        let port = ObjParser::<AdiExpanderPortObj>::default().parse(obj)?;
+        Ok(AdiPortSpec {
+            source: AdiPortSource::Expander(port),
+            number: port.number,
+            expander_number: port.expander_number,
         })
     }
 }

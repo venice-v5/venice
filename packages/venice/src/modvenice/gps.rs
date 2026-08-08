@@ -108,7 +108,7 @@ impl GpsSensorObj {
     /// ```
     #[make_new]
     #[stub(
-        sig = "(self, port: int, offset: Point2, initial_position: Point2, initial_heading: float, initial_heading_unit: RotationUnit) -> None"
+        sig = "(self, port: int, offset: Point2, initial_position: Point2, initial_heading: float, initial_heading_unit: RotationUnit, /) -> None"
     )]
     fn make_new(
         ty: &'static ObjType,
@@ -705,8 +705,9 @@ impl GpsSensorObj {
     ///
     /// # Raises
     ///
-    /// `DeviceError`: If no device is connected to the port, or if the wrong type of device is
+    /// - `DeviceError`: If no device is connected to the port, or if the wrong type of device is
     /// connected.
+    /// - `ValueError`: If `interval` is negative, non-finite, or too large to represent.
     ///
     /// # Examples
     ///
@@ -726,10 +727,8 @@ impl GpsSensorObj {
     /// ```
     #[method]
     fn set_data_interval(&self, interval: f32, unit: &TimeUnitObj) -> Result<(), Exception> {
-        Ok(self
-            .guard
-            .borrow_mut()
-            .set_data_interval(unit.unit().float_to_dur(interval))?)
+        let duration = unit.unit().float_to_dur(interval)?;
+        Ok(self.guard.borrow_mut().set_data_interval(duration)?)
     }
 
     /// Returns the internal status code of the inertial sensor.

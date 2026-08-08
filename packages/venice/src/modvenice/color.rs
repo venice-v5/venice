@@ -13,11 +13,11 @@ use vexide_devices::color::Color;
 
 use crate::modvenice::{Exception, read_only_attr::read_only_attr};
 
-/// A color stored in RGB format for devices and graphics.
+/// A root-importable color stored in RGB format for devices and graphics.
 ///
 /// The read-only `r`, `g`, and `b` attributes are the red, green, and blue channels in the inclusive
-/// range 0 to 255. Colors compare equal when all three channels match, and their readable
-/// representation is `Color(r=..., g=..., b=...)`.
+/// range 0 to 255. Colors compare equal when all three channels match, return `False` when compared
+/// with another type, and have the readable representation `Color(r=..., g=..., b=...)`.
 #[class(qstr!(Color))]
 #[repr(C)]
 pub struct ColorObj {
@@ -101,7 +101,7 @@ impl ColorObj {
     ///   positional arguments are given.
     /// - `ValueError`: If a channel is outside the inclusive range 0 to 255.
     #[make_new]
-    #[stub(sig = "(self, r: int = 0, g: int = 0, b: int = 0) -> None")]
+    #[stub(sig = "(self, r: int = 0, g: int = 0, b: int = 0, /) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -156,7 +156,10 @@ impl ColorObj {
     #[binary_op]
     fn binary_op(op: BinaryOpCode, lhs: &Self, rhs: Obj) -> Obj {
         match op {
-            BinaryOpCode::Equal => Obj::from_bool(lhs.color == rhs.as_obj::<Self>().color),
+            BinaryOpCode::Equal => Obj::from_bool(
+                rhs.try_as_obj::<Self>()
+                    .is_some_and(|rhs| lhs.color == rhs.color),
+            ),
             _ => Obj::NULL,
         }
     }

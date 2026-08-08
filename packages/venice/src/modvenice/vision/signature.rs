@@ -33,7 +33,8 @@ use crate::modvenice::{Exception, read_only_attr::read_only_attr};
 ///
 /// Signatures can additionally be grouped together into `VisionCode` objects, which narrow the filter
 /// for object detection by requiring two colors. Signatures compare equal when all thresholds,
-/// `range`, and `flags` match, and their readable representation includes those eight values.
+/// `range`, and `flags` match, return `False` when compared with another type, and have a readable
+/// representation containing those eight values.
 #[class(qstr!(VisionSignature))]
 #[repr(C)]
 pub struct VisionSignatureObj {
@@ -74,7 +75,7 @@ impl VisionSignatureObj {
     ///   supplied, or the argument count is not exactly seven.
     #[make_new]
     #[stub(
-        sig = "(self, u_min: int, u_max: int, u_mean: int, v_min: int, v_max: int, v_mean: int, range: float) -> None"
+        sig = "(self, u_min: int, u_max: int, u_mean: int, v_min: int, v_max: int, v_mean: int, range: float, /) -> None"
     )]
     fn make_new(
         ty: &'static ObjType,
@@ -141,7 +142,10 @@ impl VisionSignatureObj {
     #[binary_op]
     fn binary_op(op: BinaryOpCode, lhs: &Self, rhs: Obj) -> Obj {
         match op {
-            BinaryOpCode::Equal => Obj::from_bool(Self::eq(lhs, rhs.as_obj::<Self>())),
+            BinaryOpCode::Equal => Obj::from_bool(
+                rhs.try_as_obj::<Self>()
+                    .is_some_and(|rhs| Self::eq(lhs, rhs)),
+            ),
             _ => Obj::NULL,
         }
     }

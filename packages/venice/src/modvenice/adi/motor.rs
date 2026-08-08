@@ -48,8 +48,7 @@ impl AdiMotorObj {
     /// from tripping on older cortex-era 393 motors.
     ///
     /// `port` is an onboard ADI label from `"A"` through `"H"`, or an unused `AdiExpanderPort`.
-    /// Pass `True` for `slew` to enable slew-rate limiting or `False` to disable it. The generated
-    /// signature incorrectly declares `slew` as `float`, but the runtime accepts only booleans.
+    /// Pass `True` for `slew` to enable slew-rate limiting or `False` to disable it.
     ///
     /// # Example
     ///
@@ -75,7 +74,7 @@ impl AdiMotorObj {
     /// - `ValueError`: If `port` is invalid or already occupied.
     /// - `TypeError`: If `slew` isn't a boolean.
     #[make_new]
-    #[stub(sig = "(self, port: str | AdiExpanderPort, slew: float) -> None")]
+    #[stub(sig = "(self, port: str | AdiExpanderPort, slew: bool, /) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -87,6 +86,7 @@ impl AdiMotorObj {
         let port = reader.next_positional_with(AdiPortParser)?;
         // TODO: should this be made optional? If so, what should be its default value?
         let slew = reader.next_positional()?;
+        let port = port.commit()?;
 
         Ok(Self {
             base: ty.into(),

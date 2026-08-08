@@ -33,7 +33,8 @@ pub struct DetectionSourceObj {
 ///
 /// Construct this associated-only class as `DetectionSource.Signature(id)`; it is not package-root
 /// importable. The read-only integer attribute `id` is the matching signature slot from 1 to 7. Values
-/// compare equal when their IDs match and print as `DetectionSource.Signature(id=...)`.
+/// compare equal when their IDs match, return `False` when compared with another type, and print as
+/// `DetectionSource.Signature(id=...)`.
 #[class(qstr!(Signature))]
 #[repr(C)]
 pub struct Signature {
@@ -44,8 +45,9 @@ pub struct Signature {
 /// Multiple signatures joined in a color code were used to detect a `VisionObject`.
 ///
 /// Construct this associated-only class as `DetectionSource.Code(code)`; it is not package-root
-/// importable. The read-only `code` attribute is the matching `VisionCode`. Values compare equal when
-/// their codes match and print as `DetectionSource.Code(code=...)`.
+/// importable. The read-only `code` attribute is the matching `VisionCode`. Values compare equal
+/// when their codes match, return `False` when compared with another type, and print as
+/// `DetectionSource.Code(code=...)`.
 #[class(qstr!(Code))]
 #[repr(C)]
 pub struct Code {
@@ -74,7 +76,7 @@ impl DetectionSourceObj {
     ///
     /// - `TypeError`: Always.
     #[make_new]
-    #[stub(sig = "(self) -> None")]
+    #[stub(sig = "(self, /) -> None")]
     fn make_new(_: &ObjType, _: usize, _: usize, _: &[Obj]) {
         type_error(c"DetectionSource is an abstract base class; use a variant like DetectionSource.Signature").raise(token());
     }
@@ -105,7 +107,7 @@ impl Signature {
     ///   not one.
     /// - `ValueError`: If `id` is outside the inclusive range 1 to 7.
     #[make_new]
-    #[stub(sig = "(self, id: int) -> None")]
+    #[stub(sig = "(self, id: int, /) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -138,7 +140,9 @@ impl Signature {
     #[binary_op]
     fn binary_op(op: BinaryOpCode, lhs: &Self, rhs: Obj) -> Obj {
         match op {
-            BinaryOpCode::Equal => Obj::from_bool(lhs.id == rhs.as_obj::<Self>().id),
+            BinaryOpCode::Equal => {
+                Obj::from_bool(rhs.try_as_obj::<Self>().is_some_and(|rhs| lhs.id == rhs.id))
+            }
             _ => Obj::NULL,
         }
     }
@@ -163,7 +167,7 @@ impl Code {
     /// - `TypeError`: If `code` is not a `VisionCode`, a keyword argument is supplied, or the argument
     ///   count is not one.
     #[make_new]
-    #[stub(sig = "(self, code: VisionCode) -> None")]
+    #[stub(sig = "(self, code: VisionCode, /) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -208,7 +212,10 @@ impl Code {
     #[binary_op]
     fn binary_op(op: BinaryOpCode, lhs: &Self, rhs: Obj) -> Obj {
         match op {
-            BinaryOpCode::Equal => Obj::from_bool(lhs.code() == rhs.as_obj::<Self>().code()),
+            BinaryOpCode::Equal => Obj::from_bool(
+                rhs.try_as_obj::<Self>()
+                    .is_some_and(|rhs| lhs.code() == rhs.code()),
+            ),
             _ => Obj::NULL,
         }
     }
@@ -236,7 +243,7 @@ impl Line {
     ///
     /// - `TypeError`: If any positional or keyword arguments are supplied.
     #[make_new]
-    #[stub(sig = "(self) -> None")]
+    #[stub(sig = "(self, /) -> None")]
     fn make_new(_: &ObjType, _: usize, _: usize, args: &[Obj]) -> Result<Obj, Exception> {
         if args.len() != 0 {
             Err(type_error(

@@ -48,8 +48,7 @@ impl Sleep {
     ///
     /// This constructor returns an awaitable that will complete after the given duration, effectively
     /// yielding the current task for a period of time. Use `MILLIS` for milliseconds or `SECOND` for
-    /// seconds. `interval` should be finite and non-negative; the binding currently relies on the
-    /// underlying duration conversion rather than raising a Python exception for invalid values.
+    /// seconds. `interval` must be finite, non-negative, and small enough to represent.
     ///
     /// # Examples
     ///
@@ -63,16 +62,21 @@ impl Sleep {
     ///
     /// vasyncio.run(main())
     /// ```
+    ///
+    /// # Raises
+    ///
+    /// - `TypeError`: If any keyword argument is supplied.
+    /// - `ValueError`: If `interval` is negative, non-finite, or too large to represent.
     #[make_new]
-    #[stub(sig = "(self, interval: float, unit: TimeUnit) -> None")]
+    #[stub(sig = "(self, interval: float, unit: TimeUnit, /) -> None")]
     fn make_new(_: &ObjType, n_pos: usize, n_kw: usize, args: &[Obj]) -> Result<Self, Exception> {
         let mut args = Args::new(n_pos, n_kw, args).reader();
-        args.assert_npos(2, 2);
+        args.assert_npos(2, 2).assert_nkw(0, 0);
 
         let interval = args.next_positional()?;
         let unit = args.next_positional::<&TimeUnitObj>()?.unit();
 
-        let duration = time32::Duration::from_duration(unit.float_to_dur(interval));
+        let duration = time32::Duration::from_duration(unit.float_to_dur(interval)?);
         Ok(Self::new(duration))
     }
 

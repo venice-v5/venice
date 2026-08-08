@@ -23,7 +23,7 @@ use crate::{modvenice::read_only_attr::read_only_attr, obj::alloc_obj};
 /// - `button_l1`, `button_l2`, `button_r1`, and `button_r2` are the shoulder-button `ButtonState`
 ///   values.
 ///
-/// Every attribute is read-only.
+/// Every attribute is read-only, and equality with another type returns `False`.
 #[class(qstr!(ControllerState))]
 #[repr(C)]
 pub struct ControllerStateObj {
@@ -40,7 +40,8 @@ pub struct ControllerStateObj {
 /// - `is_now_released` is `True` if the button state was pressed in the previous call to
 ///   `Controller.read_state`, but is now released.
 ///
-/// Instances compare by value and can't be constructed directly.
+/// Instances compare by value, return `False` when compared with another type, and can't be
+/// constructed directly.
 #[class(qstr!(ButtonState))]
 #[repr(C)]
 pub struct ButtonStateObj {
@@ -54,8 +55,8 @@ pub struct ButtonStateObj {
 /// - On the y axis, down is negative and up is positive.
 ///
 /// The read-only `x` and `y` attributes are normalized to [-1.0, 1.0]. The read-only `x_raw` and
-/// `y_raw` attributes are the raw positions from [-127, 127]. Instances compare by value and can't be
-/// constructed directly.
+/// `y_raw` attributes are the raw positions from [-127, 127]. Instances compare by value, return
+/// `False` when compared with another type, and can't be constructed directly.
 #[class(qstr!(JoystickState))]
 #[repr(C)]
 pub struct JoystickStateObj {
@@ -139,7 +140,10 @@ impl ControllerStateObj {
     #[binary_op]
     fn binary_op(op: BinaryOpCode, lhs: &Self, rhs: Obj) -> Obj {
         match op {
-            BinaryOpCode::Equal => Obj::from_bool(lhs.state == rhs.as_obj::<Self>().state),
+            BinaryOpCode::Equal => Obj::from_bool(
+                rhs.try_as_obj::<Self>()
+                    .is_some_and(|rhs| lhs.state == rhs.state),
+            ),
             _ => Obj::NULL,
         }
     }
@@ -206,7 +210,10 @@ impl ButtonStateObj {
     #[binary_op]
     fn binary_op(op: BinaryOpCode, lhs: &Self, rhs: Obj) -> Obj {
         match op {
-            BinaryOpCode::Equal => Obj::from_bool(lhs.state == rhs.as_obj::<Self>().state),
+            BinaryOpCode::Equal => Obj::from_bool(
+                rhs.try_as_obj::<Self>()
+                    .is_some_and(|rhs| lhs.state == rhs.state),
+            ),
             _ => Obj::NULL,
         }
     }
@@ -248,7 +255,10 @@ impl JoystickStateObj {
     #[binary_op]
     fn binary_op(op: BinaryOpCode, lhs: &Self, rhs: Obj) -> Obj {
         match op {
-            BinaryOpCode::Equal => Obj::from_bool(lhs.state == rhs.as_obj::<Self>().state),
+            BinaryOpCode::Equal => Obj::from_bool(
+                rhs.try_as_obj::<Self>()
+                    .is_some_and(|rhs| lhs.state == rhs.state),
+            ),
             _ => Obj::NULL,
         }
     }

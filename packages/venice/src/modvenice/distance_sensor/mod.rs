@@ -60,7 +60,7 @@ impl DistanceSensorObj {
     /// - `ValueError`: If `port` isn't from 1 through 21 or is already in use.
     /// - `TypeError`: If `port` is not an integer.
     #[make_new]
-    #[stub(sig = "(self, port: int) -> None")]
+    #[stub(sig = "(self, port: int, /) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,

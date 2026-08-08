@@ -1,16 +1,20 @@
 use std::cell::RefCell;
 
-use argparse::{Args, error_msg};
+use argparse::{Args, IntParser, error_msg};
 use micropython_macros::{class, class_methods};
 use micropython_rs::{
     except::value_error,
     obj::{Obj, ObjBase, ObjType},
 };
-use vexide_devices::adi::{AdiPort, encoder::AdiEncoder};
+use vexide_devices::adi::encoder::AdiEncoder;
 
 use crate::modvenice::{
     Exception,
-    adi::{adi_port_name, expander::AdiPortParser, expander_index},
+    adi::{
+        adi_port_name,
+        expander::{AdiPortParser, AdiPortSpec, commit_adi_port_pair},
+        expander_index,
+    },
     units::rotation::RotationUnitObj,
 };
 
@@ -77,7 +81,7 @@ pub struct AdiEncoderObj {
     tpr: i32,
 }
 
-fn check_ports(top_port: &AdiPort, bottom_port: &AdiPort) -> Result<(), Exception> {
+fn check_ports(top_port: AdiPortSpec<'_>, bottom_port: AdiPortSpec<'_>) -> Result<(), Exception> {
     if expander_index(top_port.expander_number()) != expander_index(bottom_port.expander_number()) {
         Err(value_error(error_msg!(
             "The specified top and bottom ports belong to different ADI expanders. Both expanders {:?} and {:?} were provided.",
@@ -111,8 +115,8 @@ impl AdiEncoderObj {
     ///
     /// The ports must be an adjacent pair on the same Brain or `AdiExpander`: A/B, C/D, E/F, or G/H, in
     /// either order. Reversing their order reverses the positive direction. `tpr` is the encoder's ticks
-    /// per revolution and defaults to 360 for the VEX Optical Shaft Encoder. The binding does not
-    /// reject zero or negative `tpr` values, although they do not describe a valid encoder resolution.
+    /// per revolution and defaults to 360 for the VEX Optical Shaft Encoder. It must be a positive
+    /// integer.
     ///
     /// # Examples
     ///
@@ -132,11 +136,11 @@ impl AdiEncoderObj {
     ///
     /// # Raises
     ///
-    /// - `ValueError`: If either port is invalid or occupied, if the ports belong to different ADI
-    ///   expanders, or if they do not form an adjacent pair.
+    /// - `ValueError`: If `tpr` is not positive, either port is invalid or occupied, the ports
+    ///   belong to different ADI expanders, or they do not form an adjacent pair.
     #[make_new]
     #[stub(
-        sig = "(self, top_port: str | AdiExpanderPort, bottom_port: str | AdiExpanderPort, tpr: int = 360) -> None"
+        sig = "(self, top_port: str | AdiExpanderPort, bottom_port: str | AdiExpanderPort, tpr: int = 360, /) -> None"
     )]
     fn make_new(
         ty: &'static ObjType,
@@ -149,8 +153,13 @@ impl AdiEncoderObj {
 
         let top_port = reader.next_positional_with(AdiPortParser)?;
         let bottom_port = reader.next_positional_with(AdiPortParser)?;
-        check_ports(&top_port, &bottom_port)?;
-        let tpr = reader.next_positional_or(360)?;
+        let tpr = match reader.next_positional_with(IntParser::new(1..=i32::MAX)) {
+            Ok(tpr) => tpr,
+            Err(argparse::PositionalError::ArgumentsExhausted) => 360,
+            Err(error) => return Err(error.into()),
+        };
+        check_ports(top_port, bottom_port)?;
+        let (top_port, bottom_port) = commit_adi_port_pair(top_port, bottom_port)?;
 
         Ok(Self {
             base: ty.into(),

@@ -44,7 +44,8 @@ pub struct Auto {
 /// percentage from 0.0-1.0. This associated-only class is constructed as `LedMode.Manual(...)` and is
 /// not package-root importable. Its read-only `r`, `g`, and `b` attributes are RGB channels from 0 to
 /// 255; its read-only `brightness` attribute is the intended normalized brightness. Values compare by
-/// these four attributes and print as `LedMode.Manual(r=..., g=..., b=..., brightness=...)`.
+/// these four attributes, return `False` when compared with another type, and print as
+/// `LedMode.Manual(r=..., g=..., b=..., brightness=...)`.
 #[class(qstr!(Manual))]
 pub struct Manual {
     base: ObjBase,
@@ -64,7 +65,7 @@ impl LedModeObj {
     ///
     /// - `TypeError`: Always.
     #[make_new]
-    #[stub(sig = "(self) -> None")]
+    #[stub(sig = "(self, /) -> None")]
     fn make_new(_: &ObjType, _: usize, _: usize, _: &[Obj]) {
         type_error(c"LedMode is an abstract base class; use a variant like LedMode.Auto")
             .raise(token())
@@ -93,7 +94,7 @@ impl Auto {
     ///
     /// - `TypeError`: If any positional or keyword arguments are supplied.
     #[make_new]
-    #[stub(sig = "(self) -> None")]
+    #[stub(sig = "(self, /) -> None")]
     fn make_new(_: &ObjType, _: usize, _: usize, args: &[Obj]) -> Result<Obj, Exception> {
         if args.len() != 0 {
             Err(
@@ -128,7 +129,7 @@ impl Manual {
     ///   is supplied, or the argument count is not exactly four.
     /// - `ValueError`: If an RGB channel is outside the inclusive range 0 to 255.
     #[make_new]
-    #[stub(sig = "(self, r: int, g: int, b: int, brightness: float) -> None")]
+    #[stub(sig = "(self, r: int, g: int, b: int, brightness: float, /) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -179,7 +180,10 @@ impl Manual {
     #[binary_op]
     fn binary_op(op: BinaryOpCode, lhs: &Self, rhs: Obj) -> Obj {
         match op {
-            BinaryOpCode::Equal => Obj::from_bool(Self::eq(lhs, rhs.try_as_obj::<Self>().unwrap())),
+            BinaryOpCode::Equal => Obj::from_bool(
+                rhs.try_as_obj::<Self>()
+                    .is_some_and(|rhs| Self::eq(lhs, rhs)),
+            ),
             _ => Obj::NULL,
         }
     }

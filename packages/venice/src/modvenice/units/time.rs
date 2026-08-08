@@ -2,11 +2,15 @@ use std::time::Duration;
 
 use micropython_macros::{class, class_methods};
 use micropython_rs::{
+    except::value_error,
     obj::{ObjBase, ObjTrait},
     print::{Print, PrintKind},
 };
 
-use crate::modvenice::vasyncio::time32::{MILLIS_PER_SEC, NANOS_PER_MILLI};
+use crate::modvenice::{
+    Exception,
+    vasyncio::time32::{MILLIS_PER_SEC, NANOS_PER_MILLI},
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TimeUnit {
@@ -14,13 +18,38 @@ pub enum TimeUnit {
     Second,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TimeConversionError {
+    Negative,
+    NonFinite,
+    OutOfRange,
+}
+
+impl From<TimeConversionError> for Exception {
+    fn from(error: TimeConversionError) -> Self {
+        value_error(match error {
+            TimeConversionError::Negative => c"time value cannot be negative",
+            TimeConversionError::NonFinite => c"time value must be finite",
+            TimeConversionError::OutOfRange => c"time value is too large",
+        })
+        .into()
+    }
+}
+
 impl TimeUnit {
-    pub fn float_to_dur(self, value: f32) -> Duration {
+    pub fn float_to_dur(self, value: f32) -> Result<Duration, TimeConversionError> {
+        if value.is_nan() || value.is_infinite() {
+            return Err(TimeConversionError::NonFinite);
+        }
+        if value < 0.0 {
+            return Err(TimeConversionError::Negative);
+        }
+
         let secs = match self {
             Self::Millis => value / 1000.0,
             Self::Second => value,
         };
-        Duration::from_secs_f32(secs)
+        Duration::try_from_secs_f32(secs).map_err(|_| TimeConversionError::OutOfRange)
     }
 
     pub fn dur_to_float(self, dur: Duration) -> f32 {

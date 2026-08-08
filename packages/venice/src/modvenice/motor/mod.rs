@@ -124,7 +124,7 @@ impl MotorObj {
     /// ```
     // Do NOT rearrange the order of these attributes!!! The build script depends on it
     #[stub(
-        sig = "(port: int, direction: Direction = Direction.FORWARD, gearset: Gearset = Gearset.GREEN) -> Motor"
+        sig = "(port: int, direction: Direction = Direction.FORWARD, gearset: Gearset = Gearset.GREEN, /) -> Motor"
     )]
     #[method(ty = var_between(min = 1, max = 3), binding = "static")]
     fn new_v5(args: &[Obj]) -> Result<Self, Exception> {
@@ -158,7 +158,7 @@ impl MotorObj {
     /// assert motor.max_voltage == Motor.EXP_MAX_VOLTAGE
     /// ```
     #[method(ty = var_between(min = 1, max = 2), binding = "static")]
-    #[stub(sig = "(port: int, direction: Direction = Direction.FORWARD) -> Motor")]
+    #[stub(sig = "(port: int, direction: Direction = Direction.FORWARD, /) -> Motor")]
     fn new_exp(args: &[Obj]) -> Result<Self, Exception> {
         let mut reader = Args::new(args.len(), 0, args).reader();
         reader.assert_npos(1, 2).assert_nkw(0, 0);
@@ -188,7 +188,7 @@ impl MotorObj {
     /// ```
     #[make_new]
     #[stub(
-        sig = "(self, port: int, direction: Direction = Direction.FORWARD, gearset: Gearset = Gearset.GREEN) -> None"
+        sig = "(self, port: int, direction: Direction = Direction.FORWARD, gearset: Gearset = Gearset.GREEN, /) -> None"
     )]
     fn make_new(_: &ObjType, _: usize, n_kw: usize, args: &[Obj]) -> Result<Self, Exception> {
         if n_kw != 0 {
@@ -363,7 +363,7 @@ impl MotorObj {
     ///         print("Motor is using the blue gearset")
     /// ```
     #[method]
-    #[stub(sig = "(self) -> Gearset")]
+    #[stub(sig = "(self, /) -> Gearset")]
     fn get_gearset(&self) -> Result<Obj, Exception> {
         let gearset = self.guard.borrow().gearset()?;
         Ok(Obj::from_static(match gearset {
@@ -391,7 +391,7 @@ impl MotorObj {
     /// motor.set_position_target(90, DEGREES, 200)
     /// ```
     #[method(ty = var_between(min = 4, max = 4))]
-    #[stub(sig = "(self, position: float, unit: RotationUnit, velocity: int) -> None")]
+    #[stub(sig = "(self, position: float, unit: RotationUnit, velocity: int, /) -> None")]
     fn set_position_target(args: &[Obj]) -> Result<(), Exception> {
         let mut reader = Args::new(args.len(), 0, args).reader();
 
@@ -1103,7 +1103,7 @@ impl MotorObj {
     ///         print("Motor is set to reverse")
     /// ```
     #[method]
-    #[stub(sig = "(self) -> Direction")]
+    #[stub(sig = "(self, /) -> Direction")]
     fn get_direction(&self) -> Result<Obj, Exception> {
         let dir = self.guard.borrow().direction()?;
         Ok(Obj::from_static(match dir {

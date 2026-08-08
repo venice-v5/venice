@@ -67,16 +67,19 @@ impl DistanceObjectObj {
         });
     }
 
-    /// Formats all available readings as `DistanceObject(...)`.
+    /// Formats all four readings as `DistanceObject(...)`, including `relative_size=None` when the
+    /// sensor doesn't provide a relative size.
     #[printer]
     fn printer(&self, print: &mut Print, _kind: PrintKind) {
         let _ = write!(
             print,
-            "DistanceObject(confidence={}, distance={}, velocity={}",
+            "DistanceObject(confidence={}, distance={}, velocity={}, relative_size=",
             self.object.confidence, self.object.distance, self.object.velocity
         );
         if let Some(relative_size) = self.object.relative_size {
-            let _ = write!(print, ", relative_size={}", relative_size);
+            let _ = write!(print, "{relative_size}");
+        } else {
+            print.print("None");
         }
         print.print(")");
     }

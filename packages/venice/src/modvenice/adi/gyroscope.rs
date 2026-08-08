@@ -3,7 +3,7 @@ use std::cell::{Cell, RefCell};
 use argparse::{Args, error_msg};
 use micropython_macros::{class, class_methods};
 use micropython_rs::{
-    except::raise_stop_iteration,
+    except::{raise_stop_iteration, value_error},
     init::token,
     obj::{Obj, ObjBase, ObjTrait, ObjType},
 };
@@ -15,7 +15,7 @@ use vexide_devices::adi::{
 
 use crate::modvenice::{
     Exception,
-    adi::{adi_port_index, expander::AdiPortParser, validate_expander},
+    adi::{adi_port_index, expander::AdiPortParser, expander_index, validate_expander},
     device_error, device_handle,
     units::{rotation::RotationUnitObj, time::TimeUnitObj},
 };
@@ -55,11 +55,10 @@ enum FutureState {
 
 /// An awaitable that calibrates an `AdiGyroscope` for a given duration.
 ///
-/// Awaiting it starts calibration, cooperatively waits for VEXos to finish, and returns `None`. The
-/// current calibration implementation selects a device handle from the ADI subport index instead of
-/// the Brain or expander containing that port, so it cannot reliably target its sensor. Although
-/// `AdiGyroscopeFuture` is root-importable, users normally obtain an instance from
-/// `AdiGyroscope.calibrate` rather than constructing it directly.
+/// Awaiting it starts calibration on the Brain or expander containing the sensor, cooperatively
+/// waits for VEXos to finish, and returns `None`. Although `AdiGyroscopeFuture` is root-importable,
+/// users normally obtain an instance from `AdiGyroscope.calibrate` rather than constructing it
+/// directly.
 ///
 /// # Raises
 ///
@@ -102,7 +101,7 @@ impl AdiGyroscopeObj {
     ///
     /// - `ValueError`: If `port` is invalid or already occupied.
     #[make_new]
-    #[stub(sig = "(self, port: str | AdiExpanderPort) -> None")]
+    #[stub(sig = "(self, port: str | AdiExpanderPort, /) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -112,7 +111,7 @@ impl AdiGyroscopeObj {
         let mut reader = Args::new(n_pos, n_kw, args).reader();
         reader.assert_npos(1, 1).assert_nkw(0, 0);
 
-        let port = reader.next_positional_with(AdiPortParser)?;
+        let port = reader.next_positional_with(AdiPortParser)?.commit()?;
 
         Ok(Self {
             base: ty.into(),
@@ -141,11 +140,8 @@ impl AdiGyroscopeObj {
 
     /// Calibrates the gyroscope for `duration` measured in `unit`.
     ///
-    /// Keep the sensor stationary until the awaitable completes. `duration` should be finite and
-    /// non-negative; the binding currently relies on the underlying duration conversion rather than
-    /// raising a Python exception for invalid values. The awaitable also currently selects the hardware
-    /// device handle from the ADI subport index, so calibration cannot reliably target this gyroscope
-    /// until that implementation defect is corrected.
+    /// Keep the sensor stationary until the awaitable completes. `duration` must be finite,
+    /// non-negative, and representable as a signed millisecond duration.
     ///
     /// # Examples
     ///
@@ -160,15 +156,28 @@ impl AdiGyroscopeObj {
     ///
     /// vasyncio.run(main())
     /// ```
+    ///
+    /// # Raises
+    ///
+    /// - `ValueError`: If `duration` is negative, non-finite, or cannot be represented as the
+    ///   gyroscope's signed millisecond duration.
     #[method]
-    fn calibrate(this: Obj, duration: f32, unit: &TimeUnitObj) -> AdiGyroscopeFuture {
-        AdiGyroscopeFuture {
+    fn calibrate(
+        this: Obj,
+        duration: f32,
+        unit: &TimeUnitObj,
+    ) -> Result<AdiGyroscopeFuture, Exception> {
+        let duration = unit.unit().float_to_dur(duration)?;
+        let calibration_duration_millis = i32::try_from(duration.as_millis())
+            .map_err(|_| value_error(c"duration is too large for gyroscope calibration"))?;
+
+        Ok(AdiGyroscopeFuture {
             base: AdiGyroscopeFuture::OBJ_TYPE.into(),
             gyro: this,
             state: Cell::new(FutureState::Calibrate {
-                calibration_duration_millis: unit.unit().float_to_dur(duration).as_millis() as i32,
+                calibration_duration_millis,
             }),
-        }
+        })
     }
 
     /// Returns the measured yaw rotation of the gyroscope in the supplied `unit`.
@@ -202,40 +211,49 @@ impl AdiGyroscopeFuture {
     extern "C" fn next(self_in: Obj) -> Obj {
         let this = self_in.try_as_obj::<Self>().unwrap();
         let gyro_obj = this.gyro.try_as_obj::<AdiGyroscopeObj>().unwrap();
-        let gyro = gyro_obj.gyro.borrow();
+        let poll_result = {
+            let gyro = gyro_obj.gyro.borrow();
+            match this.state.get() {
+                FutureState::Calibrate {
+                    calibration_duration_millis,
+                } => validate_expander(gyro.expander_port_number())
+                    .map_err(Exception::from)
+                    .map(|()| {
+                        let port_number = gyro.port_numbers()[0];
+                        let index = adi_port_index(port_number);
+                        let container_index = expander_index(gyro.expander_port_number());
+                        unsafe {
+                            vexDeviceAdiValueSet(
+                                device_handle(container_index),
+                                index,
+                                calibration_duration_millis,
+                            );
+                        }
+                        this.state.set(FutureState::WaitingStart);
+                        false
+                    }),
+                FutureState::WaitingStart => {
+                    gyro.is_calibrating()
+                        .map_err(Exception::from)
+                        .map(|running| {
+                            if running {
+                                this.state.set(FutureState::WaitingEnd);
+                            }
+                            false
+                        })
+                }
+                FutureState::WaitingEnd => gyro
+                    .is_calibrating()
+                    .map(|running| !running)
+                    .map_err(Exception::from),
+            }
+        };
 
-        match this.state.get() {
-            FutureState::Calibrate {
-                calibration_duration_millis,
-            } => match validate_expander(gyro.expander_port_number()) {
-                Ok(()) => {
-                    let port_number = gyro.port_numbers()[0];
-                    let index = adi_port_index(port_number);
-                    unsafe {
-                        vexDeviceAdiValueSet(
-                            device_handle(index),
-                            index,
-                            calibration_duration_millis,
-                        );
-                    }
-                    this.state.set(FutureState::WaitingStart);
-                    Obj::NONE
-                }
-                Err(error) => Exception::from(error).raise(token()),
-            },
-            FutureState::WaitingStart => match gyro.is_calibrating() {
-                Ok(false) => Obj::NONE,
-                Ok(true) => {
-                    this.state.set(FutureState::WaitingEnd);
-                    Obj::NONE
-                }
-                Err(error) => Exception::from(error).raise(token()),
-            },
-            FutureState::WaitingEnd => match gyro.is_calibrating() {
-                Ok(false) => raise_stop_iteration(token(), Obj::NONE),
-                Ok(true) => Obj::NONE,
-                Err(error) => Exception::from(error).raise(token()),
-            },
+        // Drop the gyroscope borrow before raising through MicroPython's non-local-return boundary.
+        match poll_result {
+            Ok(true) => raise_stop_iteration(token(), Obj::NONE),
+            Ok(false) => Obj::NONE,
+            Err(error) => error.raise(token()),
         }
     }
 }

@@ -4,7 +4,7 @@ use argparse::{ArgType, Callable, error_msg};
 use bitflags::bitflags;
 use micropython_macros::{class, class_methods};
 use micropython_rs::{
-    except::type_error,
+    except::{type_error, value_error},
     generator::{GEN_INSTANCE_TYPE, VmReturnKind, close_gen, resume_gen},
     init::token,
     nlr,
@@ -120,6 +120,11 @@ pub struct Competition {
 /// Users receive this type from `Competition.run`; it cannot be constructed directly. Its awaitable
 /// protocol is designed for the `vasyncio` event loop and understands `vasyncio.Sleep` and task objects
 /// returned by `vasyncio.spawn` when phase routines await them.
+///
+/// # Raises
+///
+/// - `TypeError`: If a registered routine doesn't return a coroutine when its phase begins.
+/// - `ValueError`: If a routine yields a `vasyncio.Sleep` whose deadline is too large to represent.
 #[class(qstr!(CompetitionRuntime))]
 #[repr(C)]
 pub struct CompetitionRuntime {
@@ -311,9 +316,12 @@ impl CompetitionRuntime {
             match result.return_kind {
                 VmReturnKind::Yield => {
                     if let Some(sleep) = result.obj.try_as_obj::<Sleep>() {
+                        let deadline = time32::Instant::now()
+                            .checked_add(sleep.duration())
+                            .ok_or_else(|| value_error(c"sleep deadline is too large"))?;
                         self.routine_wait.set(RoutineWait::Sleep {
                             sleep: result.obj,
-                            deadline: time32::Instant::now() + sleep.duration(),
+                            deadline,
                         });
                         return Ok(Obj::NONE);
                     }
@@ -377,7 +385,7 @@ impl Competition {
     /// vasyncio.run(main())
     /// ```
     #[make_new]
-    #[stub(sig = "(self) -> None")]
+    #[stub(sig = "(self, /) -> None")]
     fn make_new(ty: &'static ObjType, _n_pos: usize, _n_kw: usize, args: &[Obj]) -> Self {
         if !args.is_empty() {
             type_error(c"function does not accept arguments").raise(token());
@@ -397,16 +405,16 @@ impl Competition {
     /// Uses `routine` to create a task that runs when the robot is connected to a competition system.
     ///
     /// This task will run until termination before any other tasks (disconnected, disabled, autonomous,
-    /// driver) are run. `routine` must be a zero-argument function that returns a coroutine. The decorator
-    /// returns the same function unchanged. Registering another connected routine replaces the previous
+    /// driver) are run. `routine` is positional-only and must be a zero-argument function that returns
+    /// a coroutine. The decorator returns the same function unchanged. Registering another connected routine replaces the previous
     /// one.
     ///
     /// # Raises
     ///
-    /// - `TypeError`: If `routine` is not callable, or when the phase begins if calling it does not return
+    /// - `TypeError`: If `routine` is supplied by keyword or is not callable, or when the phase begins if calling it does not return
     ///   a coroutine.
     #[method]
-    #[stub(sig = "(self, routine: Callable[..., Any]) -> Callable[..., Any]")]
+    #[stub(sig = "(self, routine: Callable[..., Any], /) -> Callable[..., Any]")]
     fn connected(&self, routine: Callable) -> Obj {
         self.connected.set(Some(routine));
         routine.into_inner()
@@ -415,16 +423,16 @@ impl Competition {
     /// Uses `routine` to create a task that runs when the robot is disconnected from a competition system.
     ///
     /// This task will run until termination before any other tasks (connected, disabled, autonomous,
-    /// driver) are run. `routine` must be a zero-argument function that returns a coroutine. The decorator
-    /// returns the same function unchanged. Registering another disconnected routine replaces the
+    /// driver) are run. `routine` is positional-only and must be a zero-argument function that returns
+    /// a coroutine. The decorator returns the same function unchanged. Registering another disconnected routine replaces the
     /// previous one.
     ///
     /// # Raises
     ///
-    /// - `TypeError`: If `routine` is not callable, or when the phase begins if calling it does not return
+    /// - `TypeError`: If `routine` is supplied by keyword or is not callable, or when the phase begins if calling it does not return
     ///   a coroutine.
     #[method]
-    #[stub(sig = "(self, routine: Callable[..., Any]) -> Callable[..., Any]")]
+    #[stub(sig = "(self, routine: Callable[..., Any], /) -> Callable[..., Any]")]
     fn disconnected(&self, routine: Callable) -> Obj {
         self.disconnected.set(Some(routine));
         routine.into_inner()
@@ -433,16 +441,16 @@ impl Competition {
     /// Uses `routine` to create a task that runs while the robot is driver controlled.
     ///
     /// If the task terminates before the end of the driver controlled period, it will **NOT** be restarted. Driver mode permits controller input. A
-    /// mode change or connection transition closes the active coroutine. `routine` must be a zero-argument
-    /// function that returns a coroutine. The decorator returns the same function unchanged. Registering
+    /// mode change or connection transition closes the active coroutine. `routine` is positional-only
+    /// and must be a zero-argument function that returns a coroutine. The decorator returns the same function unchanged. Registering
     /// another driver routine replaces the previous one.
     ///
     /// # Raises
     ///
-    /// - `TypeError`: If `routine` is not callable, or when the phase begins if calling it does not return
+    /// - `TypeError`: If `routine` is supplied by keyword or is not callable, or when the phase begins if calling it does not return
     ///   a coroutine.
     #[method]
-    #[stub(sig = "(self, routine: Callable[..., Any]) -> Callable[..., Any]")]
+    #[stub(sig = "(self, routine: Callable[..., Any], /) -> Callable[..., Any]")]
     fn driver(&self, routine: Callable) -> Obj {
         self.driver.set(Some(routine));
         routine.into_inner()
@@ -451,16 +459,16 @@ impl Competition {
     /// Uses `routine` to create a task that runs while the robot is autonomously controlled.
     ///
     /// If the task terminates before the end of the autonomously controlled period, it will **NOT** be restarted. Controller buttons and joysticks are unavailable during autonomous mode. A
-    /// mode change or connection transition closes the active coroutine. `routine` must be a zero-argument
-    /// function that returns a coroutine. The decorator returns the same function unchanged. Registering
+    /// mode change or connection transition closes the active coroutine. `routine` is positional-only
+    /// and must be a zero-argument function that returns a coroutine. The decorator returns the same function unchanged. Registering
     /// another autonomous routine replaces the previous one.
     ///
     /// # Raises
     ///
-    /// - `TypeError`: If `routine` is not callable, or when the phase begins if calling it does not return
+    /// - `TypeError`: If `routine` is supplied by keyword or is not callable, or when the phase begins if calling it does not return
     ///   a coroutine.
     #[method]
-    #[stub(sig = "(self, routine: Callable[..., Any]) -> Callable[..., Any]")]
+    #[stub(sig = "(self, routine: Callable[..., Any], /) -> Callable[..., Any]")]
     fn autonomous(&self, routine: Callable) -> Obj {
         self.autonomous.set(Some(routine));
         routine.into_inner()
@@ -469,16 +477,16 @@ impl Competition {
     /// Uses `routine` to create a task that runs while the robot is disabled.
     ///
     /// If the task terminates before the end of the disabled period, it will **NOT** be restarted. VEXos disables motor voltage commands while the robot is disabled. A
-    /// mode change or connection transition closes the active coroutine. `routine` must be a zero-argument
-    /// function that returns a coroutine. The decorator returns the same function unchanged. Registering
+    /// mode change or connection transition closes the active coroutine. `routine` is positional-only
+    /// and must be a zero-argument function that returns a coroutine. The decorator returns the same function unchanged. Registering
     /// another disabled routine replaces the previous one.
     ///
     /// # Raises
     ///
-    /// - `TypeError`: If `routine` is not callable, or when the phase begins if calling it does not return
+    /// - `TypeError`: If `routine` is supplied by keyword or is not callable, or when the phase begins if calling it does not return
     ///   a coroutine.
     #[method]
-    #[stub(sig = "(self, routine: Callable[..., Any]) -> Callable[..., Any]")]
+    #[stub(sig = "(self, routine: Callable[..., Any], /) -> Callable[..., Any]")]
     fn disabled(&self, routine: Callable) -> Obj {
         self.disabled.set(Some(routine));
         routine.into_inner()
