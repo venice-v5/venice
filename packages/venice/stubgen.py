@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Generate draft Python stubs for the Venice module from Rust API macros."""
 
 from __future__ import annotations
@@ -8,9 +7,9 @@ import ast
 import keyword
 import re
 import sys
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable
 
 ROOT = Path(__file__).resolve().parent
 DEFAULT_SRC = ROOT / "src" / "modvenice"
@@ -129,13 +128,12 @@ def code_part(line: str) -> str:
             out.append(" ")
             i += 1
             continue
-        if ch == "'":
-            # Treat lifetime names as normal code, but hide character literals.
-            if i + 2 < len(line) and line[i + 2] == "'":
-                in_char = True
-                out.append(" ")
-                i += 1
-                continue
+        # Treat lifetime names as normal code, but hide character literals.
+        if ch == "'" and i + 2 < len(line) and line[i + 2] == "'":
+            in_char = True
+            out.append(" ")
+            i += 1
+            continue
         out.append(ch)
         i += 1
 
@@ -256,10 +254,8 @@ def read_attribute(lines: list[str], start: int) -> tuple[str, int]:
 
 def parse_attr(raw: str) -> Attr:
     inner = raw.strip()
-    if inner.startswith("#["):
-        inner = inner[2:]
-    if inner.endswith("]"):
-        inner = inner[:-1]
+    inner = inner.removeprefix("#[")
+    inner = inner.removesuffix("]")
     inner = inner.strip()
 
     paren = inner.find("(")
@@ -333,8 +329,7 @@ def fun_kind(args: str) -> str:
 
 def normalize_identifier(name: str) -> str:
     name = name.strip()
-    if name.startswith("r#"):
-        name = name[2:]
+    name = name.removeprefix("r#")
     name = name.lstrip("_") or "arg"
     if keyword.iskeyword(name):
         name += "_"
@@ -342,7 +337,7 @@ def normalize_identifier(name: str) -> str:
 
 
 def strip_obj_suffix(name: str) -> str:
-    return name[:-3] if name.endswith("Obj") else name
+    return name.removesuffix("Obj")
 
 
 def unwrap_generic(typ: str, generic: str) -> str | None:
@@ -398,7 +393,7 @@ def python_type(typ: str | None, current_class: str | None = None) -> str:
         return "str"
     if typ == "Callable":
         return "Callable[..., Any]"
-    if typ.startswith("[") or typ.startswith("Vec<") or typ.startswith("Tuple<"):
+    if typ.startswith(("[", "Vec<", "Tuple<")):
         return "Any"
     if "<" in typ or ">" in typ or "'" in typ:
         return "Any"
