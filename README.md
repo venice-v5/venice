@@ -29,7 +29,6 @@ uvx venice-cli new my-project
 This creates a Venice project with `venice` and `venice-cli` installed, with a minimal `main.py`:
 ```py
 from venice import *
-import vasyncio
 
 async def main():
     print("Hello, Venice!")
