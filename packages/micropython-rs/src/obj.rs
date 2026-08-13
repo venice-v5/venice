@@ -175,7 +175,7 @@ pub mod repr_c {
     }
 
     pub const fn new_float(float: f32) -> *mut c_void {
-        (float.to_bits().wrapping_add(0x8080_0000) & !0b11) as *mut c_void
+        (((float.to_bits() & !0b11) | 0b10).wrapping_add(0x8080_0000)) as *mut c_void
     }
 
     pub const fn new_ptr(ptr: *mut c_void) -> *mut c_void {
