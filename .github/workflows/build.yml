@@ -34,7 +34,7 @@ jobs:
           sudo apt-get install -y pkg-config libudev-dev
 
       - name: run headergen
-        run: ./run_headergen.sh
+        run: python3 headergen.py
 
       - name: install-cargo-v5
         run: cargo install --git https://github.com/aadishv/cargo-v5 --branch toolchain --locked cargo-v5
