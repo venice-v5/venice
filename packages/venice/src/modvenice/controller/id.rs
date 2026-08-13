@@ -5,6 +5,7 @@ use micropython_rs::{
 };
 use vexide_devices::controller::ControllerId;
 
+/// Represents an identifier for one of the two possible controllers connected to the V5 Brain.
 #[class(qstr!(ControllerId))]
 #[repr(C)]
 pub struct ControllerIdObj {
@@ -27,8 +28,14 @@ impl ControllerIdObj {
 
 #[class_methods]
 impl ControllerIdObj {
+    /// Primary ("Master") Controller.
+    ///
+    /// This is the controller that is connected to the Brain.
     #[constant]
     pub const PRIMARY: &Self = &Self::new(ControllerId::Primary);
+    /// Partner Controller.
+    ///
+    /// This is the controller that is connected to the primary controller.
     #[constant]
     pub const PARTNER: &Self = &Self::new(ControllerId::Partner);
 

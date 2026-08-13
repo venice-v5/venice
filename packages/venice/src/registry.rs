@@ -8,6 +8,8 @@ use micropython_rs::{except::value_error, init::token};
 use thiserror::Error;
 use vexide_devices::{adi::AdiPort, controller::Controller, smart::SmartPort};
 
+use crate::lifecycle::GenerationTracker;
+
 pub trait PortDevice<P> {
     fn take_port(self) -> P;
 }
@@ -19,6 +21,7 @@ enum RegistryDevice<P> {
 
 pub struct Registry<P> {
     device: Mutex<RegistryDevice<P>>,
+    generations: GenerationTracker,
 }
 
 struct ActiveRegistryGuard<'a, P, D>
@@ -27,11 +30,15 @@ where
 {
     device: D,
     guard: MutexGuard<'a, RegistryDevice<P>>,
+    generations: &'a GenerationTracker,
+    generation: u64,
 }
 
 pub struct UpgradeGuard<'a, P, D> {
     device: D,
     guard: MutexGuard<'a, RegistryDevice<P>>,
+    generations: &'a GenerationTracker,
+    generation: u64,
 }
 
 #[must_use]
@@ -60,7 +67,12 @@ impl<P> Registry<P> {
     pub const fn new(port: P) -> Self {
         Self {
             device: Mutex::new(RegistryDevice::Available(port)),
+            generations: GenerationTracker::new(),
         }
+    }
+
+    pub fn is_generation_active(&self, generation: u64) -> bool {
+        self.generations.is_active(generation)
     }
 
     pub fn try_lock<'a, D, I>(
@@ -74,12 +86,17 @@ impl<P> Registry<P> {
         self.device
             .try_lock()
             .map(|mut registry_device| match registry_device.take() {
-                RegistryDevice::Available(port) => RegistryGuard {
-                    guard: RefCell::new(Some(ActiveRegistryGuard {
-                        device: init(port),
-                        guard: registry_device,
-                    })),
-                },
+                RegistryDevice::Available(port) => {
+                    let generation = self.generations.activate();
+                    RegistryGuard {
+                        guard: RefCell::new(Some(ActiveRegistryGuard {
+                            device: init(port),
+                            guard: registry_device,
+                            generations: &self.generations,
+                            generation,
+                        })),
+                    }
+                }
                 RegistryDevice::Occupied => panic!("registry guard not dropped"),
             })
             .map_err(|_| DeviceOccupiedError)
@@ -123,12 +140,22 @@ where
             .unwrap_or_else(|_| value_error(c"attempt to use device after free").raise(token()))
     }
 
+    pub fn generation(&self) -> Result<u64, DeviceFreedError> {
+        self.guard
+            .borrow()
+            .as_ref()
+            .map(|guard| guard.generation)
+            .ok_or(DeviceFreedError)
+    }
+
     pub fn start_upgrade(mut self) -> Result<UpgradeGuard<'a, P, D>, DeviceFreedError> {
         let guard = std::mem::replace(self.guard.get_mut(), None);
         match guard {
             Some(guard) => Ok(UpgradeGuard {
                 device: guard.device,
                 guard: guard.guard,
+                generations: guard.generations,
+                generation: guard.generation,
             }),
             None => Err(DeviceFreedError),
         }
@@ -139,6 +166,8 @@ where
             guard: RefCell::new(Some(ActiveRegistryGuard {
                 device: upgrade.device,
                 guard: upgrade.guard,
+                generations: upgrade.generations,
+                generation: upgrade.generation,
             })),
         }
     }
@@ -158,6 +187,7 @@ where
         let guard = self.guard.replace(None);
         match guard {
             Some(mut guard) => {
+                guard.generations.deactivate(guard.generation);
                 *guard.guard = RegistryDevice::Available(guard.device.take_port());
                 Ok(())
             }
@@ -179,6 +209,8 @@ impl<'a, P, D> UpgradeGuard<'a, P, D> {
         UpgradeGuard {
             device: f(self.device),
             guard: self.guard,
+            generations: self.generations,
+            generation: self.generation,
         }
     }
 
@@ -194,6 +226,7 @@ where
     fn drop(&mut self) {
         let guard = self.guard.get_mut().take();
         if let Some(mut guard) = guard {
+            guard.generations.deactivate(guard.generation);
             *guard.guard = RegistryDevice::Available(guard.device.take_port());
         }
     }
@@ -260,6 +293,10 @@ impl AdiRegistry {
         Self {
             port: Mutex::new(Some(port)),
         }
+    }
+
+    pub fn is_available(&self) -> bool {
+        self.port.lock().unwrap().is_some()
     }
 
     pub fn try_lock(&self) -> Result<AdiPort, DeviceOccupiedError> {

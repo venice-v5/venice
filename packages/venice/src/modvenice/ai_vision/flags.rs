@@ -7,6 +7,7 @@ use vexide_devices::smart::ai_vision::AiVisionFlags;
 
 use crate::obj::alloc_obj;
 
+/// Represents the mode of the AI Vision sensor. Combine these values with `|`.
 #[class(qstr!(AiVisionFlags))]
 #[repr(C)]
 pub struct AiVisionFlagsObj {
@@ -16,16 +17,22 @@ pub struct AiVisionFlagsObj {
 
 #[class_methods]
 impl AiVisionFlagsObj {
+    /// Disables AprilTag detection.
     #[constant]
     pub const DISABLE_APRILTAG: &Self = &Self::new(AiVisionFlags::DISABLE_APRILTAG);
+    /// Disables color detection.
     #[constant]
     pub const DISABLE_COLOR: &Self = &Self::new(AiVisionFlags::DISABLE_COLOR);
+    /// Disables model detection.
     #[constant]
     pub const DISABLE_MODEL: &Self = &Self::new(AiVisionFlags::DISABLE_MODEL);
+    /// Merges color blobs.
     #[constant]
     pub const COLOR_MERGE: &Self = &Self::new(AiVisionFlags::COLOR_MERGE);
+    /// Disables the status overlay.
     #[constant]
     pub const DISABLE_STATUS_OVERLAY: &Self = &Self::new(AiVisionFlags::DISABLE_STATUS_OVERLAY);
+    /// Disables the USB overlay.
     #[constant]
     pub const DISABLE_USB_OVERLAY: &Self = &Self::new(AiVisionFlags::DISABLE_USB_OVERLAY);
 

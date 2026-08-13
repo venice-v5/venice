@@ -10,6 +10,7 @@ pub mod registry;
 
 mod alloc;
 mod exports;
+mod lifecycle;
 mod module_map;
 //mod modvasyncio;
 mod modvenice;

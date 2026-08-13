@@ -39,6 +39,7 @@ unsafe extern "C" {
     safe static mp_type_Exception: ObjType;
     safe static mp_type_ValueError: ObjType;
     safe static mp_type_TypeError: ObjType;
+    safe static mp_type_IndexError: ObjType;
     safe static mp_type_NotImplementedError: ObjType;
     safe static mp_type_ImportError: ObjType;
     safe static mp_type_RuntimeError: ObjType;
@@ -91,6 +92,7 @@ pub const BASE_EXCEPTION_TYPE: &ExceptionType =
 pub const EXCEPTION_TYPE: &ExceptionType = ExceptionType::from_obj_type_ref(&mp_type_Exception);
 pub const VALUE_ERROR_TYPE: &ExceptionType = ExceptionType::from_obj_type_ref(&mp_type_ValueError);
 pub const TYPE_ERROR_TYPE: &ExceptionType = ExceptionType::from_obj_type_ref(&mp_type_TypeError);
+pub const INDEX_ERROR_TYPE: &ExceptionType = ExceptionType::from_obj_type_ref(&mp_type_IndexError);
 pub const NOT_IMPLEMENTED_ERROR_TYPE: &ExceptionType =
     ExceptionType::from_obj_type_ref(&mp_type_NotImplementedError);
 pub const IMPORT_ERROR_TYPE: &ExceptionType =
@@ -198,6 +200,13 @@ pub fn value_error(msg: impl Into<Message>) -> Exception {
 pub fn type_error(msg: impl Into<Message>) -> Exception {
     Exception {
         ty: TYPE_ERROR_TYPE,
+        msg: msg.into(),
+    }
+}
+
+pub fn index_error(msg: impl Into<Message>) -> Exception {
+    Exception {
+        ty: INDEX_ERROR_TYPE,
         msg: msg.into(),
     }
 }

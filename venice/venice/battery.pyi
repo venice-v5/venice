@@ -4,7 +4,6 @@ Robot battery information.
 This module provides APIs for retrieving information about the robot's battery and state of
 charge.
 """
-from __future__ import annotations
 
 def get_capacity() -> float:
     """

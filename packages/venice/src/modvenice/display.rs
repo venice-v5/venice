@@ -5,18 +5,17 @@ use micropython_macros::{class, class_methods, fun};
 use micropython_rs::{
     buffer::Buffer,
     const_dict,
-    except::type_error,
+    except::{type_error, value_error},
     map::{Dict, Map},
     obj::{AttrOp, Obj, ObjBase, ObjTrait, ObjType},
     ops::BinaryOpCode,
     print::{Print, PrintKind, StringPrint},
     qstr::Qstr,
 };
+use vex_sdk_jumptable::{vexDisplayForegroundColor, vexDisplayLineDraw};
 use vexide_devices::{
     color::Color,
-    display::{
-        Circle, Font, FontFamily, FontSize, Line, Rect, RenderMode, Text, TouchEvent, TouchState,
-    },
+    display::{Circle, Font, FontFamily, FontSize, Rect, RenderMode, Text, TouchEvent, TouchState},
     math::Point2,
 };
 
@@ -60,6 +59,17 @@ pub const DISPLAY_DICT: &Dict = const_dict![
     qstr!(is_held) => is_held_obj,
 ];
 
+/// The rendering mode for the VEX V5's display, available as `display.RenderMode`.
+///
+/// When using the display in `RenderMode.IMMEDIATE` mode, all draw operations will immediately show
+/// up on the display. `RenderMode.DOUBLE_BUFFERED` mode instead applies draw operations onto an
+/// intermediate buffer that can be swapped onto the display by calling `display.render`, thereby
+/// preventing screen tearing. By default, the display uses `RenderMode.IMMEDIATE` mode.
+///
+/// # Note
+///
+/// `display.render` **MUST** be called for anything to appear on the display when using
+/// `RenderMode.DOUBLE_BUFFERED` mode. Values print as their qualified constant names.
 #[class(qstr!(RenderMode))]
 #[repr(C)]
 struct RenderModeObj {
@@ -76,8 +86,13 @@ impl RenderModeObj {
         }
     }
 
+    /// Draw operations are immediately applied to the display without the need to call `display.render`.
     #[constant]
     const IMMEDIATE: &Self = &Self::new(RenderMode::Immediate);
+    /// Draw calls are affected on an intermediary display buffer, rather than directly drawn to the
+    /// display. The intermediate buffer can later be applied to the display using `display.render`.
+    ///
+    /// This mode is necessary for preventing screen tearing when drawing at high speeds.
     #[constant]
     const DOUBLE_BUFFERED: &Self = &Self::new(RenderMode::DoubleBuffered);
 
@@ -90,6 +105,7 @@ impl RenderModeObj {
     }
 }
 
+/// The font family used by `display.draw_text`, available as `display.FontFamily`.
 #[class(qstr!(FontFamily))]
 struct FontFamilyObj {
     base: ObjBase,
@@ -105,16 +121,35 @@ impl FontFamilyObj {
         }
     }
 
+    /// A monospaced font which has a fixed width for each character.
+    ///
+    /// This font at full size is 49pt Noto Mono.
     #[constant]
     const MONOSPACE: &Self = &Self::new(FontFamily::Monospace);
+    /// A proportional font which has a varying width for each character.
+    ///
+    /// This font at full size is 49pt Noto Sans.
     #[constant]
     const PROPORTIONAL: &Self = &Self::new(FontFamily::Proportional);
 }
 
+/// A fractional font scaling factor, available as `display.FontSize`.
+///
+/// The read-only `numerator` attribute is the numerator of the fractional font scale. The read-only
+/// `denominator` attribute is the denominator of the fractional font scale. Use one of the predefined
+/// constants or construct a custom nonnegative fraction with a nonzero denominator. Values print as
+/// `FontSize(numerator=..., denominator=...)`.
 #[class(qstr!(FontSize))]
 struct FontSizeObj {
     base: ObjBase,
     size: FontSize,
+}
+
+fn checked_font_size(numerator: u32, denominator: u32) -> Option<FontSize> {
+    (denominator != 0).then_some(FontSize {
+        numerator,
+        denominator,
+    })
 }
 
 #[class_methods]
@@ -126,21 +161,35 @@ impl FontSizeObj {
         }
     }
 
+    /// An extra-small font size with a value of one-fifth.
     #[constant]
     const EXTRA_SMALL: &Self = &Self::new(FontSize::EXTRA_SMALL);
+    /// A small font size with a value of one-fourth.
     #[constant]
     const SMALL: &Self = &Self::new(FontSize::SMALL);
+    /// A medium font size with a value of one-third.
     #[constant]
     const MEDIUM: &Self = &Self::new(FontSize::MEDIUM);
+    /// A large font size with a value of one-half.
     #[constant]
     const LARGE: &Self = &Self::new(FontSize::LARGE);
+    /// An extra-large font size with a value of two-thirds.
     #[constant]
     const EXTRA_LARGE: &Self = &Self::new(FontSize::EXTRA_LARGE);
+    /// The full size of the font.
     #[constant]
     const FULL: &Self = &Self::new(FontSize::FULL);
 
+    /// Creates a custom fractional font size from `numerator` and `denominator`.
+    ///
+    /// Both values must be nonnegative integers, and `denominator` must be greater than zero.
+    ///
+    /// # Raises
+    ///
+    /// - `ValueError`: If `numerator` or `denominator` is negative or outside the supported integer
+    ///   range, or if `denominator` is zero.
     #[make_new]
-    #[stub(sig = "(self, numerator: int, denominator: int) -> None")]
+    #[stub(sig = "(self, numerator: int, denominator: int, /) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -152,13 +201,12 @@ impl FontSizeObj {
 
         let numerator = reader.next_positional()?;
         let denominator = reader.next_positional()?;
+        let size = checked_font_size(numerator, denominator)
+            .ok_or_else(|| value_error(c"denominator must be greater than zero"))?;
 
         Ok(Self {
             base: ty.into(),
-            size: FontSize {
-                numerator,
-                denominator,
-            },
+            size,
         })
     }
 
@@ -183,36 +231,45 @@ impl FontSizeObj {
     }
 }
 
+/// Draws a filled pixel to the display with the specified `color`.
+///
+/// `x` and `y` are pixel coordinates. The writable display is 480 pixels wide by 240 pixels high, with
+/// its origin at the top-left.
 #[fun]
 fn draw_pixel(x: i16, y: i16, color: &ColorObj) {
     lock_display().fill(&Point2 { x, y }, color.color());
 }
 
+/// Draws a line to the display with the specified `color`.
+///
+/// `start_x` and `start_y` are the start point of the line; `end_x` and `end_y` are the end point. The
+/// line width is one pixel. Coordinates are measured from the display's top-left, and both supplied
+/// endpoints are passed directly to the display SDK.
 #[fun(ty = var_between(min = 5, max = 5))]
-#[stub(sig = "(start_x: int, start_y: int, end_x: int, end_y: int, color: Color) -> None")]
+#[stub(sig = "(start_x: int, start_y: int, end_x: int, end_y: int, color: Color, /) -> None")]
 fn draw_line(args: &[Obj]) -> Result<(), Exception> {
     let mut reader = Args::new(5, 0, args).reader();
-    let start_x = reader.next_positional()?;
-    let start_y = reader.next_positional()?;
-    let end_x = reader.next_positional()?;
-    let end_y = reader.next_positional()?;
+    let start_x = reader.next_positional::<i16>()?;
+    let start_y = reader.next_positional::<i16>()?;
+    let end_x = reader.next_positional::<i16>()?;
+    let end_y = reader.next_positional::<i16>()?;
     let color = reader.next_positional::<&ColorObj>()?;
 
-    lock_display().fill(
-        &Line::new(
-            Point2 {
-                x: start_x,
-                y: start_y,
-            },
-            Point2 { x: end_x, y: end_y },
-        ),
-        color.color(),
-    );
+    let _display_guard = lock_display();
+    unsafe {
+        vexDisplayForegroundColor(color.color().into_raw());
+        vexDisplayLineDraw(
+            i32::from(start_x),
+            i32::from(start_y),
+            i32::from(end_x),
+            i32::from(end_y),
+        );
+    }
     Ok(())
 }
 
 fn parse_circle_args(args: &[Obj]) -> Result<(i16, i16, u16, &ColorObj), Exception> {
-    let mut reader = Args::new(5, 0, args).reader();
+    let mut reader = Args::new(4, 0, args).reader();
     let x = reader.next_positional()?;
     let y = reader.next_positional()?;
     let radius = reader.next_positional()?;
@@ -220,56 +277,129 @@ fn parse_circle_args(args: &[Obj]) -> Result<(i16, i16, u16, &ColorObj), Excepti
     Ok((x, y, radius, color))
 }
 
+/// Draws a outlined circle to the display with the specified `color`.
+///
+/// `x` and `y` are the center point of the circle, and `radius` is its radius in pixels. Circles are
+/// not antialiased.
 #[fun(ty = var_between(min = 4, max = 4))]
-#[stub(sig = "(x: int, y: int, radius: int, color: Color) -> None")]
+#[stub(sig = "(x: int, y: int, radius: int, color: Color, /) -> None")]
 fn draw_circle(args: &[Obj]) -> Result<(), Exception> {
     let (x, y, radius, color) = parse_circle_args(args)?;
     lock_display().stroke(&Circle::new(Point2 { x, y }, radius), color.color());
     Ok(())
 }
 
+/// Draws a filled circle to the display with the specified `color`.
+///
+/// `x` and `y` are the center point of the circle, and `radius` is its radius in pixels. Circles are
+/// not antialiased.
 #[fun(ty = var_between(min = 4, max = 4))]
-#[stub(sig = "(x: int, y: int, radius: int, color: Color) -> None")]
+#[stub(sig = "(x: int, y: int, radius: int, color: Color, /) -> None")]
 fn fill_circle(args: &[Obj]) -> Result<(), Exception> {
     let (x, y, radius, color) = parse_circle_args(args)?;
     lock_display().fill(&Circle::new(Point2 { x, y }, radius), color.color());
     Ok(())
 }
 
-fn parse_rect_args(args: &[Obj]) -> Result<(i16, i16, u16, u16, &ColorObj), Exception> {
+fn checked_rect(x: i16, y: i16, width: u16, height: u16) -> Result<Rect, Exception> {
+    let right = i32::from(x) + i32::from(width);
+    let bottom = i32::from(y) + i32::from(height);
+    Ok(Rect {
+        top_left: Point2 { x, y },
+        bottom_right: Point2 {
+            x: right.try_into().map_err(|_| {
+                value_error(c"rectangle exceeds the supported horizontal coordinate range")
+            })?,
+            y: bottom.try_into().map_err(|_| {
+                value_error(c"rectangle exceeds the supported vertical coordinate range")
+            })?,
+        },
+    })
+}
+
+fn parse_rect_args(args: &[Obj]) -> Result<(Rect, &ColorObj), Exception> {
     let mut reader = Args::new(5, 0, args).reader();
     let x = reader.next_positional()?;
     let y = reader.next_positional()?;
     let width = reader.next_positional()?;
     let height = reader.next_positional()?;
     let color = reader.next_positional::<&ColorObj>()?;
-    Ok((x, y, width, height, color))
+    Ok((checked_rect(x, y, width, height)?, color))
 }
 
+/// Draws an outlined rectangular region of the display with the specified `color`.
+///
+/// `x` and `y` are the top-left coordinate of the rectangle. `width` and `height` are its dimensions
+/// in pixels. The bottom right point is not included in the shape's bounds. Thus, the area of the
+/// drawn rectangle is `width * height` pixels.
+///
+/// # Examples
+///
+/// ```python
+/// from venice import *
+///
+/// # Draw a 20x20 rectangle which has a top-left point at (30, 40).
+/// display.draw_rect(30, 40, 20, 20, Color.WHITE)
+/// ```
+///
+/// # Raises
+///
+/// - `ValueError`: If a coordinate, dimension, or resulting endpoint is outside its supported
+///   integer range.
 #[fun(ty = var_between(min = 5, max = 5))]
-#[stub(sig = "(x: int, y: int, width: int, height: int, color: Color) -> None")]
+#[stub(sig = "(x: int, y: int, width: int, height: int, color: Color, /) -> None")]
 fn draw_rect(args: &[Obj]) -> Result<(), Exception> {
-    let (x, y, width, height, color) = parse_rect_args(args)?;
-    lock_display().stroke(
-        &Rect::from_dimensions(Point2 { x, y }, width, height),
-        color.color(),
-    );
+    let (rect, color) = parse_rect_args(args)?;
+    lock_display().stroke(&rect, color.color());
     Ok(())
 }
 
+/// Draws a filled rectangular region of the display with the specified `color`.
+///
+/// `x` and `y` are the top-left coordinate of the rectangle. `width` and `height` are its dimensions
+/// in pixels. The bottom right point is not included in the shape's bounds. Thus, the area of the
+/// drawn rectangle is `width * height` pixels.
+///
+/// # Examples
+///
+/// ```python
+/// from venice import *
+///
+/// # Draw a 20x20 rectangle which has a top-left point at (30, 40).
+/// display.fill_rect(30, 40, 20, 20, Color.WHITE)
+/// ```
+///
+/// # Raises
+///
+/// - `ValueError`: If a coordinate, dimension, or resulting endpoint is outside its supported
+///   integer range.
 #[fun(ty = var_between(min = 5, max = 5))]
-#[stub(sig = "(x: int, y: int, width: int, height: int, color: Color) -> None")]
+#[stub(sig = "(x: int, y: int, width: int, height: int, color: Color, /) -> None")]
 fn fill_rect(args: &[Obj]) -> Result<(), Exception> {
-    let (x, y, width, height, color) = parse_rect_args(args)?;
-    lock_display().fill(
-        &Rect::from_dimensions(Point2 { x, y }, width, height),
-        color.color(),
-    );
+    let (rect, color) = parse_rect_args(args)?;
+    lock_display().fill(&rect, color.color());
     Ok(())
 }
 
+fn buffer_pixel_count(width: usize, height: usize) -> Option<usize> {
+    width.checked_mul(height)
+}
+
+/// Draws a buffer of pixels to a specified region of the display.
+///
+/// This function copies the pixels in `buffer` to the specified region of the display. `x` and `y`
+/// are the region's top-left corner, and `width` and `height` are measured in pixels. `buffer` must be
+/// a readable, suitably aligned buffer containing exactly `width * height` packed four-byte
+/// `0xRRGGBB` color values in row-major order.
+///
+/// # Raises
+///
+/// - `TypeError`: If `buffer` doesn't support the readable buffer protocol.
+/// - `ValueError`: If the buffer is unaligned, its readable byte length isn't a multiple of four,
+///   its pixel count doesn't equal `width * height`, or the region exceeds the supported coordinate
+///   range.
 #[fun(ty = var_between(min = 5, max = 5))]
-#[stub(sig = "(x: int, y: int, width: int, height: int, buffer: Any) -> None")]
+#[stub(sig = "(x: int, y: int, width: int, height: int, buffer: Any, /) -> None")]
 fn draw_buffer(args: &[Obj]) -> Result<(), Exception> {
     let mut reader = Args::new(5, 0, args).reader();
     let x = reader.next_positional()?;
@@ -278,16 +408,55 @@ fn draw_buffer(args: &[Obj]) -> Result<(), Exception> {
     let height = reader.next_positional()?;
     let buffer = reader.next_positional::<Buffer<'_, Color>>()?;
 
-    lock_display().draw_buffer(
-        Rect::from_dimensions(Point2 { x, y }, width, height),
-        buffer.buffer(),
-    );
+    let expected_len = buffer_pixel_count(usize::from(width), usize::from(height))
+        .ok_or_else(|| value_error(c"display buffer dimensions overflow"))?;
+    let actual_len = buffer.buffer().len();
+    if actual_len != expected_len {
+        return Err(value_error(error_msg!(
+            "buffer contains {actual_len} pixels, expected {expected_len} for a {width} by {height} region"
+        ))
+        .into());
+    }
+
+    let region = checked_rect(x, y, width, height)?;
+    if expected_len == 0 {
+        return Ok(());
+    }
+
+    lock_display().draw_buffer(region, buffer.buffer());
     Ok(())
 }
 
+/// Draws a line of `text` with the specified `color` and `bg_color` to the display.
+///
+/// `x` and `y` are the top-left corner coordinates of the text. `font_size` defaults to
+/// `FontSize.MEDIUM`, `font_family` defaults to `FontFamily.PROPORTIONAL`, and `color` defaults to
+/// `Color.WHITE`. Omitting `bg_color` or passing it as `None` gives a transparent background;
+/// supply a `Color` to paint it.
+///
+/// # Examples
+///
+/// ```python
+/// from venice import *
+///
+/// # Write red text with a blue background to the display.
+/// display.draw_text(
+///     "Hello, World!",
+///     10,
+///     10,
+///     font_size=display.FontSize.MEDIUM,
+///     font_family=display.FontFamily.MONOSPACE,
+///     color=Color(255, 0, 0),
+///     bg_color=Color(0, 0, 255),
+/// )
+/// ```
+///
+/// # Raises
+///
+/// - `ValueError`: If `text` contains a NUL character.
 #[fun(ty = kw(min = 3))]
 #[stub(
-    sig = "(text: str, x: int, y: int, *, font_size: FontSize = FontSize.MEDIUM, font_family: FontFamily = FontFamily.PROPORTIONAL, color: Color = Color.WHITE, bg_color: Color | None = None) -> None"
+    sig = "(text: str, x: int, y: int, /, *, font_size: FontSize = FontSize.MEDIUM, font_family: FontFamily = FontFamily.PROPORTIONAL, color: Color = Color.WHITE, bg_color: Color | None = None) -> None"
 )]
 fn draw_text(args: &[Obj], kw_map: &Map) -> Result<(), Exception> {
     let kwarg_count = kw_map.len();
@@ -308,7 +477,13 @@ fn draw_text(args: &[Obj], kw_map: &Map) -> Result<(), Exception> {
             "font_size" => font_size = arg.parse::<&FontSizeObj>()?.size,
             "font_family" => font_family = arg.parse::<&FontFamilyObj>()?.family,
             "color" => color = arg.parse::<&ColorObj>()?.color(),
-            "bg_color" => bg_color = Some(arg.parse::<&ColorObj>()?.color()),
+            "bg_color" => {
+                bg_color = if arg.obj.is_none() {
+                    None
+                } else {
+                    Some(arg.parse::<&ColorObj>()?.color())
+                }
+            }
             _ => Err(type_error(error_msg!("unknown argument '{}'", arg.kw)))?,
         }
     }
@@ -320,6 +495,15 @@ fn draw_text(args: &[Obj], kw_map: &Map) -> Result<(), Exception> {
     Ok(())
 }
 
+/// Writes `values` to the Brain display's scrolling text area.
+///
+/// Values are converted to strings and joined with `sep`, which defaults to one space, then `end` is
+/// appended, which defaults to a newline. Text uses the default white font, wraps after 48 characters,
+/// and scrolls upward after 12 visible lines.
+///
+/// # Raises
+///
+/// - `TypeError`: If a value isn't printable or if `sep` or `end` isn't a string.
 #[fun(ty = kw(min = 0))]
 #[stub(sig = "(*values: object, sep: str = ' ', end: str = '\\n') -> None")]
 fn print(args: &[Obj], kw_map: &Map) -> Result<(), Exception> {
@@ -370,13 +554,31 @@ fn print(args: &[Obj], kw_map: &Map) -> Result<(), Exception> {
     Ok(())
 }
 
+/// Scrolls the pixels at or below the specified y-coordinate `start`.
+///
+/// This function y-offsets the pixels in the display buffer which are at or below `start` by `offset`
+/// pixels. Positive values move the pixels upwards, and pixels that are moved out of the scroll region
+/// are discarded. Empty spaces are then filled with the display's background color.
 #[fun]
 fn scroll(start: i16, offset: i16) {
     lock_display().scroll(start, offset);
 }
 
+/// Scrolls a region of the display.
+///
+/// This function y-offsets the pixels in the display buffer which are contained in the specified
+/// scroll region by `offset` pixels. `x` and `y` are the region's top-left corner; `width` and `height`
+/// are measured in pixels. Positive offset values move the pixels upwards, and pixels that are moved
+/// out of the scroll region are discarded. Empty spaces are then filled with the display's background
+/// color.
+///
+/// # Raises
+///
+/// - `ValueError`: If `x`, `y`, or `offset` is outside the supported signed 16-bit range, `width` or
+///   `height` is outside the unsigned 16-bit range, or the region's endpoint exceeds the supported
+///   coordinate range.
 #[fun(ty = var_between(min = 5, max = 5))]
-#[stub(sig = "(x: int, y: int, width: int, height: int, offset: int) -> None")]
+#[stub(sig = "(x: int, y: int, width: int, height: int, offset: int, /) -> None")]
 fn scroll_region(args: &[Obj]) -> Result<(), Exception> {
     let mut reader = Args::new(5, 0, args).reader();
     let x = reader.next_positional()?;
@@ -385,28 +587,48 @@ fn scroll_region(args: &[Obj]) -> Result<(), Exception> {
     let height = reader.next_positional()?;
     let offset = reader.next_positional()?;
 
-    lock_display().scroll_region(
-        Rect::from_dimensions(Point2 { x, y }, width, height),
-        offset,
-    );
+    let region = checked_rect(x, y, width, height)?;
+    lock_display().scroll_region(region, offset);
     Ok(())
 }
 
+/// Sets `render_mode` for the display.
+///
+/// For more information on render modes, see `display.RenderMode`.
 #[fun]
 fn set_render_mode(render_mode: &RenderModeObj) {
     lock_display().set_render_mode(render_mode.mode);
 }
 
+/// Flushes the display's double buffer if it is enabled.
+///
+/// This is a no-op with `RenderMode.IMMEDIATE`, but is necessary for anything to be displayed when
+/// using `RenderMode.DOUBLE_BUFFERED`.
 #[fun]
 fn render() {
     lock_display().render();
 }
 
+/// Clears the entire 480-by-240-pixel writable display, filling it with the specified `color`.
 #[fun]
 fn erase(color: &ColorObj) {
     lock_display().erase(color.color());
 }
 
+/// A read-only touch event on the display, available as `display.TouchEvent`.
+///
+/// - `x` and `y` are the point at which the display was touched, in pixels from the top-left.
+/// - `press_count` is the number of times the display has been pressed.
+/// - `release_count` is the number of times the display has been released.
+/// - `is_now_pressed` is `True` if the touch has just been pressed.
+/// - `is_pressed` is `True` if the display has been touched or is still being held.
+/// - `is_released` is `True` if the touch has been released.
+/// - `is_held` is `True` if the display has been touched and is still being held.
+///
+/// Snapshots compare by value, return `False` when compared with another type, and print as
+/// `TouchEvent(x=..., y=..., press_count=..., release_count=..., is_now_pressed=...,
+/// is_pressed=..., is_released=..., is_held=...)`. They are obtained from
+/// `display.get_touch_status`, not constructed directly.
 #[class(qstr!(TouchEvent))]
 #[repr(C)]
 struct TouchEventObj {
@@ -453,7 +675,10 @@ impl TouchEventObj {
     #[binary_op]
     fn binary_op(op: BinaryOpCode, lhs: &Self, rhs: Obj) -> Obj {
         match op {
-            BinaryOpCode::Equal => Obj::from_bool(lhs.event == rhs.as_obj::<Self>().event),
+            BinaryOpCode::Equal => Obj::from_bool(
+                rhs.try_as_obj::<Self>()
+                    .is_some_and(|rhs| lhs.event == rhs.event),
+            ),
             _ => Obj::NULL,
         }
     }
@@ -491,6 +716,9 @@ impl TouchEventObj {
     }
 }
 
+/// Returns the last recorded state of the display's touchscreen as a `TouchEvent`.
+///
+/// See `display.TouchEvent` for more information.
 #[fun]
 fn get_touch_status() -> TouchEventObj {
     TouchEventObj {
@@ -499,11 +727,13 @@ fn get_touch_status() -> TouchEventObj {
     }
 }
 
+/// Returns whether the touchscreen's last recorded touch has just been pressed.
 #[fun]
 fn is_now_pressed() -> bool {
     lock_display().touch_status().state == TouchState::Pressed
 }
 
+/// Returns whether the touchscreen's last recorded touch has been pressed or is being held.
 #[fun]
 fn is_pressed() -> bool {
     matches!(
@@ -512,11 +742,13 @@ fn is_pressed() -> bool {
     )
 }
 
+/// Returns whether the touchscreen's last recorded touch has been released.
 #[fun]
 fn is_released() -> bool {
     lock_display().touch_status().state == TouchState::Released
 }
 
+/// Returns whether the touchscreen's last recorded touch is still being held.
 #[fun]
 fn is_held() -> bool {
     lock_display().touch_status().state == TouchState::Held

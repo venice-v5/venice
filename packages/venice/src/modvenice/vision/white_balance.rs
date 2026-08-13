@@ -14,24 +14,49 @@ use vexide_devices::smart::vision::WhiteBalance;
 
 use crate::modvenice::{Exception, read_only_attr::read_only_attr};
 
+/// Vision Sensor white balance mode.
+///
+/// Represents a white balance configuration for the Vision Sensor's camera. `WhiteBalance` is an
+/// abstract base and cannot be instantiated directly. Construct its associated-only variants as
+/// `WhiteBalance.Auto()`, `WhiteBalance.StartupAuto()`, or `WhiteBalance.Manual(...)`; the variants are
+/// not package-root imports.
 #[class(qstr!(WhiteBalance))]
 #[repr(C)]
 pub struct WhiteBalanceObj {
     base: ObjBase,
 }
 
+/// Automatic Mode.
+///
+/// The sensor will automatically adjust the camera's white balance, using the brightest part of the
+/// image as a white point. This associated-only class is constructed as `WhiteBalance.Auto()` and is
+/// not package-root importable. Construction always returns the same singleton, which prints as
+/// `WhiteBalance.Auto()`.
 #[class(qstr!(Auto))]
 #[repr(C)]
 pub struct Auto {
     base: ObjBase,
 }
 
+/// "Startup" Automatic Mode.
+///
+/// The sensor will automatically adjust the camera's white balance, but will only perform this
+/// adjustment once on power-on. This associated-only class is constructed as
+/// `WhiteBalance.StartupAuto()` and is not package-root importable. Construction always returns the
+/// same singleton, which prints as `WhiteBalance.StartupAuto()`.
 #[class(qstr!(StartupAuto))]
 #[repr(C)]
 pub struct StartupAuto {
     base: ObjBase,
 }
 
+/// Manual Mode.
+///
+/// This mode allows for manual control over white balance using an RGB color. This associated-only class is
+/// constructed as `WhiteBalance.Manual(r, g, b)` and is not package-root importable. Its read-only
+/// integer attributes `r`, `g`, and `b` are the red, green, and blue white-point channels from 0 to
+/// 255. Values compare by these three channels, return `False` when compared with another type,
+/// and print as `WhiteBalance.Manual(r=..., g=..., b=...)`.
 #[class(qstr!(Manual))]
 #[repr(C)]
 pub struct Manual {
@@ -43,19 +68,29 @@ pub struct Manual {
 
 #[class_methods]
 impl WhiteBalanceObj {
+    /// Rejects direct construction of the abstract `WhiteBalance` base class.
+    ///
+    /// Use one of the associated variant classes instead.
+    ///
+    /// # Raises
+    ///
+    /// - `TypeError`: Always.
     #[make_new]
-    #[stub(sig = "(self) -> None")]
+    #[stub(sig = "(self, /) -> None")]
     fn make_new(_: &ObjType, _: usize, _: usize, _: &[Obj]) {
         type_error(
-            c"WhiteBalance is an abstract base class; use a variant like WhiteBalance.Signature",
+            c"WhiteBalance is an abstract base class; use WhiteBalance.Auto(), WhiteBalance.StartupAuto(), or WhiteBalance.Manual(...)",
         )
         .raise(token());
     }
 
+    /// The associated Automatic Mode class, constructed as `WhiteBalance.Auto()`.
     #[constant(qstr!(Auto))]
     const AUTO: &ObjType = Auto::OBJ_TYPE;
+    /// The associated "Startup" Automatic Mode class, constructed as `WhiteBalance.StartupAuto()`.
     #[constant(qstr!(StartupAuto))]
     const STARTUP_AUTO: &ObjType = StartupAuto::OBJ_TYPE;
+    /// The associated Manual Mode class, constructed as `WhiteBalance.Manual(r, g, b)`.
     #[constant(qstr!(Manual))]
     const MANUAL: &ObjType = Manual::OBJ_TYPE;
 }
@@ -66,8 +101,13 @@ impl Auto {
         base: ObjBase::new(Self::OBJ_TYPE),
     };
 
+    /// Returns the singleton Automatic Mode.
+    ///
+    /// # Raises
+    ///
+    /// - `TypeError`: If any positional or keyword arguments are supplied.
     #[make_new]
-    #[stub(sig = "(self) -> None")]
+    #[stub(sig = "(self, /) -> None")]
     fn make_new(_: &'static ObjType, _: usize, _: usize, args: &[Obj]) -> Result<Obj, Exception> {
         if args.len() != 0 {
             Err(
@@ -91,8 +131,13 @@ impl StartupAuto {
         base: ObjBase::new(Self::OBJ_TYPE),
     };
 
+    /// Returns the singleton "Startup" Automatic Mode.
+    ///
+    /// # Raises
+    ///
+    /// - `TypeError`: If any positional or keyword arguments are supplied.
     #[make_new]
-    #[stub(sig = "(self) -> None")]
+    #[stub(sig = "(self, /) -> None")]
     fn make_new(_: &'static ObjType, _: usize, _: usize, args: &[Obj]) -> Result<Obj, Exception> {
         if args.len() != 0 {
             Err(type_error(
@@ -112,8 +157,17 @@ impl StartupAuto {
 
 #[class_methods]
 impl Manual {
+    /// Creates a Manual Mode with RGB channels `r`, `g`, and `b`.
+    ///
+    /// Each channel is a positional-only integer from 0 to 255.
+    ///
+    /// # Raises
+    ///
+    /// - `TypeError`: If a channel is not an integer, a keyword argument is supplied, or the argument
+    ///   count is not exactly three.
+    /// - `ValueError`: If a channel is outside the inclusive range 0 to 255.
     #[make_new]
-    #[stub(sig = "(self, r: int, g: int, b: int) -> None")]
+    #[stub(sig = "(self, r: int, g: int, b: int, /) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -157,7 +211,10 @@ impl Manual {
     #[binary_op]
     fn binary_op(op: BinaryOpCode, lhs: &Self, rhs: Obj) -> Obj {
         match op {
-            BinaryOpCode::Equal => Obj::from_bool(Self::eq(lhs, rhs.as_obj())),
+            BinaryOpCode::Equal => Obj::from_bool(
+                rhs.try_as_obj::<Self>()
+                    .is_some_and(|rhs| Self::eq(lhs, rhs)),
+            ),
             _ => Obj::NULL,
         }
     }

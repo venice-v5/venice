@@ -1,313 +1,23 @@
-use core::writeln;
-use std::{
-    ffi::OsStr,
-    fs::OpenOptions,
-    io::Write,
-    path::{Path, PathBuf},
-    process::Command,
-};
+use std::path::{Path, PathBuf};
 
-use regex::bytes::Regex;
+fn collect_c_srcs(mp_dir: &Path, py_dir: &Path, port_dir: &Path) -> std::io::Result<Vec<PathBuf>> {
+    let mut c_srcs = Vec::new();
 
-fn collect_dir_files(dir: &Path, extension: &OsStr, recursive: bool, vec: &mut Vec<PathBuf>) {
-    std::fs::read_dir(dir)
-        .expect("couldn't ls directory")
-        .map(|entry| entry.expect("couldn't ls directory"))
-        .for_each(|entry| {
-            let path = entry.path();
-            let file_type = entry.file_type().expect("couldn't get file type");
-            if recursive && file_type.is_dir() {
-                collect_dir_files(&path, extension, true, vec);
-            } else if file_type.is_file() && path.extension() == Some(extension) {
-                vec.push(path);
+    for dir in [py_dir, port_dir] {
+        for entry in std::fs::read_dir(dir)? {
+            let path = entry?.path();
+            if path.is_file() && path.extension().is_some_and(|extension| extension == "c") {
+                c_srcs.push(path);
             }
-        });
+        }
+    }
+
+    c_srcs.push(mp_dir.join("shared/readline/readline.c"));
+    Ok(c_srcs)
 }
 
-struct Builder {
-    out_dir: PathBuf,
-    mp_dir: PathBuf,
-    py_dir: PathBuf,
-    port_dir: PathBuf,
-    genhdr_dir: PathBuf,
-    c_srcs: Vec<PathBuf>,
-    rust_srcs: Vec<PathBuf>,
-}
-
-impl Builder {
-    fn new(manifest_dir: &str) -> Self {
-        let out_dir = PathBuf::from(std::env::var("OUT_DIR").unwrap());
-        let mp_dir = Path::new(manifest_dir).join("micropython");
-        let py_dir = mp_dir.join("py");
-        let port_dir = Path::new(manifest_dir).join("port");
-
-        let mut c_srcs = Vec::new();
-
-        collect_dir_files(&py_dir, OsStr::new("c"), false, &mut c_srcs);
-        collect_dir_files(&port_dir, OsStr::new("c"), false, &mut c_srcs);
-        c_srcs.push(mp_dir.join("shared/readline/readline.c"));
-
-        let mut rust_srcs = Vec::new();
-        collect_dir_files(
-            &Path::new(manifest_dir).join("src"),
-            OsStr::new("rs"),
-            true,
-            &mut rust_srcs,
-        );
-
-        let genhdr_dir = out_dir.join("genhdr");
-        std::fs::create_dir_all(&genhdr_dir).expect("couldn't create genhdr dir");
-
-        Builder {
-            py_dir,
-            out_dir,
-            mp_dir,
-            port_dir,
-            genhdr_dir,
-            c_srcs,
-            rust_srcs,
-        }
-    }
-
-    fn gen_version_header(&self) {
-        Command::new("python3")
-            .arg(self.py_dir.join("makeversionhdr.py"))
-            .arg(self.genhdr_dir.join("mpversion.h"))
-            .status()
-            .expect("couldn't generate mp version header");
-    }
-
-    fn gen_qstrdefs(&self, qstrs: &[Vec<u8>]) {
-        let qstrdefs_file_path = self.genhdr_dir.join("qstrdefs.preprocessed.h");
-        let mut qstrdefs_file = OpenOptions::new()
-            .write(true)
-            .truncate(true)
-            .create(true)
-            .open(&qstrdefs_file_path)
-            .expect("couldn't open qstrdefs file");
-
-        const BYTES_IN_LEN: usize = 1;
-        const BYTES_IN_HASH: usize = 2;
-
-        writeln!(
-            &mut qstrdefs_file,
-            "QCFG(BYTES_IN_LEN, ({BYTES_IN_LEN}))
-            QCFG(BYTES_IN_HASH, ({BYTES_IN_HASH}))"
-        )
-        .expect("couldn't write to qstrdefs file");
-
-        for qstr in qstrs.iter() {
-            writeln!(
-                &mut qstrdefs_file,
-                "Q({})\n",
-                str::from_utf8(qstr).expect("non-utf8 qstr")
-            )
-            .expect("couldn't write to qstrdefs file");
-        }
-
-        let generated_qstrs = Command::new("python3")
-            .arg(self.py_dir.join("makeqstrdata.py"))
-            .arg(&qstrdefs_file_path)
-            .output()
-            .expect("coulnd't process qstr data")
-            .stdout;
-
-        std::fs::write(
-            self.genhdr_dir.join("qstrdefs.generated.h"),
-            generated_qstrs,
-        )
-        .expect("couldn't write out qstr data");
-    }
-
-    fn gen_moduledefs(&self, moduledefs: &[Vec<u8>]) {
-        let moduledefs_collected_path = self.genhdr_dir.join("moduledefs.collected");
-        let mut moduledefs_collected = OpenOptions::new()
-            .write(true)
-            .truncate(true)
-            .create(true)
-            .open(&moduledefs_collected_path)
-            .expect("couldn't open moduledefs file");
-
-        for moduledef in moduledefs.iter() {
-            writeln!(
-                &mut moduledefs_collected,
-                "{}",
-                str::from_utf8(moduledef).expect("non-utf8 moduledef")
-            )
-            .expect("couldn't write to moduledefs file");
-        }
-
-        let moduledefs_h = Command::new("python3")
-            .arg(self.py_dir.join("makemoduledefs.py"))
-            .arg(&moduledefs_collected_path)
-            .output()
-            .expect("couldn't generate moduledefs")
-            .stdout;
-
-        std::fs::write(self.genhdr_dir.join("moduledefs.h"), &moduledefs_h)
-            .expect("couldn't write out moduledefs");
-    }
-
-    fn gen_root_pointers(&self, root_pointers: &[Vec<u8>]) {
-        let mut root_pointers_h = OpenOptions::new()
-            .write(true)
-            .truncate(true)
-            .create(true)
-            .open(self.genhdr_dir.join("root_pointers.h"))
-            .expect("couldn't open root pointers file");
-
-        for root_pointer in root_pointers.iter() {
-            writeln!(
-                &mut root_pointers_h,
-                "{};",
-                str::from_utf8(root_pointer).expect("non-utf8 root pointer")
-            )
-            .expect("couldn't write out root pointer");
-        }
-    }
-
-    fn gen_headers(&self) {
-        let mut qstrs = Vec::new();
-        let mut moduledefs = Vec::new();
-        let mut root_pointers = Vec::new();
-
-        let c_qstr_re = Regex::new(r#"MP_QSTR_([a-zA-Z_][a-zA-Z0-9_]*)"#).unwrap();
-        let c_moduledef_re = Regex::new(
-            r#"(?:MP_REGISTER_MODULE|MP_REGISTER_EXTENSIBLE_MODULE|MP_REGISTER_MODULE_DELEGATION)\(.*?,\s*.*?\);"#,
-        ).unwrap();
-        let c_root_pointer_re = Regex::new(r#"MP_REGISTER_ROOT_POINTER\((.*?)\);"#).unwrap();
-
-        let config_headers = [
-            self.mp_dir.join("mpconfig.h"),
-            self.port_dir.join("mpconfigport.h"),
-        ];
-        let c_qstr_src = self.c_srcs.iter().chain(config_headers.iter());
-
-        for c_src in c_qstr_src {
-            let out = Command::new("clang")
-                .arg("-E")
-                .arg("-I")
-                .arg(&self.port_dir)
-                .arg("-I")
-                .arg(&self.mp_dir)
-                .arg("-I")
-                .arg(&self.out_dir)
-                .arg("-DNO_QSTR")
-                .arg(c_src)
-                .output()
-                .expect("couldn't preprocess C code")
-                .stdout;
-
-            for qstr_cap in c_qstr_re.captures_iter(&out) {
-                qstrs.push(qstr_cap[1].to_vec());
-            }
-
-            for moduledef_cap in c_moduledef_re.captures_iter(&out) {
-                moduledefs.push(moduledef_cap[0].to_vec());
-            }
-
-            for root_pointer_cap in c_root_pointer_re.captures_iter(&out) {
-                root_pointers.push(root_pointer_cap[1].to_vec());
-            }
-        }
-
-        let rust_qstr_re = Regex::new(r#"qstr!\(([a-zA-Z_][a-zA-Z0-9_]*)\)"#).unwrap();
-        let method_ident_re = Regex::new(
-            r#"#\[method.*]\s*(?:#\[stub.*\])?\s*(?:pub\s+)?fn\s+([a-zA-Z_][a-zA-Z0-9_]*)"#,
-        )
-        .unwrap();
-        let constant_ident_re = Regex::new(
-            r#"#\[constant\]\s*(?:#\[stub.*\])?\s*(?:pub\s+)?const\s+([a-zA-Z_][a-zA-Z0-9_]*)"#,
-        )
-        .unwrap();
-
-        for rust_src in self.rust_srcs.iter() {
-            let out = std::fs::read(rust_src).expect("couldn't read rust source");
-
-            for cap in rust_qstr_re
-                .captures_iter(&out)
-                .chain(method_ident_re.captures_iter(&out))
-                .chain(constant_ident_re.captures_iter(&out))
-            {
-                qstrs.push(cap[1].to_vec());
-            }
-        }
-
-        self.gen_qstrdefs(&qstrs);
-        self.gen_moduledefs(&moduledefs);
-        self.gen_root_pointers(&root_pointers);
-    }
-
-    fn gen_qstrs_rs(&self) {
-        let qstrdefs_generated_h =
-            std::fs::read_to_string(self.genhdr_dir.join("qstrdefs.generated.h"))
-                .expect("couldn't read generated qstrdefs");
-
-        let qdef0_re =
-            regex::Regex::new(r#"QDEF0\(MP_QSTR_([a-zA-Z_][a-zA-Z0-9_]*), \d+, \d+, ".*"\)"#)
-                .unwrap();
-        let qdef1_re =
-            regex::Regex::new(r#"QDEF1\(MP_QSTR_([a-zA-Z_][a-zA-Z0-9_]*), \d+, \d+, ".*"\)"#)
-                .unwrap();
-
-        let mut defs = Vec::new();
-        for qdef0_cap in qdef0_re.captures_iter(&qstrdefs_generated_h) {
-            defs.push(qdef0_cap[1].to_string());
-        }
-
-        for qdef1_cap in qdef1_re.captures_iter(&qstrdefs_generated_h) {
-            defs.push(qdef1_cap[1].to_string());
-        }
-
-        let generated_qstrs_rs_path = self.out_dir.join("generated_qstrs.rs");
-        let mut generated_qstrs_rs = OpenOptions::new()
-            .write(true)
-            .truncate(true)
-            .create(true)
-            .open(&generated_qstrs_rs_path)
-            .expect("couldn't open generated_qstrs.rs file");
-
-        writeln!(
-            &mut generated_qstrs_rs,
-            r"
-            #[allow(non_camel_case_types, dead_code)]
-            #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-            #[repr(C)]
-            pub enum GeneratedQstr {{
-                MP_QSTRnull,
-                MP_QSTR_,
-            "
-        )
-        .expect("couldn't write out generated qstrs");
-
-        for def in defs.iter() {
-            writeln!(&mut generated_qstrs_rs, "    MP_QSTR_{},\n", def)
-                .expect("couldn't write out generated qstrs");
-        }
-
-        writeln!(&mut generated_qstrs_rs, "}}").expect("couldn't write oout generated qstrs");
-
-        println!(
-            "cargo::rustc-env=GENERATED_QSTRS_RS={}",
-            generated_qstrs_rs_path.display()
-        );
-    }
-
-    fn compile_mp(&self) {
-        let mut build = cc::Build::new();
-        build
-            .files(&self.c_srcs)
-            .include(&self.port_dir)
-            .include(&self.mp_dir)
-            .include(&self.out_dir)
-            .flag("-Os")
-            .compile("mpv5");
-    }
-}
-
-fn rerun_if_changed(manifest_dir: &str) {
-    let paths = ["port", "link", "micropython/py"];
-    let manifest_path = Path::new(manifest_dir);
+fn rerun_if_changed(manifest_path: &Path) {
+    let paths = ["port", "link", "micropython/py", "headergen"];
 
     for path in paths.iter().map(|p| manifest_path.join(p)) {
         println!("cargo::rerun-if-changed={}", path.display());
@@ -327,13 +37,39 @@ fn link_objects(manifest_dir: &str) {
 
 fn main() {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let manifest_path = Path::new(manifest_dir);
 
-    let builder = Builder::new(manifest_dir);
-    builder.gen_version_header();
-    builder.gen_headers();
-    builder.gen_qstrs_rs();
-    builder.compile_mp();
+    let build_dir = manifest_path.join("headergen");
+    let generated_qstrs_rs = build_dir.join("generated_qstrs.rs");
+
+    if !std::fs::exists(&generated_qstrs_rs)
+        .expect("can't check existence of generated_qstrs.rs in headergen")
+    {
+        panic!("generated_qstrs.rs not found; run headergen before compiling venice");
+    }
+
+    println!(
+        "cargo::rustc-env=GENERATED_QSTRS_RS={}",
+        generated_qstrs_rs.display()
+    );
+
+    let mp_dir = manifest_path.join("micropython");
+    let py_dir = mp_dir.join("py");
+    let port_dir = manifest_path.join("port");
+
+    let c_srcs =
+        collect_c_srcs(&mp_dir, &py_dir, &port_dir).expect("couldn't collect c source files");
+
+    let mut build = cc::Build::new();
+
+    build
+        .files(&c_srcs)
+        .include(&port_dir)
+        .include(&mp_dir)
+        .include(&build_dir)
+        .flag("-Os")
+        .compile("mpv5");
 
     link_objects(manifest_dir);
-    rerun_if_changed(manifest_dir);
+    rerun_if_changed(manifest_path);
 }

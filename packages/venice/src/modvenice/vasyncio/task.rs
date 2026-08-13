@@ -1,4 +1,4 @@
-use std::cell::{Cell, Ref, RefCell};
+use std::cell::{Cell, RefCell};
 
 use micropython_macros::{class, class_methods};
 use micropython_rs::{
@@ -9,6 +9,35 @@ use micropython_rs::{
 
 use crate::alloc::Gc;
 
+/// A spawned task.
+///
+/// A `Task` can be awaited to retrieve the output of its coroutine.
+///
+/// `EventLoop.spawn` and `vasyncio.spawn` return tasks; `Task` is not directly exported from the
+/// `vasyncio` submodule and is not constructed by users. Awaiting a task cooperatively waits for
+/// its coroutine and returns that coroutine's return value, including when the task completed
+/// before the await began. Direct or transitive cycles between awaited tasks raise `RuntimeError`.
+/// A coroutine exception propagates out of the running event loop. `Task` objects cannot be
+/// cancelled.
+///
+/// # Examples
+///
+/// ```python
+/// from venice import *
+///
+/// async def work():
+///     print("Hello from a task!")
+///     return 1 + 2
+///
+/// async def main():
+///     # Spawn a coroutine onto the event loop.
+///     task = vasyncio.spawn(work())
+///
+///     # Wait for the task's output.
+///     assert await task == 3
+///
+/// vasyncio.run(main())
+/// ```
 #[class(qstr!(Task))]
 #[repr(C)]
 pub struct Task {
@@ -16,6 +45,7 @@ pub struct Task {
     // generator object
     coro: Obj,
     waiting_tasks: RefCell<Vec<Obj, Gc>>,
+    waiting_on: Cell<Obj>,
     return_val: Cell<Obj>,
 }
 
@@ -25,6 +55,7 @@ impl Task {
             base: Self::OBJ_TYPE.into(),
             coro,
             waiting_tasks: RefCell::new(Vec::new_in(Gc { token: token() })),
+            waiting_on: Cell::new(Obj::NULL),
             return_val: Cell::new(Obj::NULL),
         }
     }
@@ -37,8 +68,20 @@ impl Task {
         self.waiting_tasks.borrow_mut().push(task);
     }
 
-    pub fn waiting_tasks<'a>(&'a self) -> Ref<'a, [Obj]> {
-        Ref::map(self.waiting_tasks.borrow(), |tasks| tasks.as_slice())
+    pub fn pop_waiting_task(&self) -> Option<Obj> {
+        self.waiting_tasks.borrow_mut().pop()
+    }
+
+    pub fn waiting_on(&self) -> Obj {
+        self.waiting_on.get()
+    }
+
+    pub fn set_waiting_on(&self, task: Obj) {
+        self.waiting_on.set(task);
+    }
+
+    pub fn clear_waiting_on(&self) {
+        self.waiting_on.set(Obj::NULL);
     }
 
     pub fn is_complete(&self) -> bool {

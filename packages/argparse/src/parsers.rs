@@ -124,7 +124,18 @@ macro_rules! impl_default_int_parser {
 
 impl_default_int_parser!(u8);
 impl_default_int_parser!(u16);
-impl_default_int_parser!(u32);
+
+impl Default for IntParser<u32> {
+    fn default() -> Self {
+        // MicroPython's object representation exposes integers as i32, so this is the full
+        // representable non-negative range rather than a wrapping cast of u32::MAX.
+        Self::new(0..=i32::MAX)
+    }
+}
+
+impl DefaultParser<'_> for u32 {
+    type Parser = IntParser<u32>;
+}
 
 impl_default_int_parser!(i8);
 impl_default_int_parser!(i16);
@@ -219,10 +230,14 @@ where
                     error_msg!("{arg} length must be a multiple of {}", size_of::<T>())
                 }),
             },
-            PodCastError::TargetAlignmentGreaterAndInputNotAligned => {
-                panic!("buffer unaligned")
-            }
-            _ => unreachable!(),
+            PodCastError::TargetAlignmentGreaterAndInputNotAligned => ParseError::ValueError {
+                mk_msg: Box::new(|arg| {
+                    error_msg!("{arg} must be aligned to {} bytes", align_of::<T>())
+                }),
+            },
+            _ => ParseError::ValueError {
+                mk_msg: Box::new(|arg| error_msg!("{arg} has an incompatible buffer layout")),
+            },
         })
     }
 }

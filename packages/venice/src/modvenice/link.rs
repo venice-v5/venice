@@ -118,7 +118,7 @@ impl RadioLinkObj {
     /// link = RadioLink(1, "643A", LinkType.MANAGER)
     /// ```
     #[make_new]
-    #[stub(sig = "(self, port: int, id: str, link_type: LinkType) -> None")]
+    #[stub(sig = "(self, port: int, id: str, link_type: LinkType, /) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -244,21 +244,21 @@ impl RadioLinkObj {
     // TODO: find good docs for these stream methods
 
     #[constant(qstr!(read))]
-    #[stub(sig = "(self, size: int = -1) -> bytes")]
+    #[stub(sig = "(self, size: int = -1, /) -> bytes")]
     const READ: &FunVarBetween = &mp_stream_read_obj;
     #[constant(qstr!(read1))]
-    #[stub(sig = "(self, size: int = -1) -> bytes")]
+    #[stub(sig = "(self, size: int = -1, /) -> bytes")]
     const READ1: &FunVarBetween = &mp_stream_read1_obj;
     #[constant(qstr!(write))]
-    #[stub(sig = "(self, buffer: bytes | bytearray | memoryview) -> int")]
+    #[stub(sig = "(self, buffer: bytes | bytearray | memoryview, /) -> int")]
     const WRITE: &FunVarBetween = &mp_stream_write_obj;
     #[constant(qstr!(write1))]
-    #[stub(sig = "(self, buffer: bytes | bytearray | memoryview) -> int")]
+    #[stub(sig = "(self, buffer: bytes | bytearray | memoryview, /) -> int")]
     const WRITE1: &Fun2 = &mp_stream_write1_obj;
     #[constant(qstr!(flush))]
-    #[stub(sig = "(self) -> None")]
+    #[stub(sig = "(self, /) -> None")]
     const FLUSH: &Fun1 = &mp_stream_flush_obj;
     #[constant(qstr!(ioctl))]
-    #[stub(sig = "(self, request: int, arg: int = 0) -> int")]
+    #[stub(sig = "(self, request: int, arg: int = 0, /) -> int")]
     const IOCTL: &FunVarBetween = &mp_stream_ioctl_obj;
 }

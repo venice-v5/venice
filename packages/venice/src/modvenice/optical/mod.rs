@@ -76,7 +76,7 @@ impl OpticalSensorObj {
     /// sensor = OpticalSensor(1)
     /// ```
     #[make_new]
-    #[stub(sig = "(self, port: int) -> None")]
+    #[stub(sig = "(self, port: int, /) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -391,8 +391,9 @@ impl OpticalSensorObj {
     ///
     /// # Raises
     ///
-    /// `DeviceError`: If no device is connected to the port, or if the wrong type of device is
+    /// - `DeviceError`: If no device is connected to the port, or if the wrong type of device is
     /// connected.
+    /// - `ValueError`: If `time` is negative, non-finite, or too large to represent.
     ///
     /// # Examples
     ///
@@ -406,10 +407,8 @@ impl OpticalSensorObj {
     /// ```
     #[method]
     fn set_integration_time(&self, time: f32, unit: &TimeUnitObj) -> Result<(), Exception> {
-        Ok(self
-            .guard
-            .borrow_mut()
-            .set_integration_time(unit.unit().float_to_dur(time))?)
+        let duration = unit.unit().float_to_dur(time)?;
+        Ok(self.guard.borrow_mut().set_integration_time(duration)?)
     }
 
     /// Returns the internal status code of the optical sensor.

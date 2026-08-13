@@ -44,9 +44,9 @@ bitflags! {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum IoctlReq<'a> {
+pub enum IoctlReq {
     Flush,
-    Seek(&'a Seek),
+    Seek(*mut Seek),
     Poll(Poll),
     Close,
     /// Get/set timeout (single op)
@@ -63,6 +63,23 @@ pub enum IoctlReq<'a> {
     GetFileno,
     /// Get preferred buffer size for file
     GetBufferSize,
+}
+
+pub fn decode_ioctl_request(request: u32, arg: usize) -> Option<IoctlReq> {
+    Some(match request {
+        IOCTL_FLUSH => IoctlReq::Flush,
+        IOCTL_SEEK => IoctlReq::Seek(arg as *mut Seek),
+        IOCTL_POLL => IoctlReq::Poll(Poll::from_bits_retain(arg)),
+        IOCTL_CLOSE => IoctlReq::Close,
+        IOCTL_TIMEOUT => IoctlReq::Timeout,
+        IOCTL_GET_OPTS => IoctlReq::GetOpts,
+        IOCTL_SET_OPTS => IoctlReq::SetOpts,
+        IOCTL_GET_DATA_OPTS => IoctlReq::GetDataOpts,
+        IOCTL_SET_DATA_OPTS => IoctlReq::SetDataOpts,
+        IOCTL_GET_FILENO => IoctlReq::GetFileno,
+        IOCTL_GET_BUFFER_SIZE => IoctlReq::GetBufferSize,
+        _ => return None,
+    })
 }
 
 pub type ReadFn =
@@ -150,7 +167,7 @@ macro_rules! write_from_fn {
 #[macro_export]
 macro_rules! ioctl_from_fn {
     ($f:expr) => {{
-        unsafe extern "C" fn trampoline<'a>(
+        unsafe extern "C" fn trampoline(
             obj: $crate::obj::Obj,
             request: u32,
             arg: usize,
@@ -158,25 +175,12 @@ macro_rules! ioctl_from_fn {
         ) -> usize {
             let f: fn(
                 $crate::obj::Obj,
-                $crate::stream::IoctlReq<'a>,
+                $crate::stream::IoctlReq,
             ) -> Result<usize, ::std::ffi::c_int> = $f;
 
-            let r = {
-                use $crate::stream::*;
-                match request {
-                    IOCTL_FLUSH => IoctlReq::Flush,
-                    IOCTL_SEEK => IoctlReq::Seek(unsafe { &*(arg as *const Seek) }),
-                    IOCTL_POLL => IoctlReq::Poll(Poll::from_bits_retain(arg)),
-                    IOCTL_CLOSE => IoctlReq::Close,
-                    IOCTL_TIMEOUT => IoctlReq::Timeout,
-                    IOCTL_GET_OPTS => IoctlReq::GetOpts,
-                    IOCTL_SET_OPTS => IoctlReq::SetOpts,
-                    IOCTL_GET_DATA_OPTS => IoctlReq::GetDataOpts,
-                    IOCTL_SET_DATA_OPTS => IoctlReq::SetDataOpts,
-                    IOCTL_GET_FILENO => IoctlReq::GetFileno,
-                    IOCTL_GET_BUFFER_SIZE => IoctlReq::GetBufferSize,
-                    _ => unreachable!(),
-                }
+            let Some(r) = $crate::stream::decode_ioctl_request(request, arg) else {
+                unsafe { *errcode = $crate::errno::MP_EINVAL };
+                return $crate::stream::STREAM_ERROR;
             };
 
             match f(obj, r) {

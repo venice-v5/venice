@@ -12,6 +12,29 @@ use vexide_devices::smart::vision::VisionSignature;
 
 use crate::modvenice::{Exception, read_only_attr::read_only_attr};
 
+/// A vision detection color signature.
+///
+/// This class is root-importable. Vision signatures contain information used by the Vision Sensor to detect objects of a certain
+/// color. These signatures are typically generated through VEX's Vision Utility tool rather than
+/// written by hand.
+///
+/// # Format & Detection Overview
+///
+/// Vision signatures operate in a version of the Y'UV color space, specifically using the "U" and
+/// "V" chroma components for edge detection purposes. The read-only `u_min`, `u_max`, and `u_mean`
+/// attributes place three threshold values on the U chroma values detected by the sensor. The
+/// read-only `v_min`, `v_max`, and `v_mean` attributes do the same for the V component. These values
+/// are then transformed to a 3D lookup table to detect actual colors.
+///
+/// The read-only `range` attribute works as a scale factor or threshold for how lenient edge detection
+/// should be. It ranges from 0-11 in Vision Utility. Higher values increase the range of brightness
+/// that the sensor considers part of the signature, so lighter and darker shades are detected more
+/// often. The read-only `flags` attribute is the signature's flags and is initialized to 0.
+///
+/// Signatures can additionally be grouped together into `VisionCode` objects, which narrow the filter
+/// for object detection by requiring two colors. Signatures compare equal when all thresholds,
+/// `range`, and `flags` match, return `False` when compared with another type, and have a readable
+/// representation containing those eight values.
 #[class(qstr!(VisionSignature))]
 #[repr(C)]
 pub struct VisionSignatureObj {
@@ -32,9 +55,27 @@ impl VisionSignatureObj {
         self.signature
     }
 
+    /// Creates a `VisionSignature`.
+    ///
+    /// `u_min`, `u_max`, and `u_mean` are the minimum, maximum, and mean values on the U axis. `v_min`,
+    /// `v_max`, and `v_mean` are the corresponding values on the V axis. `range` is the detection range
+    /// scale factor. All seven arguments are positional-only; `flags` is set to 0.
+    ///
+    /// # Examples
+    ///
+    /// ```python
+    /// from venice import *
+    ///
+    /// my_signature = VisionSignature(10049, 11513, 10781, -425, 1, -212, 4.1)
+    /// ```
+    ///
+    /// # Raises
+    ///
+    /// - `TypeError`: If a threshold is not an integer, `range` is not numeric, a keyword argument is
+    ///   supplied, or the argument count is not exactly seven.
     #[make_new]
     #[stub(
-        sig = "(self, u_min: int, u_max: int, u_mean: int, v_min: int, v_max: int, v_mean: int, range: float) -> None"
+        sig = "(self, u_min: int, u_max: int, u_mean: int, v_min: int, v_max: int, v_mean: int, range: float, /) -> None"
     )]
     fn make_new(
         ty: &'static ObjType,
@@ -101,7 +142,10 @@ impl VisionSignatureObj {
     #[binary_op]
     fn binary_op(op: BinaryOpCode, lhs: &Self, rhs: Obj) -> Obj {
         match op {
-            BinaryOpCode::Equal => Obj::from_bool(Self::eq(lhs, rhs.as_obj::<Self>())),
+            BinaryOpCode::Equal => Obj::from_bool(
+                rhs.try_as_obj::<Self>()
+                    .is_some_and(|rhs| Self::eq(lhs, rhs)),
+            ),
             _ => Obj::NULL,
         }
     }

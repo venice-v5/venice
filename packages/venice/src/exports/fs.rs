@@ -17,8 +17,8 @@ use micropython_rs::{
     obj::{Obj, ObjBase, ObjTrait},
     read_from_fn,
     stream::{
-        IoctlReq, SEEK_CUR, SEEK_END, SEEK_SET, Stream, mp_stream_close_obj, mp_stream_flush_obj,
-        mp_stream_ioctl_obj, mp_stream_read_obj, mp_stream_read1_obj, mp_stream_readinto_obj,
+        IoctlReq, SEEK_CUR, SEEK_END, SEEK_SET, Seek as StreamSeek, Stream, mp_stream_close_obj,
+        mp_stream_flush_obj, mp_stream_read_obj, mp_stream_read1_obj, mp_stream_readinto_obj,
         mp_stream_seek_obj, mp_stream_tell_obj, mp_stream_write_obj, mp_stream_write1_obj,
     },
     write_from_fn,
@@ -62,14 +62,13 @@ impl FileObj {
 
         match req {
             IoctlReq::Seek(seek) => {
-                let seek_from = match seek.whence {
-                    SEEK_SET => SeekFrom::Start(seek.offset as u64),
-                    SEEK_CUR => SeekFrom::Current(seek.offset as i64),
-                    SEEK_END => SeekFrom::End(seek.offset as i64),
-                    _ => panic!("MicroPython lied..."),
-                };
-
-                file.seek(seek_from).map_err(io_to_errno)?;
+                if seek.is_null() || !seek.is_aligned() {
+                    return Err(MP_EINVAL);
+                }
+                // SAFETY: `File.ioctl` isn't exposed to Python, so this request can only come from
+                // MicroPython's internal `seek`/`tell` path, which supplies a valid mutable `Seek`.
+                let seek = unsafe { &mut *seek };
+                apply_seek(file, seek)?;
             }
             IoctlReq::Flush => file.sync_all().map_err(io_to_errno)?,
             IoctlReq::Close => {
@@ -118,9 +117,21 @@ impl FileObj {
 
     #[constant(qstr!(flush))]
     const FLUSH: &Fun1 = &mp_stream_flush_obj;
+}
 
-    #[constant(qstr!(ioctl))]
-    const IOCTL: &FunVarBetween = &mp_stream_ioctl_obj;
+fn checked_seek_from(seek: &StreamSeek) -> Result<SeekFrom, c_int> {
+    match seek.whence {
+        SEEK_SET if seek.offset >= 0 => Ok(SeekFrom::Start(seek.offset as u64)),
+        SEEK_CUR => Ok(SeekFrom::Current(seek.offset as i64)),
+        SEEK_END => Ok(SeekFrom::End(seek.offset as i64)),
+        _ => Err(MP_EINVAL),
+    }
+}
+
+fn apply_seek(stream: &mut impl Seek, seek: &mut StreamSeek) -> Result<(), c_int> {
+    let position = stream.seek(checked_seek_from(seek)?).map_err(io_to_errno)?;
+    seek.offset = position.try_into().map_err(|_| MP_EINVAL)?;
+    Ok(())
 }
 
 struct Mode(OpenOptions);

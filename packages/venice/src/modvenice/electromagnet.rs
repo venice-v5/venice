@@ -49,7 +49,7 @@ impl ElectromagnetObj {
     /// electromagnet.set_power(-0.2, 1000, MILLIS)
     /// ```
     #[make_new]
-    #[stub(sig = "(self, port: int) -> None")]
+    #[stub(sig = "(self, port: int, /) -> None")]
     fn make_new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -73,8 +73,9 @@ impl ElectromagnetObj {
     ///
     /// # Raises
     ///
-    /// `DeviceError`: If no device is connected to the port, or if the wrong type of device is
+    /// - `DeviceError`: If no device is connected to the port, or if the wrong type of device is
     /// connected.
+    /// - `ValueError`: If `duration` is negative, non-finite, or too large to represent.
     ///
     /// # Examples
     ///
@@ -85,7 +86,7 @@ impl ElectromagnetObj {
     /// electromagnet.set_power(1, Electromagnet.MAX_POWER_DURATION_MS, MILLIS)
     /// ```
     #[method(ty = var_between(min = 3, max = 3))]
-    #[stub(sig = "(self, power: float, duration: float, unit: TimeUnit) -> None")]
+    #[stub(sig = "(self, power: float, duration: float, unit: TimeUnit, /) -> None")]
     fn set_power(args: &[Obj]) -> Result<(), Exception> {
         let mut reader = Args::new(3, 0, args).reader();
         let this = reader.next_positional::<&Self>()?;
@@ -94,10 +95,8 @@ impl ElectromagnetObj {
         let duration = reader.next_positional()?;
         let time_unit = reader.next_positional::<&TimeUnitObj>()?;
 
-        Ok(this
-            .guard
-            .borrow_mut()
-            .set_power(power as f64, time_unit.unit().float_to_dur(duration))?)
+        let duration = time_unit.unit().float_to_dur(duration)?;
+        Ok(this.guard.borrow_mut().set_power(power as f64, duration)?)
     }
 
     /// Returns the user-set power level as a number from [-1.0, 1.0].

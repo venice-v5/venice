@@ -65,7 +65,7 @@ impl RotationSensorObj {
     /// sensor = RotationSensor(1)
     /// ```
     #[make_new]
-    #[stub(sig = "(self, port: int, direction: Direction = Direction.FORWARD) -> None")]
+    #[stub(sig = "(self, port: int, direction: Direction = Direction.FORWARD, /) -> None")]
     fn new(
         ty: &'static ObjType,
         n_pos: usize,
@@ -257,7 +257,7 @@ impl RotationSensorObj {
     // despite not requiring an SDK call, loading direction is still a getter method instead of an
     // attribute.
     #[method]
-    #[stub(sig = "(self) -> Direction")]
+    #[stub(sig = "(self, /) -> Direction")]
     fn get_direction(&self) -> Obj {
         let dir = self.guard.borrow().direction();
         Obj::from_static(match dir {
@@ -297,8 +297,9 @@ impl RotationSensorObj {
     ///
     /// # Raises
     ///
-    /// `DeviceError`: If no device is connected to the port, or if the wrong type of device is
+    /// - `DeviceError`: If no device is connected to the port, or if the wrong type of device is
     /// connected.
+    /// - `ValueError`: If `interval` is negative, non-finite, or too large to represent.
     ///
     /// # Examples
     ///
@@ -312,9 +313,8 @@ impl RotationSensorObj {
     /// ```
     #[method]
     fn set_data_interval(&self, interval: f32, unit: &TimeUnitObj) -> Result<(), Exception> {
-        self.guard
-            .borrow_mut()
-            .set_data_interval(unit.unit().float_to_dur(interval))?;
+        let duration = unit.unit().float_to_dur(interval)?;
+        self.guard.borrow_mut().set_data_interval(duration)?;
         Ok(())
     }
 
