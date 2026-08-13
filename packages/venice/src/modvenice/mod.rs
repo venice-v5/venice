@@ -97,7 +97,7 @@ static DEVICE_ERROR_TYPE: ExceptionType = ExceptionType::new(qstr!(DeviceError),
 pub struct Exception(pub micropython_rs::except::Exception);
 
 impl Exception {
-    pub fn new(ty: &'static ExceptionType, msg: impl Into<Message>) -> Self {
+    pub fn new(ty: &'static micropython_rs::obj::ObjType, msg: impl Into<Message>) -> Self {
         Self(micropython_rs::except::Exception {
             ty,
             msg: msg.into(),
@@ -140,7 +140,7 @@ impl From<PortError> for Exception {
 }
 
 pub fn device_error(msg: impl Into<Message>) -> Exception {
-    Exception::new(&DEVICE_ERROR_TYPE, msg)
+    Exception::new(DEVICE_ERROR_TYPE.as_obj_type(), msg)
 }
 
 #[fun(ty = var_between(min = 0, max = 1))]
@@ -196,6 +196,7 @@ fn validate_port(number: u8, device_type: SmartDeviceType) -> Result<(), PortErr
 #[allow(non_upper_case_globals)]
 static mut venice_globals: Dict = Dict::new(const_map![
     qstr!(__name__) => Obj::from_qstr(qstr!(venice)),
+    qstr!(DeviceError) => Obj::from_static(DEVICE_ERROR_TYPE.as_obj_type()),
 
     // motor
     qstr!(Motor) => Obj::from_static(MotorObj::OBJ_TYPE),

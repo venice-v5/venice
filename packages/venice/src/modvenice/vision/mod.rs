@@ -54,13 +54,13 @@ impl DefaultParser<'_> for SignatureId {
 
 impl From<VisionObjectError> for Exception {
     fn from(value: VisionObjectError) -> Self {
-        Self::new(&DEVICE_ERROR_TYPE, error_msg!("{value}"))
+        Self::new(DEVICE_ERROR_TYPE.as_obj_type(), error_msg!("{value}"))
     }
 }
 
 impl From<VisionSignatureError> for Exception {
     fn from(value: VisionSignatureError) -> Self {
-        Self::new(&DEVICE_ERROR_TYPE, error_msg!("{value}"))
+        Self::new(DEVICE_ERROR_TYPE.as_obj_type(), error_msg!("{value}"))
     }
 }
 
