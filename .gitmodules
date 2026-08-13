@@ -1,3 +1,4 @@
 [submodule "micropython"]
 	path = packages/venice/micropython
 	url = https://github.com/micropython/micropython.git
+	shallow = true
