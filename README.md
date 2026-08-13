@@ -109,7 +109,8 @@ Venice is currently composed of four Rust packages under the `./packages` direct
 - `micropython-rs`: High-level, hand-written MicroPython bindings. These bindings are only compatible with the port used by Venice.
 - `argparse`: Python argument parsing framework with automatic error message handling
 - `micropython-macros`: Proc-macros for generating MicroPython classes with clean Rust syntax
-- `headergen`: Script responsible for generating MicroPython headers and QSTRs
+
+The top-level `headergen.py` script generates MicroPython headers and QSTRs.
 
 Venice uses the [`vexide-devices`](https://github.com/vexide/vexide/) and [`vex-sdk`](https://github.com/vexide/vex-sdk/) crates to control VEX devices.
 
@@ -119,9 +120,9 @@ To build the runtime, you will need the following:
 
 1. **Toolchain**: MicroPython is compiled using the LLVM ARM toolchain, whose installation can be automated with a special [fork](https://github.com/fibonacci61/cargo-v5/tree/toolchain-env) of the `cargo-v5` tool on the `toolchain-env` branch. (The `main` branch will not work, you must use the `toolchain-env` branch on @fiboancci61's fork.)
 2. **direnv**: Use [`direnv`](https://direnv.net/) to execute the `direnv` script in `./packages/venice/.envrc`. The script will call into `cargo-v5` and put the ARM toolchain into scope.
-3. **Python 3**: `headergen` relies on [Python 3](https://www.python.org/downloads/) to execute other scripts for code generation (QSTRs, module definitions, and root pointers).
+3. **Python 3**: `headergen.py` uses [Python 3](https://www.python.org/downloads/) for code generation (QSTRs, module definitions, and root pointers).
 
-First, at the project root, run `./run_headergen.sh`. It could take a while to complete, since this entire Rust workspace has `build-std` enabled, so your host target's `libstd` has to be compiled from scratch.
+First, at the project root, run `python3 headergen.py`.
 
 The command should eventually output
 
@@ -131,4 +132,4 @@ The command should eventually output
 
 Then, inside `./packages/venice`, run `cargo v5 toolchain install` to download and install the ARM toolchain. After that, run `direnv allow` in the project root to let the `direnv` put the toolchain into scope while you are in the project directory.
 
-Finally, to build the runtime, run `cargo v5 build --release` in `./packages/venice`. The runtime binary will be generated under your target directory (`./target/armv7a-vex-v5/release/venice.bin`). If you don't need a VEX `.bin`, you can also run `cargo build`. Note that compiling at the top level does not work because `headergen` is a host script while all other crates target `armv7a-vex-v5`.
+Finally, to build the runtime, run `cargo v5 build --release` in `./packages/venice`. The runtime binary will be generated under your target directory (`./target/armv7a-vex-v5/release/venice.bin`). If you don't need a VEX `.bin`, you can also run `cargo build`.

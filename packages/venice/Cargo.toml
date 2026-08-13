@@ -34,4 +34,3 @@ rev = "8b44672c33bcefbb1c4788f1c99fa55131a43815"
 
 [build-dependencies]
 cc = "1.2.49"
-headergen = { path = "../headergen" }
