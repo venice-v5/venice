@@ -10,8 +10,9 @@ use micropython_rs::{
     qstr::Qstr,
     state::{globals, loaded_modules},
 };
+use venice_program_table::{ProgramFlags};
 
-use crate::module_map::{MODULE_MAP, VptModuleFlags};
+use crate::module_map::{MODULE_MAP};
 
 pub fn absolute_name(token: InitToken, mut level: i32, module_name: &str) -> String {
     const NAME_OBJ: Obj = Obj::from_qstr(qstr!(__name__));
@@ -25,7 +26,7 @@ pub fn absolute_name(token: InitToken, mut level: i32, module_name: &str) -> Str
         .get(current_module_name.as_bytes())
         .unwrap()
         .flags()
-        .contains(VptModuleFlags::IS_PACKAGE);
+        .unwrap_or(ProgramFlags::empty()).contains(ProgramFlags::IS_PACKAGE);
     if is_package {
         level -= 1;
     }
@@ -71,7 +72,7 @@ pub fn process_import_at_level(
     if let Some(module) = MODULE_MAP.get().unwrap().get(full_name.as_str().as_bytes()) {
         return push_nlr_callback(
             token,
-            || exec_module(token, full_name, module.payload()),
+            || exec_module(token, full_name, module.payload),
             || {
                 unsafe { &mut *loaded_modules(token) }
                     .map
