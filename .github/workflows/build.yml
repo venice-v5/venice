@@ -10,8 +10,9 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
+
+      - name: checkout micropython
+        run: git submodule update --init --depth 1 packages/venice/micropython
 
       - name: setup-uv
         uses: astral-sh/setup-uv@v1
