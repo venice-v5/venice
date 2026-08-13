@@ -96,7 +96,7 @@ impl Map {
     }
 
     pub fn len(&self) -> usize {
-        self.used & 0x1fffffff
+        self.used >> 3
     }
 
     pub fn get(&self, index: Obj) -> Option<Obj> {
@@ -149,4 +149,18 @@ impl Dict {
 
 unsafe impl ObjTrait for Dict {
     const OBJ_TYPE: &ObjType = unsafe { &mp_type_dict };
+}
+
+#[cfg(test)]
+mod tests {
+    use std::ptr;
+
+    use super::Map;
+
+    #[test]
+    fn map_length_excludes_bitfield_flags() {
+        let map = unsafe { Map::from_raw_parts(ptr::null_mut(), 3, 3, true, true, true) };
+
+        assert_eq!(map.len(), 3);
+    }
 }

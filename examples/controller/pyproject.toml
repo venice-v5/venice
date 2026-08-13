@@ -1,0 +1,7 @@
+[project]
+name = "controller"
+description = "Venice controller test"
+version="0.1.0"
+
+[tool]
+venice = { slot = 1 }
