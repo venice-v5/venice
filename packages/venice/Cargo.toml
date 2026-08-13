@@ -9,8 +9,8 @@ toolchain = "llvm-21.1.1"
 
 [dependencies]
 venice-program-table = { git = "https://github.com/venice-v5/venice-program-table.git", rev = "e5a1762be2eeaf94841bb972af4e447bbf5f4eea" }
-micropython-rs.path = "../micropython-rs"
-micropython-macros.path = "../micropython-macros"
+micropython-rs = { path = "../micropython-rs" }
+micropython-macros = { path = "../micropython-macros" }
 argparse.path = "../argparse"
 cty = "0.2.2"
 bitflags = "2.9.2"
@@ -34,4 +34,4 @@ rev = "8b44672c33bcefbb1c4788f1c99fa55131a43815"
 
 [build-dependencies]
 cc = "1.2.49"
-regex = "1.11.1"
+headergen = { path = "../headergen" }
