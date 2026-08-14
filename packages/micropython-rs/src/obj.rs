@@ -175,7 +175,7 @@ pub mod repr_c {
     }
 
     pub const fn new_float(float: f32) -> *mut c_void {
-        (float.to_bits().wrapping_add(0x8080_0000) & !0b11) as *mut c_void
+        (((float.to_bits() & !0b11) | 0b10).wrapping_add(0x8080_0000)) as *mut c_void
     }
 
     pub const fn new_ptr(ptr: *mut c_void) -> *mut c_void {
@@ -561,26 +561,37 @@ where
     F: FnOnce(&O, Qstr, AttrOp),
     Obj: AsRef<O>,
 {
+    let is_load = unsafe { (*dest).is_null() };
     let op = unsafe {
         let dest1 = dest.add(1);
-        if (*dest).is_null() {
+        if is_load {
             AttrOp::Load {
                 result: LoadResult::new(self_in, &mut *dest, &mut *dest1),
             }
+        } else if (*dest1).is_null() {
+            AttrOp::Delete {
+                result: DeleteResult::new(&mut *dest),
+            }
         } else {
-            if (*dest1).is_null() {
-                AttrOp::Delete {
-                    result: DeleteResult::new(&mut *dest),
-                }
-            } else {
-                AttrOp::Store {
-                    src: *dest1,
-                    result: StoreResult::new(&mut *dest),
-                }
+            AttrOp::Store {
+                src: *dest1,
+                result: StoreResult::new(&mut *dest),
             }
         }
     };
     f(self_in.as_ref(), attr, op);
+
+    // MicroPython only falls back to the type's locals dictionary when a custom attribute loader
+    // explicitly marks the lookup as unhandled. Make that the default when the loader returned
+    // without setting either result, so methods remain accessible on types with an `attr` slot.
+    if is_load {
+        unsafe {
+            let dest1 = dest.add(1);
+            if (*dest).is_null() && (*dest1).is_null() {
+                *dest1 = Obj::SENTINEL;
+            }
+        }
+    }
 }
 
 /// Generates an [`Attr`] from a safe Rust function.
@@ -871,29 +882,6 @@ impl ObjFullType {
     /// [`Subscr`]: [`Slot::Subscr`]
     pub const fn set_subscr(self, subscr: Subscr) -> Self {
         self.set_subscr_raw(subscr.f)
-    }
-}
-
-impl ObjFullType {
-    pub const fn into_obj_type(self) -> ObjType {
-        ObjType {
-            base: self.base,
-            flags: self.flags,
-            name: self.name,
-            slot_index_make_new: self.slot_index_make_new,
-            slot_index_print: self.slot_index_print,
-            slot_index_call: self.slot_index_call,
-            slot_index_unary_op: self.slot_index_unary_op,
-            slot_index_binary_op: self.slot_index_binary_op,
-            slot_index_attr: self.slot_index_attr,
-            slot_index_subscr: self.slot_index_subscr,
-            slot_index_iter: self.slot_index_iter,
-            slot_index_buffer: self.slot_index_buffer,
-            slot_index_protocol: self.slot_index_protocol,
-            slot_index_parent: self.slot_index_parent,
-            slot_index_locals_dict: self.slot_index_locals_dict,
-            slots: (),
-        }
     }
 }
 

@@ -24,11 +24,11 @@ use argparse::{Args, KeywordError, PositionalError, error_msg};
 use micropython_macros::fun;
 use micropython_rs::{
     const_map,
-    except::{EXCEPTION_TYPE, ExceptionType, Message},
+    except::{self, EXCEPTION_TYPE, Message},
     init::InitToken,
     map::Dict,
     module::Module,
-    obj::{Obj, ObjTrait},
+    obj::{Obj, ObjFullType, ObjTrait, ObjType},
 };
 use vex_sdk::V5_MAX_DEVICE_PORTS;
 use vex_sdk_jumptable::{V5_DeviceT, V5_DeviceType, vexDeviceGetByIndex, vexDeviceGetStatus};
@@ -91,13 +91,14 @@ use crate::modvenice::{
     },
 };
 
-static DEVICE_ERROR_TYPE: ExceptionType = ExceptionType::new(qstr!(DeviceError), EXCEPTION_TYPE);
+static DEVICE_ERROR_TYPE: ObjFullType =
+    except::new_exception_type(qstr!(DeviceError), EXCEPTION_TYPE);
 
 #[must_use]
 pub struct Exception(pub micropython_rs::except::Exception);
 
 impl Exception {
-    pub fn new(ty: &'static ExceptionType, msg: impl Into<Message>) -> Self {
+    pub fn new(ty: &'static ObjType, msg: impl Into<Message>) -> Self {
         Self(micropython_rs::except::Exception {
             ty,
             msg: msg.into(),
@@ -140,7 +141,7 @@ impl From<PortError> for Exception {
 }
 
 pub fn device_error(msg: impl Into<Message>) -> Exception {
-    Exception::new(&DEVICE_ERROR_TYPE, msg)
+    Exception::new(DEVICE_ERROR_TYPE.as_obj_type(), msg)
 }
 
 #[fun(ty = var_between(min = 0, max = 1))]
@@ -196,6 +197,7 @@ fn validate_port(number: u8, device_type: SmartDeviceType) -> Result<(), PortErr
 #[allow(non_upper_case_globals)]
 static mut venice_globals: Dict = Dict::new(const_map![
     qstr!(__name__) => Obj::from_qstr(qstr!(venice)),
+    qstr!(DeviceError) => Obj::from_static(DEVICE_ERROR_TYPE.as_obj_type()),
 
     // motor
     qstr!(Motor) => Obj::from_static(MotorObj::OBJ_TYPE),

@@ -1,0 +1,7 @@
+[project]
+name = "async-await"
+description = "Venice async/await test"
+version="0.1.0"
+
+[tool]
+venice = { slot = 1 }

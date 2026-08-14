@@ -96,7 +96,7 @@ impl Map {
     }
 
     pub fn len(&self) -> usize {
-        self.used & 0x1fffffff
+        self.used >> 3
     }
 
     pub fn get(&self, index: Obj) -> Option<Obj> {

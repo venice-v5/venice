@@ -312,16 +312,17 @@ fn generate_var_fun(
         None => quote! { self::#fn_name },
     };
 
-    let (map_arg, map_def, map_call_arg) = if let FunType::FunVarKw { .. } = fun_type {
+    let (map_arg, map_def, args_len, map_call_arg) = if let FunType::FunVarKw { .. } = fun_type {
         (
             quote! { map: *mut ::micropython_rs::map::Map },
             quote! {
                 let map = unsafe { &*map };
             },
+            quote! { n_args + map.len() * 2 },
             quote! { map },
         )
     } else {
-        (quote! {}, quote! {}, quote! {})
+        (quote! {}, quote! {}, quote! { n_args }, quote! {})
     };
 
     let trampoline = quote_spanned! {sig.span()=>
@@ -330,8 +331,8 @@ fn generate_var_fun(
             F: #f_ty,
             R: Into<::micropython_rs::obj::Obj>,
         {
-            let args = unsafe { ::std::slice::from_raw_parts(ptr, n_args) };
             #map_def
+            let args = unsafe { ::std::slice::from_raw_parts(ptr, #args_len) };
             f(args, #map_call_arg).into()
         }
 

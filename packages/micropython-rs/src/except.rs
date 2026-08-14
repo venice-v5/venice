@@ -65,47 +65,29 @@ where
     }
 }
 
-#[repr(transparent)]
-pub struct ExceptionType(ObjType);
-
-impl ExceptionType {
-    pub const fn new(name: Qstr, parent: &'static ExceptionType) -> Self {
-        Self(
-            unsafe {
-                ObjFullType::new(TypeFlags::empty(), name)
-                    .set_make_new_raw(mp_obj_exception_make_new)
-                    .set_print_raw(mp_obj_exception_print)
-                    .set_attr_raw(mp_obj_exception_attr)
-                    .set_parent(&parent.0)
-            }
-            .into_obj_type(),
-        )
-    }
-
-    const fn from_obj_type_ref(obj_type: &ObjType) -> &Self {
-        unsafe { std::mem::transmute(obj_type) }
+pub const fn new_exception_type(name: Qstr, parent: &'static ObjType) -> ObjFullType {
+    unsafe {
+        ObjFullType::new(TypeFlags::empty(), name)
+            .set_make_new_raw(mp_obj_exception_make_new)
+            .set_print_raw(mp_obj_exception_print)
+            .set_attr_raw(mp_obj_exception_attr)
+            .set_parent(parent)
     }
 }
 
-pub const BASE_EXCEPTION_TYPE: &ExceptionType =
-    ExceptionType::from_obj_type_ref(&mp_type_BaseException);
-pub const EXCEPTION_TYPE: &ExceptionType = ExceptionType::from_obj_type_ref(&mp_type_Exception);
-pub const VALUE_ERROR_TYPE: &ExceptionType = ExceptionType::from_obj_type_ref(&mp_type_ValueError);
-pub const TYPE_ERROR_TYPE: &ExceptionType = ExceptionType::from_obj_type_ref(&mp_type_TypeError);
-pub const INDEX_ERROR_TYPE: &ExceptionType = ExceptionType::from_obj_type_ref(&mp_type_IndexError);
-pub const NOT_IMPLEMENTED_ERROR_TYPE: &ExceptionType =
-    ExceptionType::from_obj_type_ref(&mp_type_NotImplementedError);
-pub const IMPORT_ERROR_TYPE: &ExceptionType =
-    ExceptionType::from_obj_type_ref(&mp_type_ImportError);
-pub const RUNTIME_ERROR_TYPE: &ExceptionType =
-    ExceptionType::from_obj_type_ref(&mp_type_RuntimeError);
-pub const ATTRIBUTE_ERROR_TYPE: &ExceptionType =
-    ExceptionType::from_obj_type_ref(&mp_type_AttributeError);
-pub const ZERO_DIVISION_ERROR_TYPE: &ExceptionType =
-    ExceptionType::from_obj_type_ref(&mp_type_ZeroDivisionError);
+pub const BASE_EXCEPTION_TYPE: &ObjType = &mp_type_BaseException;
+pub const EXCEPTION_TYPE: &ObjType = &mp_type_Exception;
+pub const VALUE_ERROR_TYPE: &ObjType = &mp_type_ValueError;
+pub const TYPE_ERROR_TYPE: &ObjType = &mp_type_TypeError;
+pub const INDEX_ERROR_TYPE: &ObjType = &mp_type_IndexError;
+pub const NOT_IMPLEMENTED_ERROR_TYPE: &ObjType = &mp_type_NotImplementedError;
+pub const IMPORT_ERROR_TYPE: &ObjType = &mp_type_ImportError;
+pub const RUNTIME_ERROR_TYPE: &ObjType = &mp_type_RuntimeError;
+pub const ATTRIBUTE_ERROR_TYPE: &ObjType = &mp_type_AttributeError;
+pub const ZERO_DIVISION_ERROR_TYPE: &ObjType = &mp_type_ZeroDivisionError;
 
-pub fn raise_msg(_: InitToken, exc_type: &ExceptionType, msg: impl AsRef<CStr>) -> ! {
-    unsafe { mp_raise_msg(&exc_type.0, RomErrorText::new(msg.as_ref())) };
+pub fn raise_msg(_: InitToken, exc_type: &ObjType, msg: impl AsRef<CStr>) -> ! {
+    unsafe { mp_raise_msg(exc_type, RomErrorText::new(msg.as_ref())) };
 }
 
 pub fn raise_stop_iteration(_: InitToken, arg: Obj) -> ! {
@@ -167,7 +149,7 @@ impl Debug for Message {
 #[must_use]
 #[derive(Clone, Copy)]
 pub struct Exception {
-    pub ty: &'static ExceptionType,
+    pub ty: &'static ObjType,
     pub msg: Message,
 }
 

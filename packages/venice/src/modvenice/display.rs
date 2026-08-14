@@ -460,7 +460,8 @@ fn draw_buffer(args: &[Obj]) -> Result<(), Exception> {
 )]
 fn draw_text(args: &[Obj], kw_map: &Map) -> Result<(), Exception> {
     let kwarg_count = kw_map.len();
-    let mut reader = Args::new(args.len(), kwarg_count, args).reader();
+    let positional_count = args.len() - kwarg_count * 2;
+    let mut reader = Args::new(positional_count, kwarg_count, args).reader();
     reader.assert_npos(3, 3).assert_nkw(0, 4);
 
     let cstr = reader.next_positional()?;
@@ -508,7 +509,8 @@ fn draw_text(args: &[Obj], kw_map: &Map) -> Result<(), Exception> {
 #[stub(sig = "(*values: object, sep: str = ' ', end: str = '\\n') -> None")]
 fn print(args: &[Obj], kw_map: &Map) -> Result<(), Exception> {
     let kwarg_count = kw_map.len();
-    let mut reader = Args::new(args.len(), kwarg_count, args).reader();
+    let positional_count = args.len() - kwarg_count * 2;
+    let mut reader = Args::new(positional_count, kwarg_count, args).reader();
 
     let mut sep = " ";
     let mut end = "\n";
