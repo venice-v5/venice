@@ -24,11 +24,11 @@ use argparse::{Args, KeywordError, PositionalError, error_msg};
 use micropython_macros::fun;
 use micropython_rs::{
     const_map,
-    except::{EXCEPTION_TYPE, ExceptionType, Message},
+    except::{self, EXCEPTION_TYPE, Message},
     init::InitToken,
     map::Dict,
     module::Module,
-    obj::{Obj, ObjTrait},
+    obj::{Obj, ObjFullType, ObjTrait, ObjType},
 };
 use vex_sdk::V5_MAX_DEVICE_PORTS;
 use vex_sdk_jumptable::{V5_DeviceT, V5_DeviceType, vexDeviceGetByIndex, vexDeviceGetStatus};
@@ -91,13 +91,14 @@ use crate::modvenice::{
     },
 };
 
-static DEVICE_ERROR_TYPE: ExceptionType = ExceptionType::new(qstr!(DeviceError), EXCEPTION_TYPE);
+static DEVICE_ERROR_TYPE: ObjFullType =
+    except::new_exception_type(qstr!(DeviceError), EXCEPTION_TYPE);
 
 #[must_use]
 pub struct Exception(pub micropython_rs::except::Exception);
 
 impl Exception {
-    pub fn new(ty: &'static micropython_rs::obj::ObjType, msg: impl Into<Message>) -> Self {
+    pub fn new(ty: &'static ObjType, msg: impl Into<Message>) -> Self {
         Self(micropython_rs::except::Exception {
             ty,
             msg: msg.into(),

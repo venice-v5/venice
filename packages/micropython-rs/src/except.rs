@@ -65,22 +65,13 @@ where
     }
 }
 
-#[repr(transparent)]
-pub struct ExceptionType(ObjFullType);
-
-impl ExceptionType {
-    pub const fn new(name: Qstr, parent: &'static ObjType) -> Self {
-        Self(unsafe {
-            ObjFullType::new(TypeFlags::empty(), name)
-                .set_make_new_raw(mp_obj_exception_make_new)
-                .set_print_raw(mp_obj_exception_print)
-                .set_attr_raw(mp_obj_exception_attr)
-                .set_parent(parent)
-        })
-    }
-
-    pub const fn as_obj_type(&self) -> &ObjType {
-        self.0.as_obj_type()
+pub const fn new_exception_type(name: Qstr, parent: &'static ObjType) -> ObjFullType {
+    unsafe {
+        ObjFullType::new(TypeFlags::empty(), name)
+            .set_make_new_raw(mp_obj_exception_make_new)
+            .set_print_raw(mp_obj_exception_print)
+            .set_attr_raw(mp_obj_exception_attr)
+            .set_parent(parent)
     }
 }
 
