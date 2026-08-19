@@ -10,7 +10,7 @@ use micropython_macros::{class, class_methods};
 use micropython_rs::{
     errno::{MP_EINVAL, MP_EIO},
     except::{raise_stop_iteration, runtime_error, value_error},
-    fun::{Fun1, Fun2, FunVarBetween},
+    fun::{Fun1, FunVarBetween},
     init::token,
     ioctl_from_fn,
     obj::{Obj, ObjBase, ObjTrait},
@@ -333,7 +333,7 @@ impl SerialPortObj {
     /// - `ValueError`: If the port has been freed.
     #[constant(qstr!(write1))]
     #[stub(sig = "(self, buffer: bytes | bytearray | memoryview, /) -> int")]
-    const WRITE1: &Fun2 = &mp_stream_write1_obj;
+    const WRITE1: &FunVarBetween = &mp_stream_write1_obj;
 
     /// Completes the MicroPython flush operation and returns `None`.
     ///

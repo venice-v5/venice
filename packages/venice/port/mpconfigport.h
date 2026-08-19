@@ -27,8 +27,6 @@ struct venice_port_state {
 extern struct venice_port_state venice_port_state;
 #define MP_STATE_PORT(x) (venice_port_state.x)
 
-typedef int32_t mp_int_t; // must be pointer size
-typedef uint32_t mp_uint_t; // must be pointer size
 typedef long mp_off_t;
 
 // We need to provide a declaration/definition of alloca()

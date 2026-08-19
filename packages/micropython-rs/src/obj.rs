@@ -175,7 +175,16 @@ pub mod repr_c {
     }
 
     pub const fn new_float(float: f32) -> *mut c_void {
-        (((float.to_bits() & !0b11) | 0b10).wrapping_add(0x8080_0000)) as *mut c_void
+        let bits = float.to_bits();
+        let exponent = bits & 0x7f80_0000;
+        let mantissa = bits & 0x007f_ffff;
+        let bits = if exponent == 0x7f80_0000 && mantissa != 0 {
+            // MicroPython canonicalises NaNs so their encoded value cannot look like a pointer.
+            0x7fc0_0000
+        } else {
+            bits
+        };
+        (((bits & !0b11) | 0b10).wrapping_add(0x8080_0000)) as usize as *mut c_void
     }
 
     pub const fn new_ptr(ptr: *mut c_void) -> *mut c_void {
@@ -216,7 +225,10 @@ pub mod repr_c {
     }
 
     pub fn get_float(obj: *mut c_void) -> f32 {
-        f32::from_bits((obj as u32).wrapping_sub(0x8080_0000) & !0b11)
+        let mut bits = (obj as u32).wrapping_sub(0x8080_0000) & !0b11;
+        // Match MicroPython's dequantisation heuristic instead of always biasing toward zero.
+        bits |= (bits >> 2) & 0b11;
+        f32::from_bits(bits)
     }
 
     pub const fn get_ptr(obj: *mut c_void) -> *mut c_void {
@@ -278,6 +290,7 @@ bitflags! {
         const ITER_IS_ITERNEXT = 0x0080;
         const ITER_IS_CUSTOM = 0x0100;
         const INSTANCE_TYPE = 0x0200;
+        const SUBSCR_ALLOWS_STACK_SLICE = 0x0400;
     }
 }
 
@@ -1098,6 +1111,33 @@ impl Obj {
 
     pub fn is(self, ty: &ObjType) -> bool {
         self.obj_type() == ty
+    }
+
+    /// Copies the items when this object is a list or tuple.
+    pub fn try_array(&self) -> Option<Vec<Obj>> {
+        unsafe extern "C" {
+            fn mp_obj_get_array(object: Obj, len: *mut usize, items: *mut *mut Obj);
+            safe static mp_type_list: ObjType;
+            safe static mp_type_tuple: ObjType;
+        }
+
+        if !self.is(&mp_type_list) && !self.is(&mp_type_tuple) {
+            return None;
+        }
+
+        let mut len = 0;
+        let mut items = core::ptr::null_mut();
+        unsafe { mp_obj_get_array(*self, &raw mut len, &raw mut items) };
+        Some(unsafe { core::slice::from_raw_parts(items, len) }.to_vec())
+    }
+
+    /// Stores an attribute using MicroPython's normal attribute dispatch.
+    pub fn store_attr(self, attr: Qstr, value: Obj) {
+        unsafe extern "C" {
+            fn mp_store_attr(base: Obj, attr: Qstr, value: Obj);
+        }
+
+        unsafe { mp_store_attr(self, attr, value) };
     }
 
     pub fn ty(self) -> Option<repr_c::Ty> {

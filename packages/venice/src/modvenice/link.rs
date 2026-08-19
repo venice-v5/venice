@@ -8,7 +8,7 @@ use micropython_macros::{class, class_methods};
 use micropython_rs::{
     errno::MP_EINVAL,
     except::value_error,
-    fun::{Fun1, Fun2, FunVarBetween},
+    fun::{Fun1, FunVarBetween},
     ioctl_from_fn,
     obj::{Obj, ObjBase, ObjTrait, ObjType},
     print::{Print, PrintKind},
@@ -254,7 +254,7 @@ impl RadioLinkObj {
     const WRITE: &FunVarBetween = &mp_stream_write_obj;
     #[constant(qstr!(write1))]
     #[stub(sig = "(self, buffer: bytes | bytearray | memoryview, /) -> int")]
-    const WRITE1: &Fun2 = &mp_stream_write1_obj;
+    const WRITE1: &FunVarBetween = &mp_stream_write1_obj;
     #[constant(qstr!(flush))]
     #[stub(sig = "(self, /) -> None")]
     const FLUSH: &Fun1 = &mp_stream_flush_obj;

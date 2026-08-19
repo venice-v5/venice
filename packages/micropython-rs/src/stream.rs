@@ -3,7 +3,7 @@ use std::ffi::{c_int, c_long};
 use bitflags::bitflags;
 
 use crate::{
-    fun::{Fun1, Fun2, FunVarBetween},
+    fun::{Fun1, FunVarBetween},
     obj::{Obj, ObjFullType},
 };
 
@@ -31,6 +31,7 @@ pub const IOCTL_GET_DATA_OPTS: u32 = 8;
 pub const IOCTL_SET_DATA_OPTS: u32 = 9;
 pub const IOCTL_GET_FILENO: u32 = 10;
 pub const IOCTL_GET_BUFFER_SIZE: u32 = 11;
+pub const IOCTL_RAISE_ERROR: u32 = 12;
 
 bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -63,6 +64,8 @@ pub enum IoctlReq {
     GetFileno,
     /// Get preferred buffer size for file
     GetBufferSize,
+    /// Raise a stream-specific error. The argument is the original error code.
+    RaiseError(c_int),
 }
 
 pub fn decode_ioctl_request(request: u32, arg: usize) -> Option<IoctlReq> {
@@ -78,6 +81,7 @@ pub fn decode_ioctl_request(request: u32, arg: usize) -> Option<IoctlReq> {
         IOCTL_SET_DATA_OPTS => IoctlReq::SetDataOpts,
         IOCTL_GET_FILENO => IoctlReq::GetFileno,
         IOCTL_GET_BUFFER_SIZE => IoctlReq::GetBufferSize,
+        IOCTL_RAISE_ERROR => IoctlReq::RaiseError(arg as c_int),
         _ => return None,
     })
 }
@@ -214,10 +218,11 @@ unsafe extern "C" {
     pub safe static mp_stream_read_obj: FunVarBetween;
     pub safe static mp_stream_read1_obj: FunVarBetween;
     pub safe static mp_stream_readinto_obj: FunVarBetween;
+    pub safe static mp_stream_readinto1_obj: FunVarBetween;
     pub safe static mp_stream_unbuffered_readline_obj: FunVarBetween;
     pub safe static mp_stream_unbuffered_readlines_obj: Fun1;
     pub safe static mp_stream_write_obj: FunVarBetween;
-    pub safe static mp_stream_write1_obj: Fun2;
+    pub safe static mp_stream_write1_obj: FunVarBetween;
     pub safe static mp_stream_close_obj: Fun1;
     pub safe static mp_stream___exit___obj: FunVarBetween;
     pub safe static mp_stream_seek_obj: FunVarBetween;

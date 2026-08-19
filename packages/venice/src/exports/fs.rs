@@ -10,7 +10,7 @@ use micropython_macros::{class, class_methods};
 use micropython_rs::{
     errno::{MP_EBADF, MP_EINVAL, MP_EIO},
     except::{Message, raise_os_error, type_error},
-    fun::{Fun1, Fun2, FunVarBetween, FunVarKw},
+    fun::{Fun1, FunVarBetween, FunVarKw},
     init::token,
     ioctl_from_fn,
     map::Map,
@@ -104,7 +104,7 @@ impl FileObj {
     const WRITE: &FunVarBetween = &mp_stream_write_obj;
 
     #[constant(qstr!(write1))]
-    const WRITE1: &Fun2 = &mp_stream_write1_obj;
+    const WRITE1: &FunVarBetween = &mp_stream_write1_obj;
 
     #[constant(qstr!(close))]
     const CLOSE: &Fun1 = &mp_stream_close_obj;
